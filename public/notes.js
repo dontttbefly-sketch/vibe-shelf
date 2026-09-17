@@ -1554,8 +1554,18 @@
     .then(function (list) { notes = list || []; refreshAll(); })
     .catch(function () {
       STATIC_MODE = true;
-      try { notes = JSON.parse(localStorage.getItem("shelf-notes-" + BOOK) || "[]"); } catch (e) { notes = []; }
-      refreshAll();
-      toast("静态演示：阅读与本地批注可用 · AI 生成请本地运行");
+      var loadFromLocalStorage = function () {
+        try { notes = JSON.parse(localStorage.getItem("shelf-notes-" + BOOK) || "[]"); } catch (e) { notes = []; }
+        refreshAll();
+        toast("静态演示：阅读与本地批注可用 · AI 生成请本地运行");
+      };
+      var saved = null;
+      try { saved = localStorage.getItem("shelf-notes-" + BOOK); } catch (e) {}
+      if (saved) { try { notes = JSON.parse(saved); } catch (e) { notes = []; } refreshAll(); return; }
+      // 首次访问：读随书附带的示例注释
+      fetch("data/" + BOOK + ".json")
+        .then(function (r) { if (!r.ok) throw new Error("none"); return r.json(); })
+        .then(function (list) { notes = list || []; refreshAll(); })
+        .catch(loadFromLocalStorage);
     });
 })();

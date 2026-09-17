@@ -87,6 +87,14 @@ ${origJs}
 `;
 
 fs.writeFileSync(OUT, out);
+// 同步示例注释：静态部署（GitHub Pages）时旁注层首次访问可读取
+const noteSrc = path.join(process.cwd(), "data", BOOK_KEY + ".json");
+if (fs.existsSync(noteSrc)) {
+  const noteDst = path.join(path.dirname(OUT), "data");
+  fs.mkdirSync(noteDst, { recursive: true });
+  fs.copyFileSync(noteSrc, path.join(noteDst, BOOK_KEY + ".json"));
+  console.log("  示例注释已同步 → " + path.join(path.dirname(OUT), "data", BOOK_KEY + ".json"));
+}
 console.log("已生成 " + OUT);
 console.log("  书名(注释文件): data/" + BOOK_KEY + ".json");
 console.log("  体积 " + (Buffer.byteLength(out) / 1024).toFixed(1) + " KB");
