@@ -1,0 +1,398 @@
+/* 知识书架 · 旁注层样式（叠加在原书 CSS 之上）
+   识别色 = 原书的粘土色 --clay；克制、无序号、气泡化、带动效 */
+
+/* ---- 有注释的段落：左侧一条细竖线（克制、低透明度） ---- */
+.book-main .nb-block { position: relative; }
+.book-main .nb-block::before {
+  content: "";
+  position: absolute;
+  left: -18px; top: 0.3em; bottom: 0.3em;
+  width: 2px;
+  background: rgba(206, 123, 81, 0.20);
+  border-radius: 2px;
+  transition: background .18s, width .18s;
+}
+/* 列表项有序号（.chapter ol/ul padding-left:22px），竖条再往左让开 */
+.book-main li.nb-block::before { left: -28px; }
+.book-main .nb-block:hover::before { background: rgba(206, 123, 81, 0.34); }
+.book-main .nb-block.nb-active::before { background: rgba(206, 123, 81, 0.42); }
+
+/* 表格单元格：不用竖线（会跑进表格里），用淡背景标记 */
+.book-main td.nb-block, .book-main th.nb-block { background: rgba(206, 123, 81, 0.055); }
+.book-main td.nb-block::before, .book-main th.nb-block::before { display: none; }
+.book-main td.nb-block:hover, .book-main th.nb-block:hover { background: rgba(206, 123, 81, 0.09); }
+.book-main td.nb-block.nb-active, .book-main th.nb-block.nb-active { background: rgba(206, 123, 81, 0.12); }
+
+/* 代码块：左侧淡竖线（避开原书紫色 border-left） */
+.book-main pre.nb-block::before { left: -14px; }
+
+/* ---- 词/句级锚点：选中文字的下方虚线下划线 ---- */
+.book-main mark.nb-quote {
+  background: transparent;
+  color: inherit;
+  padding: 0 0 1px;
+  border-bottom: 1px dashed rgba(206, 123, 81, 0.65);
+  border-radius: 0;
+  cursor: pointer;
+  transition: background .16s;
+}
+.book-main mark.nb-quote:hover { background: rgba(206, 123, 81, 0.10); }
+.book-main mark.nb-quote.nb-active { background: rgba(206, 123, 81, 0.14); }
+
+/* ---- 正在被 AI 加工的文字：轻微模糊 ---- */
+.book-main mark.nb-quote.nb-processing,
+.book-main .nb-block.nb-processing {
+  filter: blur(1.6px);
+  opacity: .45;
+  transition: filter .45s ease, opacity .45s ease;
+}
+
+/* ---- 晋升为正文的「补充」块（可收缩，默认收起） ---- */
+.book-main .nb-promoted {
+  margin: 14px 0 18px;
+  border: 1px solid rgba(206, 123, 81, 0.32);
+  background: rgba(206, 123, 81, 0.045);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.book-main .nb-promoted-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; cursor: pointer; user-select: none;
+}
+.book-main .nb-promoted-head:hover { background: rgba(206, 123, 81, 0.06); }
+.book-main .nb-promoted .nb-promoted-tag {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #993c1d;
+  border: 1px solid rgba(206, 123, 81, 0.45);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+.book-main .nb-promoted-toggle {
+  font: inherit; font-size: 11.5px; color: var(--muted);
+  border: 0; background: transparent; cursor: pointer;
+  padding: 2px 6px; border-radius: 6px;
+}
+.book-main .nb-promoted-toggle:hover { color: #993c1d; background: rgba(206, 123, 81, 0.08); }
+.book-main .nb-promoted-body {
+  max-height: 0; overflow: hidden;
+  padding: 0 16px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    max-height .32s cubic-bezier(.65,.05,.36,1),
+    padding .32s cubic-bezier(.65,.05,.36,1),
+    transform .32s cubic-bezier(.65,.05,.36,1),
+    opacity .22s ease;
+}
+/* max-height 的展开目标值由 JS 按内容实测设定（精确手风琴），这里只管其余属性 */
+.book-main .nb-promoted.open .nb-promoted-body {
+  padding: 0 16px 16px;
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-main .nb-promoted-body { transition: none; }
+}
+/* ---- 晋升块：右下角隐性垃圾桶 + 塌缩删除（无 blur） ---- */
+.book-main .nb-promoted {
+  transition: max-height .32s cubic-bezier(.65,.05,.36,1),
+              margin .32s cubic-bezier(.65,.05,.36,1),
+              transform .32s cubic-bezier(.65,.05,.36,1),
+              opacity .22s ease;
+}
+.book-main .nb-promoted-actions { display: flex; align-items: center; gap: 2px; }
+.book-main .nb-promoted-del {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px;
+  background: transparent; color: var(--muted); cursor: pointer;
+  opacity: 0; transform: scale(.85);
+  transition: opacity .18s ease, transform .18s cubic-bezier(.2,.8,.2,1), color .18s, background .18s;
+}
+/* 悬浮整卡时垃圾桶浮现；悬浮按钮本身时放大变红变清晰 */
+.book-main .nb-promoted:hover .nb-promoted-del { opacity: .5; transform: scale(1); }
+.book-main .nb-promoted-del:hover {
+  opacity: 1; transform: scale(1.18);
+  color: #b23b2e; background: rgba(178, 59, 46, .09);
+}
+.book-main .nb-promoted-del:active { transform: scale(.92); }
+/* 删除动效：内容淡出，整卡塌缩合拢，下方正文平滑补位 */
+.book-main .nb-promoted.nb-removing {
+  max-height: 0 !important;
+  margin-top: 0 !important; margin-bottom: 0 !important;
+  opacity: 0; transform: translateY(-4px) scale(.985);
+  pointer-events: none;
+}
+.book-main .nb-promoted.nb-removing .nb-promoted-body { opacity: 0 !important; }
+.book-main .nb-promoted.nb-removing .nb-promoted-del { opacity: 0 !important; }
+@media (prefers-reduced-motion: reduce) {
+  .book-main .nb-promoted { transition: none; }
+}
+.book-main .nb-promoted-body .nb-note-body { font-size: 14px; line-height: 1.8; }
+/* 晋升块内代码块：雾灰底（--mist）+ 中性淡墨边框；与粘土卡外框形成“外暖内冷”层次 */
+.book-main .nb-promoted .nb-note-body pre {
+  background: var(--mist);
+  border: 1px solid rgba(21, 27, 30, 0.10);
+  border-left: 3px solid rgba(21, 27, 30, 0.22);
+}
+.book-main .nb-promoted .nb-note-body code { background: rgba(206, 123, 81, 0.08); }
+.book-main .nb-promoted .nb-note-body pre code { background: none; }
+
+/* ---- 选中文字后浮出的小药丸 ---- */
+.nb-float {
+  position: fixed;
+  z-index: 80;
+  font-family: inherit; font-size: 12.5px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(206, 123, 81, 0.55);
+  background: #fffdf7;
+  color: #993c1d;
+  cursor: pointer;
+  box-shadow: 0 6px 22px rgba(21, 27, 30, 0.14);
+  opacity: 0;
+  transform: scale(.72);
+  transform-origin: left bottom;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), opacity .15s ease;
+}
+.nb-float.nb-show { opacity: 1; transform: scale(1); }
+
+/* ---- 气泡（浮窗），不是满高抽屉 ---- */
+.nb-bubble {
+  position: fixed;
+  right: 28px;
+  top: 96px;
+  width: 392px;
+  max-width: calc(100vw - 56px);
+  max-height: calc(100vh - 160px);
+  background: rgba(255, 253, 247, 0.82);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  backdrop-filter: blur(22px) saturate(1.15);
+  border: 1px solid rgba(21, 27, 30, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 22px 60px rgba(21, 27, 30, 0.22);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: center;
+}
+.nb-bubble.nb-show { opacity: 1; pointer-events: auto; }
+/* 性能：气泡不可见时摘掉毛玻璃重采样，平时 0 GPU 消耗；开气泡才付 blur 成本 */
+.nb-bubble:not(.nb-show) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.nb-bubble-head {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 15px 18px 8px; flex: none;
+}
+.nb-bubble-title { flex: 1; margin: 0; font-size: 14px; line-height: 1.5; }
+.nb-bubble-title b { font-weight: 500; color: var(--ink); }
+.nb-bubble-title .nb-dim { color: var(--faint); font-size: 12.5px; }
+.nb-close {
+  flex: none; font: inherit; font-size: 16px; line-height: 1;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--faint); cursor: pointer;
+}
+.nb-close:hover { color: var(--ink); background: var(--mist); }
+
+.nb-bubble-body { flex: 1; overflow: auto; padding: 4px 18px 44px; overscroll-behavior: contain; }
+
+/* 提问态 */
+.nb-ask textarea {
+  width: 100%; min-height: 96px; resize: vertical; box-sizing: border-box;
+  font: inherit; font-size: 14px; line-height: 1.7;
+  padding: 11px 13px; border: 1px solid var(--line-strong); border-radius: 13px;
+  background: var(--paper); color: var(--ink); outline: none;
+}
+.nb-ask textarea:focus { border-color: var(--clay); }
+
+/* 按钮 */
+.nb-btn {
+  font: inherit; font-size: 13px; padding: 8px 15px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: transparent; color: var(--ink); cursor: pointer;
+}
+.nb-btn.primary { border-color: var(--clay); color: #993c1d; background: #fdf6f1; }
+.nb-btn.primary:hover { background: #fbeade; }
+.nb-btn.ghost { border-color: transparent; color: var(--muted); background: transparent; }
+.nb-btn.ghost:hover { color: var(--ink); background: var(--mist); }
+.nb-btn:disabled { opacity: .5; cursor: default; }
+.nb-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+/* ---- 气泡内 icon 按钮（晋升/删除）+ 悬浮小字提示 ---- */
+.nb-icon-btn {
+  position: relative;
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: color .18s, background .18s, border-color .18s, transform .18s cubic-bezier(.2,.8,.2,1);
+}
+.nb-icon-btn:hover { color: var(--ink); background: var(--mist); transform: scale(1.08); }
+.nb-icon-btn:active { transform: scale(.94); }
+.nb-icon-btn.danger:hover { color: #b23b2e; background: rgba(178, 59, 46, .09); border-color: rgba(178, 59, 46, .25); }
+.nb-icon-btn::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 7px); left: 50%;
+  transform: translateX(-50%) scale(.9);
+  background: var(--ink); color: var(--paper-strong);
+  font-size: 11px; line-height: 1; padding: 5px 9px; border-radius: 6px;
+  white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: opacity .15s ease, transform .15s cubic-bezier(.2,.8,.2,1);
+}
+.nb-icon-btn:hover::after { opacity: 1; transform: translateX(-50%) scale(1); }
+/* 删除确认态：变红 + 轻抖提示“再点一次才删” */
+.nb-icon-btn.confirming {
+  color: #b23b2e; background: rgba(178, 59, 46, .09); border-color: rgba(178, 59, 46, .3);
+  animation: nbNudge .28s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes nbNudge { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+/* 旁注正文（气泡内） */
+.nb-note-body { font-size: 14.5px; line-height: 1.82; }
+.nb-note-body p { margin: 0 0 12px; }
+.nb-note-body h3 { font-size: 15px; margin: 0 0 10px; }
+.nb-note-body h4 { font-size: 14px; margin: 0 0 8px; }
+.nb-note-body ul, .nb-note-body ol { margin: 0 0 12px; padding-left: 20px; }
+.nb-note-body li { margin-bottom: 6px; }
+.nb-note-body code { font-family: var(--mono); font-size: 12.5px; background: var(--mist); padding: 1px 5px; border-radius: 4px; }
+.nb-note-body pre { background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--lilac); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 0 0 14px; }
+.nb-note-body pre code { background: none; padding: 0; font-size: 12px; line-height: 1.7; }
+.nb-note-body table { border-collapse: collapse; font-size: 13px; margin: 0 0 14px; width: 100%; }
+.nb-note-body th, .nb-note-body td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+.nb-note-body th { background: var(--mist); font-weight: 500; white-space: nowrap; }
+.nb-note-body blockquote { margin: 0 0 12px; padding-left: 12px; border-left: 2px solid var(--line-strong); color: var(--muted); }
+.nb-note-body a { color: var(--sky); }
+
+/* ---- 思考流（生成中）：文字持续向上滚，像蹦数字一样 ---- */
+.nb-think { padding: 16px 4px 20px; }
+.nb-think-window {
+  height: 3.4em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 80%, transparent 100%);
+}
+.nb-think-track { will-change: transform; }
+.nb-think-line {
+  height: 1.7em; line-height: 1.7;
+  font-size: 14px; color: var(--muted);
+  display: flex; align-items: center;
+}
+.nb-think-dots { margin-top: 12px; display: flex; gap: 4px; }
+.nb-think-dots i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--clay);
+  animation: nbpulse 1.2s ease-in-out infinite;
+}
+.nb-think-dots i:nth-child(2) { animation-delay: .18s; }
+.nb-think-dots i:nth-child(3) { animation-delay: .36s; }
+@keyframes nbpulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+
+/* ---- 注释清单（气泡内） ---- */
+.nb-list-item { padding: 12px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.nb-list-item:last-child { border-bottom: 0; }
+.nb-list-item .t { font-size: 13.5px; font-weight: 500; margin: 0 0 3px; line-height: 1.5; }
+.nb-list-item .s { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.6; }
+.nb-list-item:hover .t { color: #993c1d; }
+
+/* ---- 右下角导航药丸 ---- */
+.nb-nav {
+  position: fixed; right: 22px; bottom: 22px; z-index: 70;
+  display: flex; align-items: center; gap: 2px;
+  background: var(--paper-strong);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px; box-shadow: 0 6px 20px rgba(21,27,30,.10);
+}
+.nb-nav button {
+  font: inherit; font-size: 12.5px; line-height: 1;
+  padding: 7px 11px; border: 0; background: transparent;
+  color: var(--ink); cursor: pointer; border-radius: 999px;
+}
+.nb-nav button:hover { background: var(--mist); }
+.nb-nav button:disabled { color: var(--faint); cursor: default; background: transparent; }
+.nb-nav .nb-count { font-size: 12px; color: var(--muted); padding: 0 6px; }
+.nb-nav .nb-divider { width: 1px; height: 14px; background: var(--line); }
+.nb-nav[hidden] { display: none; }
+
+/* ---- toast ---- */
+.nb-toast {
+  position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%);
+  background: var(--ink); color: var(--paper-strong);
+  font-size: 12.5px; padding: 9px 17px; border-radius: 9px;
+  z-index: 100; max-width: 78vw; line-height: 1.6;
+  transition: opacity .2s;
+}
+
+/* ---- 标题旁的小铅笔（隐约，hover 放大变清晰） ---- */
+.nb-pen {
+  flex: none; font: inherit; font-size: 15px; line-height: 1;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--faint); cursor: pointer;
+  opacity: .5; transform: scale(.9);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), opacity .18s, color .18s, background .18s;
+}
+.nb-pen:hover { opacity: 1; transform: scale(1.18); color: var(--ink); background: var(--mist); }
+.nb-pen[hidden] { display: none; }
+
+/* ---- 提问→思考 的过渡 ---- */
+.nb-bubble-body { transition: opacity .16s ease, transform .16s ease, filter .16s ease; }
+.nb-bubble-body.nb-body-exit { opacity: 0; transform: translateY(-8px); filter: blur(2px); }
+.nb-bubble-body.nb-body-enter { transition: none; animation: nbBodyIn .3s cubic-bezier(.2,.8,.2,1); }
+@keyframes nbBodyIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* ---- 提问按钮：有字时变成回车符 ---- */
+.nb-go { min-width: 62px; text-align: center; transition: all .18s ease; }
+.nb-go.is-enter { background: #fbeade; color: #993c1d; font-size: 17px; font-weight: 600; }
+
+/* ---- 回复末尾隐约的加号 ---- */
+.nb-more {
+  display: block; width: 100%; margin-top: 8px; padding: 5px 0;
+  border: 0; background: transparent; text-align: center;
+  font: inherit; font-size: 17px; line-height: 1;
+  color: var(--faint); cursor: pointer;
+  opacity: .5; transform: scale(.92);
+  transition: opacity .18s ease, transform .18s cubic-bezier(.2,.8,.2,1), color .18s;
+}
+.nb-more:hover { opacity: 1; transform: scale(1.12); color: #993c1d; }
+
+/* ---- 次级输入框（比大气泡低一级） ---- */
+.nb-subbox {
+  margin-top: 10px; padding: 10px 12px;
+  border: 1px dashed rgba(206, 123, 81, 0.5);
+  border-radius: 12px;
+  background: rgba(206, 123, 81, 0.03);
+}
+.nb-subbox-tag { display: block; font-size: 11px; color: #993c1d; margin-bottom: 7px; letter-spacing: .03em; }
+.nb-subbox textarea {
+  width: 100%; min-height: 56px; resize: vertical; box-sizing: border-box;
+  font: inherit; font-size: 13px; line-height: 1.6;
+  padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 10px;
+  background: var(--paper); color: var(--ink); outline: none;
+}
+.nb-subbox textarea:focus { border-color: var(--clay); }
+.nb-subbox-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+.nb-subbox-go {
+  font: inherit; font-size: 13px; padding: 5px 14px;
+  border: 1px solid var(--clay); border-radius: 999px;
+  background: #fdf6f1; color: #993c1d; cursor: pointer;
+}
+.nb-subbox-go:disabled { opacity: .5; cursor: default; }
+.nb-subbox.nb-sub-loading { opacity: .6; pointer-events: none; }
+
+/* ---- 选中回复文字后的小追问 chip ---- */
+.nb-subchip {
+  position: fixed; z-index: 95;
+  font: inherit; font-size: 12px;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid rgba(206, 123, 81, 0.5);
+  background: #fffdf7; color: #993c1d; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(21,27,30,.16);
+  opacity: 0; transform: scale(.8); transform-origin: left bottom;
+  transition: transform .16s cubic-bezier(.2,.8,.2,1), opacity .14s ease;
+}
+.nb-subchip.nb-show { opacity: 1; transform: scale(1); }
