@@ -56,6 +56,56 @@ function writeNotes(book, arr) {
   fs.writeFileSync(notesFile(book), JSON.stringify(arr, null, 2), "utf8");
 }
 
+// ---- 书关联的项目文件（data/<book>/files/ 下的所有文件，作为上下文喂给 AI） ----
+const FILE_LIMIT = 100 * 1024; // 单文件 100KB 硬限，防止 prompt 爆炸
+function filesDir(book) {
+  const safe = /^[\w-]+$/.test(book) ? book : "book";
+  return path.join(DATA_DIR, safe, "files");
+}
+function safeJoinFilesDir(book, rel) {
+  const root = filesDir(book);
+  const target = path.normalize(path.join(root, rel));
+  if (!target.startsWith(root + path.sep) && target !== root) return null; // 防 ../ 穿越
+  return target;
+}
+function listFiles(book) {
+  const root = filesDir(book);
+  if (!fs.existsSync(root)) return [];
+  const out = [];
+  function walk(dir, prefix) {
+    for (const name of fs.readdirSync(dir)) {
+      const full = path.join(dir, name);
+      const stat = fs.statSync(full);
+      if (stat.isDirectory()) walk(full, prefix ? prefix + "/" + name : name);
+      else {
+        const rel = prefix ? prefix + "/" + name : name;
+        out.push({ path: rel, size: stat.size });
+      }
+    }
+  }
+  walk(root, "");
+  out.sort((a, b) => a.path.localeCompare(b.path));
+  return out;
+}
+function readFileContent(book, rel) {
+  const full = safeJoinFilesDir(book, rel);
+  if (!full) return null;
+  if (!fs.existsSync(full)) return null;
+  const stat = fs.statSync(full);
+  if (stat.size > FILE_LIMIT) return { path: rel, tooLarge: true, size: stat.size };
+  return { path: rel, content: fs.readFileSync(full, "utf8") };
+}
+// 拼文件上下文片段（供 prompt 用）
+function filesSection(files) {
+  if (!files || !files.length) return "";
+  const blocks = files.map((f) => {
+    const head = "=== " + f.path + (f.tooLarge ? " (文件过大未读取，仅按名引用) ===" : " ===");
+    const body = f.tooLarge ? "" : f.content;
+    return head + "\n" + body;
+  });
+  return "\n\n书里引用的项目文件（用户已勾选确认）：\n" + blocks.join("\n\n") + "\n";
+}
+
 // ---- 剥掉推理模型的 <think> 块（兜底） ----
 function stripThinking(text) {
   return text
@@ -125,7 +175,7 @@ function buildPrompt(input) {
     "",
     "读者圈出的句子：「" + (quote || "整段") + "」",
     "读者的疑问：「" + q + "」",
-    "",
+    filesSection(input.files),
     "直接写旁注正文：",
   ].join("\n");
 }
@@ -167,6 +217,7 @@ function buildFollowupPrompt(input) {
     "",
     "现有旁注正文：",
     context,
+    filesSection(input.files),
     "",
     "改动后的完整旁注正文：",
   );
@@ -278,6 +329,19 @@ const server = http.createServer(async (req, res) => {
       const arr = readNotes(book).filter((n) => n.id !== id);
       writeNotes(book, arr);
       return send(200, { ok: true, notes: arr });
+    }
+
+    // ---- 书关联项目文件：列出候选 / 读取内容 ----
+    if (p === "/api/files" && req.method === "GET") {
+      const book = u.searchParams.get("book") || "pupkit";
+      return send(200, { files: listFiles(book) });
+    }
+    if (p === "/api/file" && req.method === "GET") {
+      const book = u.searchParams.get("book") || "pupkit";
+      const rel = u.searchParams.get("path") || "";
+      const result = readFileContent(book, rel);
+      if (!result) return send(404, { error: { kind: "not-found", message: "文件不存在或路径非法" } });
+      return send(200, result);
     }
 
     // ---- 静态文件 ----

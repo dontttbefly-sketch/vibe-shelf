@@ -35,12 +35,33 @@ const scriptStart = html.indexOf("<script>");
 if (bodyStart < 0 || scriptStart < 0 || scriptStart <= bodyStart) {
   throw new Error('定位 body 失败：书页需要包含 <div class="progress">（阅读进度条）和 <script>');
 }
-const bodyContent = html.slice(bodyStart, scriptStart).replace(/\s+$/, "");
+const bodyContent = enrichPreBlocks(html.slice(bodyStart, scriptStart)).replace(/\s+$/, "");
 
 // 3. 原书脚本（进度条 / 目录高亮 / 语法高亮）
 const scriptM = html.slice(scriptStart).match(/<script>([\s\S]*?)<\/script>/);
 if (!scriptM) throw new Error("找不到原书 <script>");
 const origJs = scriptM[1].trim();
+
+// 给书里的 <pre> 块智能推断"对应哪个文件"：识别后加 data-file + dropzone 属性
+// 旁注层 detectFiles() 会沿 DOM 向上找 data-file，找到即作为当前文件上下文
+// 这样选中代码块时，AI 能自动拿到对应文件的完整内容
+function enrichPreBlocks(s) {
+  return s.replace(/<pre>(\s*<code[^>]*>)([\s\S]*?)(<\/code>\s*<\/pre>)/g, function (full, open, code, close) {
+    const decoded = code
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    const lines = decoded.split("\n");
+    const head = lines.slice(0, 3).join("\n");
+    const first = lines[0].trim();
+    let file = null;
+    if (/^<!doctype\s+html/i.test(first) || /^<html/i.test(first)) file = "index.html";
+    else if (/^<link\s+/i.test(first)) file = "index.html"; // <link rel="stylesheet" href="assets/styles.css?...">
+    else if (/^<script/i.test(first)) file = "index.html";
+    else if (/:root\s*\{/.test(head) || /^\/\*[\s\S]*?\*\//.test(head)) file = "assets/styles.css";
+    if (!file) return full;
+    return '<pre data-file="' + file + '" dropzone="file">' + open + code + close;
+  });
+}
 
 const out = `<!DOCTYPE html>
 <html lang="zh-CN">

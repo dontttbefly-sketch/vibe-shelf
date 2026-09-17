@@ -179,6 +179,13 @@
   opacity: 0;
   pointer-events: none;
   transform-origin: center;
+  /* 放大动效：left/right/width 都可过渡，nb-show 不会与之冲突 */
+  transition:
+    transform .26s cubic-bezier(.5,.05,.75,.35),
+    opacity .2s ease,
+    left .34s cubic-bezier(.2,.8,.2,1),
+    right .34s cubic-bezier(.2,.8,.2,1),
+    width .34s cubic-bezier(.2,.8,.2,1);
 }
 .nb-bubble.nb-show { opacity: 1; pointer-events: auto; }
 /* 性能：气泡不可见时摘掉毛玻璃重采样，平时 0 GPU 消耗；开气泡才付 blur 成本 */
@@ -186,12 +193,17 @@
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+/* 放大态：右缘不动，宽度扩到约半屏（数值→数值可过渡；left/auto 组合不可动画所以弃用） */
+.nb-bubble.nb-bubble--expanded {
+  width: calc(50vw - 40px);
+}
 
 .nb-bubble-head {
   display: flex; align-items: flex-start; gap: 10px;
   padding: 15px 18px 8px; flex: none;
 }
-.nb-bubble-title { flex: 1; margin: 0; font-size: 14px; line-height: 1.5; }
+.nb-bubble-title { flex: 1; margin: 0; font-size: 14px; line-height: 1.5; user-select: none; -webkit-user-select: none; }
+.nb-bubble-head button { user-select: none; -webkit-user-select: none; }
 .nb-bubble-title b { font-weight: 500; color: var(--ink); }
 .nb-bubble-title .nb-dim { color: var(--faint); font-size: 12.5px; }
 .nb-close {
@@ -200,6 +212,19 @@
   border: 0; background: transparent; color: var(--faint); cursor: pointer;
 }
 .nb-close:hover { color: var(--ink); background: var(--mist); }
+
+/* ---- 标题旁的放大按钮（仅 expanded 态下变实色，平时隐约） ---- */
+.nb-expand {
+  flex: none; font: inherit; font-size: 14px; line-height: 1;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--faint); cursor: pointer;
+  opacity: .95;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), opacity .18s, color .18s, background .18s;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.nb-expand:hover { opacity: 1; color: var(--ink); background: var(--mist); }
+.nb-expand svg { width: 13px; height: 13px; }
+.nb-bubble--expanded .nb-expand { opacity: 1; color: var(--clay); }
 
 .nb-bubble-body { flex: 1; overflow: auto; padding: 4px 18px 44px; overscroll-behavior: contain; }
 
@@ -211,6 +236,33 @@
   background: var(--paper); color: var(--ink); outline: none;
 }
 .nb-ask textarea:focus { border-color: var(--clay); }
+
+/* ---- 文件勾选：直接平铺在一级界面（解释按钮下方），默认全勾，无常驻 chip、无展开收起 ---- */
+.nb-files-list {
+  margin-top: 10px;
+  display: flex; flex-direction: column; gap: 2px;
+  animation: nbFilesIn .42s cubic-bezier(.2,.8,.2,1) both;
+}
+.nb-file-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; margin: 0 -10px;
+  font-size: 12.5px; line-height: 1.4;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 9px;
+  animation: nbFilesIn .42s cubic-bezier(.2,.8,.2,1) both;
+}
+.nb-file-row:nth-child(1) { animation-delay: .05s; }
+.nb-file-row:nth-child(2) { animation-delay: .11s; }
+.nb-file-row:nth-child(3) { animation-delay: .17s; }
+.nb-file-row:nth-child(4) { animation-delay: .23s; }
+.nb-file-row:nth-child(5) { animation-delay: .29s; }
+.nb-file-row:nth-child(n+6) { animation-delay: .33s; }
+.nb-file-row:hover { color: #993c1d; background: rgba(206, 123, 81, 0.05); }
+.nb-file-row input[type="checkbox"] { accent-color: var(--clay); cursor: pointer; }
+.nb-file-row .nb-file-name { flex: 1; font-family: var(--mono); font-size: 11.5px; }
+.nb-file-row .nb-file-size { color: var(--faint); font-size: 11px; }
+@keyframes nbFilesIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 
 /* 按钮 */
 .nb-btn {
@@ -254,6 +306,129 @@
 }
 @keyframes nbNudge { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
 
+/* ---- Diff 视图：行级 红删 / 绿增（追问修改后展示给用户审阅） ---- */
+/* ---- diff 模式锁定：审阅卡在场时，后面的 ＋号/按钮区冻结，只留确认与返回 ---- */
+.nb-diff ~ #nbMore { opacity: .25; pointer-events: none; }
+.nb-diff ~ .nb-row { opacity: .45; pointer-events: none; }
+
+.nb-diff {
+  font-size: 13.5px; line-height: 1.75;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--paper-strong);
+  overflow: hidden;
+  margin-bottom: 12px;
+  animation: nbDiffIn .38s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes nbDiffIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* 操作信息条：sticky 钉在气泡顶部（淡粘土纸底） */
+.nb-diff-op {
+  position: sticky; top: 0; z-index: 3;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(206, 123, 81, 0.25);
+  background: #fdf6f1;
+  font-size: 11px;
+}
+.nb-diff-op-mode { color: #993c1d; font-weight: 500; letter-spacing: .03em; }
+.nb-diff-op-instruction { color: var(--muted); }
+.nb-diff-op-stat { color: var(--faint); }
+.nb-diff-views { margin-left: auto; display: inline-flex; gap: 2px; }
+.nb-diff-views button {
+  font: inherit; font-size: 10.5px; line-height: 1;
+  padding: 4px 9px; border-radius: 999px; cursor: pointer;
+  border: 0; background: transparent; color: var(--muted);
+  transition: background .16s ease, color .16s ease;
+}
+.nb-diff-views button:hover { color: var(--ink); background: rgba(21, 27, 30, 0.05); }
+.nb-diff-views button.active { color: #993c1d; background: rgba(206, 123, 81, 0.14); }
+/* diff 卡扁平化：无外框、无嵌套框，分区只靠小标题与色带 */
+.nb-diff-body { padding: 2px 0 4px; }
+.nb-diff[data-view="flow"] .nb-diff-split { display: none; }
+.nb-diff[data-view="split"] .nb-diff-flow { display: none; }
+.nb-diff-changes-tag {
+  display: block;
+  font-size: 10px; letter-spacing: .08em;
+  color: #993c1d;
+  padding: 8px 12px 2px;
+}
+.nb-diff-none { font-size: 12.5px; color: var(--muted); padding: 8px 12px; }
+/* 色带块：连排无圆角无边框，行首 +/− 符号（git diff 语言）表达增删 */
+.nb-diff-block { padding: 6px 12px 6px 28px; position: relative; margin: 0; }
+.nb-diff-block > *:first-child { margin-top: 0; }
+.nb-diff-block > *:last-child { margin-bottom: 0; }
+.nb-diff-block.same { opacity: .55; }
+.nb-diff-block.add { background: rgba(122, 142, 88, 0.12); }
+.nb-diff-block.add::before {
+  content: "+"; position: absolute; left: 12px; top: 6px;
+  font-family: var(--mono); font-weight: 600; color: #56652f;
+}
+.nb-diff-block.del {
+  background: rgba(178, 59, 46, 0.06);
+  text-decoration: line-through;
+  text-decoration-color: rgba(178, 59, 46, 0.5);
+  text-decoration-thickness: 1px;
+}
+.nb-diff-block.del::before {
+  content: "\2212"; position: absolute; left: 12px; top: 6px;
+  font-family: var(--mono); font-weight: 600; color: #a04535;
+}
+/* 块内代码块/行内 code 融入色带：无边框无底色（同时压掉原书紫蓝样式） */
+.nb-diff pre {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  margin: 6px 0;
+  padding: 0;
+}
+.nb-diff code {
+  background: transparent;
+  color: var(--ink);
+}
+/* 未改动内容：默认折叠，弱化 */
+.nb-diff-unchanged { margin-top: 6px; opacity: .8; }
+.nb-diff-unchanged-toggle {
+  font: inherit; font-size: 11px; line-height: 1;
+  padding: 6px 12px; cursor: pointer;
+  border: 0; background: transparent; color: var(--muted);
+  transition: background .16s ease, color .16s ease;
+}
+.nb-diff-unchanged-toggle:hover { color: var(--ink); background: rgba(21, 27, 30, 0.04); }
+.nb-diff-unchanged-body { margin-top: 2px; padding-top: 2px; border-top: 1px dashed var(--line); }
+.nb-diff-unchanged-body .nb-diff-block.same { opacity: .55; }
+/* 左右对比：列头 + 中缝细线；色带直接铺到格子里 */
+.nb-diff-split { padding: 0 10px 4px; }
+.nb-diff-cols-head {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px;
+  font-size: 10px; letter-spacing: .08em; color: var(--faint);
+  padding: 4px 0;
+}
+.nb-diff-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.nb-diff-row { display: contents; }
+.nb-diff-cell { min-width: 0; }
+.nb-diff-cell:first-child { border-right: 1px solid var(--line); }
+.nb-diff-cell .nb-diff-block { padding-left: 24px; }
+.nb-diff-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+.nb-diff-actions button {
+  font: inherit; font-size: 12.5px;
+  padding: 6px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--ink);
+  transition: background .18s, color .18s, border-color .18s;
+}
+.nb-diff-actions button:hover { background: var(--mist); }
+.nb-diff-actions .nb-diff-apply {
+  border-color: var(--clay); color: #993c1d; background: #fdf6f1;
+}
+.nb-diff-actions .nb-diff-apply:hover { background: #fbeade; }
+.nb-diff-actions .nb-diff-revert {
+  border-color: var(--line); color: var(--muted);
+}
+
 /* 旁注正文（气泡内） */
 .nb-note-body { font-size: 14.5px; line-height: 1.82; }
 .nb-note-body p { margin: 0 0 12px; }
@@ -287,10 +462,10 @@
 .nb-think-dots { margin-top: 12px; display: flex; gap: 4px; }
 .nb-think-dots i {
   width: 5px; height: 5px; border-radius: 50%; background: var(--clay);
-  animation: nbpulse 1.2s ease-in-out infinite;
+  animation: nbpulse 1.3s ease-in-out infinite;
 }
-.nb-think-dots i:nth-child(2) { animation-delay: .18s; }
-.nb-think-dots i:nth-child(3) { animation-delay: .36s; }
+.nb-think-dots i:nth-child(2) { animation-delay: .2s; }
+.nb-think-dots i:nth-child(3) { animation-delay: .4s; }
 @keyframes nbpulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
 
 /* ---- 注释清单（气泡内） ---- */
@@ -328,15 +503,15 @@
   transition: opacity .2s;
 }
 
-/* ---- 标题旁的小铅笔（隐约，hover 放大变清晰） ---- */
+/* ---- 标题旁的小铅笔（隐约，hover 放大变清晰；不要太隐形） ---- */
 .nb-pen {
   flex: none; font: inherit; font-size: 15px; line-height: 1;
   width: 26px; height: 26px; border-radius: 50%;
   border: 0; background: transparent; color: var(--faint); cursor: pointer;
-  opacity: .5; transform: scale(.9);
+  opacity: .95;
   transition: transform .18s cubic-bezier(.2,.8,.2,1), opacity .18s, color .18s, background .18s;
 }
-.nb-pen:hover { opacity: 1; transform: scale(1.18); color: var(--ink); background: var(--mist); }
+.nb-pen:hover { opacity: 1; transform: scale(1.05); color: var(--ink); background: var(--mist); }
 .nb-pen[hidden] { display: none; }
 
 /* ---- 提问→思考 的过渡 ---- */
@@ -345,44 +520,107 @@
 .nb-bubble-body.nb-body-enter { transition: none; animation: nbBodyIn .3s cubic-bezier(.2,.8,.2,1); }
 @keyframes nbBodyIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 
-/* ---- 提问按钮：有字时变成回车符 ---- */
-.nb-go { min-width: 62px; text-align: center; transition: all .18s ease; }
-.nb-go.is-enter { background: #fbeade; color: #993c1d; font-size: 17px; font-weight: 600; }
-
-/* ---- 回复末尾隐约的加号 ---- */
-.nb-more {
-  display: block; width: 100%; margin-top: 8px; padding: 5px 0;
-  border: 0; background: transparent; text-align: center;
-  font: inherit; font-size: 17px; line-height: 1;
-  color: var(--faint); cursor: pointer;
-  opacity: .5; transform: scale(.92);
-  transition: opacity .18s ease, transform .18s cubic-bezier(.2,.8,.2,1), color .18s;
+/* ---- 铅笔编辑：所见即所得（contenteditable 渲染态） ---- */
+.nb-edit-md {
+  min-height: 160px;
+  outline: none;
+  cursor: text;
 }
-.nb-more:hover { opacity: 1; transform: scale(1.12); color: #993c1d; }
+.nb-edit-md:focus { box-shadow: inset 0 0 0 2px rgba(206, 123, 81, 0.25); border-radius: 6px; }
 
-/* ---- 次级输入框（比大气泡低一级） ---- */
-.nb-subbox {
-  margin-top: 10px; padding: 10px 12px;
-  border: 1px dashed rgba(206, 123, 81, 0.5);
-  border-radius: 12px;
-  background: rgba(206, 123, 81, 0.03);
+/* ---- 刚生成内容：连续扫开（clip-path 自上而下展开，无块状跳动） ---- */
+.nb-note-body.nb-sweep {
+  animation: nbSweepIn .8s cubic-bezier(.3,.6,.2,1) both;
 }
-.nb-subbox-tag { display: block; font-size: 11px; color: #993c1d; margin-bottom: 7px; letter-spacing: .03em; }
-.nb-subbox textarea {
-  width: 100%; min-height: 56px; resize: vertical; box-sizing: border-box;
+@keyframes nbSweepIn {
+  from { clip-path: inset(0 0 92% 0); opacity: .35; }
+  55%  { opacity: 1; }
+  to   { clip-path: inset(0 0 -2% 0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nb-note-body.nb-sweep { animation: none; }
+}
+
+/* ---- 提问按钮：保留原 primary 配色（粘土边框+深粘土字+淡粘土底），输入时只有文字"解释"渐变成 ↵ ---- */
+.nb-go {
+  display: inline-grid; place-items: center;
+  min-width: 62px; padding: 8px 15px; box-sizing: border-box;
+  font: inherit; font-size: 13px; line-height: 1.2; font-weight: 500;
+  color: #993c1d; background: #fdf6f1;
+  border: 1px solid var(--clay); border-radius: 999px;
+  cursor: pointer;
+  transition: opacity .28s ease, background .28s ease;
+}
+.nb-go:hover { background: #fbeade; }
+.nb-go > span {
+  grid-area: 1 / 1; /* 两层文字叠在同一个格子里，天然居中 */
+  transition: opacity .5s cubic-bezier(.65,.05,.36,1), transform .5s cubic-bezier(.65,.05,.36,1);
+  will-change: opacity, transform;
+}
+.nb-go-label { opacity: 1; transform: translateY(0); }
+.nb-go-icon  { font-size: 14px; color: var(--clay); opacity: 0; transform: translateY(7px); }
+.nb-go.is-enter .nb-go-label { opacity: 0; transform: translateY(-7px); }
+.nb-go.is-enter .nb-go-icon  { opacity: 1; transform: translateY(0); }
+.nb-go:disabled { opacity: .5; cursor: default; }
+
+/* ---- 回复末尾的加号：跟内容末行紧邻、推到最右 ---- */
+.nb-row .nb-more-btn { margin-left: auto; font-size: 15px; }
+
+/* ---- 次级输入框（比大气泡低一级，sticky 到 bubbleBody 底部） ---- */
+/* ---- 追问小气泡：独立浮层，跟随触发文字/加号，滚动时跟随移动 ---- */
+.nb-askpop {
+  position: fixed; z-index: 96;
+  width: min(340px, calc(100vw - 32px));
+  padding: 10px 12px 8px;
+  border: 1px solid rgba(206, 123, 81, 0.35);
+  border-radius: 16px;
+  background: rgba(255, 253, 247, 0.99);
+  box-shadow: 0 14px 40px rgba(21, 27, 30, 0.16);
+  opacity: 0; pointer-events: none;
+  transform: translateY(6px) scale(.96);
+  transform-origin: top left;
+  transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .22s ease;
+}
+.nb-askpop.nb-show { opacity: 1; pointer-events: auto; transform: none; }
+.nb-askpop-tag { display: block; font-size: 11px; color: #993c1d; margin-bottom: 6px; letter-spacing: .03em; }
+.nb-askpop-wrap { position: relative; }
+.nb-askpop-ta {
+  width: 100%; min-height: 48px; max-height: 140px; resize: vertical; box-sizing: border-box;
   font: inherit; font-size: 13px; line-height: 1.6;
-  padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 10px;
+  padding: 8px 34px 8px 10px; /* 右下角留位置给回车符号 */
+  border: 1px solid var(--line-strong); border-radius: 10px;
   background: var(--paper); color: var(--ink); outline: none;
 }
-.nb-subbox textarea:focus { border-color: var(--clay); }
-.nb-subbox-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
-.nb-subbox-go {
-  font: inherit; font-size: 13px; padding: 5px 14px;
-  border: 1px solid var(--clay); border-radius: 999px;
-  background: #fdf6f1; color: #993c1d; cursor: pointer;
+.nb-askpop-ta:focus { border-color: var(--clay); }
+.nb-askpop-ta:disabled { opacity: .55; }
+/* 浮在输入框右下角的回车符号（无框） */
+.nb-askpop-go {
+  position: absolute; right: 8px; bottom: 8px;
+  font: inherit; font-size: 14px; line-height: 1; font-weight: 500;
+  color: var(--faint); background: transparent; border: 0; cursor: pointer;
+  padding: 2px 6px;
+  transition: color .2s ease, transform .2s cubic-bezier(.2,.8,.2,1);
 }
-.nb-subbox-go:disabled { opacity: .5; cursor: default; }
-.nb-subbox.nb-sub-loading { opacity: .6; pointer-events: none; }
+.nb-askpop-go:hover { color: var(--clay); }
+.nb-askpop-go:disabled { opacity: .4; cursor: default; }
+.nb-askpop-go.has-text { color: var(--clay); transform: scale(1.05); }
+
+/* ---- 追问思考流（迷你版）：单行滚动窗口 + 点点点，与首问同款节奏 ---- */
+.nb-sub-think {
+  display: flex; align-items: center; gap: 10px;
+  padding: 2px 0;
+}
+.nb-sub-think .nb-think-window {
+  flex: 1; height: 1.9em;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 30%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 30%, #000 100%);
+}
+.nb-sub-think .nb-think-line {
+  height: 1.9em; line-height: 1.9;
+  font-size: 12px; color: var(--muted);
+}
+.nb-sub-think .nb-think-dots { margin-top: 0; }
+.nb-sub-think .nb-think-dots i { animation-duration: 1.3s; }
 
 /* ---- 选中回复文字后的小追问 chip ---- */
 .nb-subchip {

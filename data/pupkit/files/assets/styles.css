@@ -1,0 +1,13 @@
+/* 图拉斯首页样式（节选） */
+:root {
+  --bg: #f5f1ea;
+  --ink: #151b1e;
+  --clay: #ce7b51;
+  --paper: #fffdf7;
+  --line: rgba(21, 27, 30, 0.12);
+}
+
+body[data-page="home"] .hero::after { … }
+
+.card.hidden { display: none; }
+.card.shown  { display: block; }

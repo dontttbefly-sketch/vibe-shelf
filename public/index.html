@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PUPKIT 前端代码解剖课 · 知识书架</title>
+<title>PUPKIT · 前端教学书</title>
 <style>
 
       :root {
@@ -471,7 +471,7 @@
 
           <h3><span class="num">1.2</span>代码长什么样</h3>
           <p>这是 <code>index.html</code> 的完整骨架（中间内容用省略号代替）：</p>
-<pre><code>&lt;!doctype html&gt;
+<pre data-file="index.html" dropzone="file"><code>&lt;!doctype html&gt;
 &lt;html lang="zh-CN"&gt;
   &lt;head&gt;
     &lt;meta charset="utf-8"&gt;
@@ -538,7 +538,7 @@ body[data-page="shop"] .product-card::before { … }</code></pre>
 
           <h3><span class="num">1.4</span>那个 <code>?v=20260524-…</code> 是什么</h3>
           <p>这是非常实用的一行，值得单独说。</p>
-<pre><code>&lt;link rel="stylesheet" href="assets/styles.css?v=20260524-route-solid-hold2-fix"&gt;</code></pre>
+<pre data-file="index.html" dropzone="file"><code>&lt;link rel="stylesheet" href="assets/styles.css?v=20260524-route-solid-hold2-fix"&gt;</code></pre>
           <p><code>?v=xxx</code> 是查询字符串。服务器会忽略它，但<strong>浏览器不会</strong> —— 浏览器把"带不同查询串的同一个文件"当作两个不同的地址，于是不会使用旧缓存，而是重新下载。</p>
           <p>这叫<strong>缓存破除</strong>（cache busting），是前端最常见的"我改了怎么没生效"的解法。</p>
 
@@ -584,7 +584,7 @@ body[data-page="shop"] .product-card::before { … }</code></pre>
 
           <h3><span class="num">2.2</span>代码长什么样</h3>
           <p><code>styles.css</code> 第 1 到 30 行：</p>
-<pre><code>:root {
+<pre data-file="assets/styles.css" dropzone="file"><code>:root {
   color-scheme: light;
   --ink: #151b1e;
   --muted: #63706e;
@@ -633,7 +633,7 @@ body {
 
           <h4>② CSS 变量：一次定义，处处引用</h4>
           <p>上面那些 <code>--</code> 开头的名字就是<strong>自定义属性</strong>，俗称 CSS 变量。定义用冒号，使用的时候套一层 <code>var()</code>：</p>
-<pre><code>/* 定义（只在 :root 出现一次） */
+<pre data-file="assets/styles.css" dropzone="file"><code>/* 定义（只在 :root 出现一次） */
 --ink: #151b1e;
 
 /* 使用（全站出现无数次） */
@@ -669,7 +669,7 @@ body {
           <h4>④ <code>* { box-sizing: border-box }</code> —— 前端最经典的一个坑</h4>
           <p>这一行只有 4 个词，但它解决了前端新手最常遇到的一类"尺寸对不上"。</p>
           <p>CSS 默认的盒子计算方式是 <code>content-box</code>，意思是"宽度只算内容，内边距和边框额外加"：</p>
-<pre><code>/* 默认（content-box）下 */
+<pre data-file="assets/styles.css" dropzone="file"><code>/* 默认（content-box）下 */
 .box {
   width: 100px;
   padding: 10px;
@@ -678,7 +678,7 @@ body {
 /* 它实际占的宽度 = 100 + 10×2 + 2×2 = 124px */</code></pre>
           <p>你写 100，它占 124。当你在做栅格布局、算百分比、对齐几个等宽卡片时，这种"多出来的 24px"会让所有计算全部错位。</p>
           <p>加上 <code>box-sizing: border-box</code> 之后：</p>
-<pre><code>/* 现在 */
+<pre data-file="assets/styles.css" dropzone="file"><code>/* 现在 */
 .box { width: 100px; }
 /* 实际占的宽度 = 100px，padding 和 border 从里面扣 */</code></pre>
           <p>这时"你写的数字 = 它实际占的尺寸"。<strong>用 <code>*</code> 选择器写在最顶层，等于给全站定了统一规矩。</strong></p>
@@ -1180,7 +1180,7 @@ const show = product ? productMatchesFilters(product, active) : false;</code></p
               <tr><td>JavaScript</td><td>页面打开时决定"滑块"停在哪个链接上</td><td><code>app.js:345</code></td></tr>
             </tbody>
           </table>
-<pre><code>/* styles.css:162 —— CSS 拿它当"当前项"选择器 */
+<pre data-file="assets/styles.css" dropzone="file"><code>/* styles.css:162 —— CSS 拿它当"当前项"选择器 */
 .site-nav a[aria-current="page"] {
   color: var(--paper);
   background: transparent;
@@ -2145,7 +2145,7 @@ frame = window.requestAnimationFrame(() =&gt; { ... });</code></pre>
 
           <h3><span class="num">10.2</span>第一类：clamp()（连续插值）</h3>
           <p>平滑变小的秘密不在这三个断点里，而在 <strong>65 处 <code>clamp()</code></strong> 里。</p>
-<pre><code>/* 玩具环的粗细：最小 16px，随视口宽变化，最大 30px */
+<pre data-file="assets/styles.css" dropzone="file"><code>/* 玩具环的粗细：最小 16px，随视口宽变化，最大 30px */
 border: clamp(16px, 3.2vw, 30px) solid var(--toy-a);
 
 /* 网格左右内边距 */
@@ -2407,7 +2407,7 @@ initFilters();        // 给筛选按钮绑事件</code></pre>
           <div class="card limit">
             <span class="card-tag">局限 2 · 实测发现：没有模块化，所有名字都在全局作用域里</span>
             <p>三个页面的 <code>&lt;script&gt;</code> 标签都是这样：</p>
-<pre><code>&lt;script src="assets/app.js?v=20260524-route-solid-hold2-fix" defer&gt;&lt;/script&gt;</code></pre>
+<pre data-file="index.html" dropzone="file"><code>&lt;script src="assets/app.js?v=20260524-route-solid-hold2-fix" defer&gt;&lt;/script&gt;</code></pre>
             <p>实测：<code>type="module"</code> 出现 <strong>0 次</strong>，<code>"use strict"</code> 出现 <strong>0 次</strong>，IIFE（<code>(function(){...})()</code> 那种立即执行函数）出现 <strong>0 次</strong>。</p>
             <p>也就是说，<code>products</code>、<code>state</code>、<code>qs</code>、<code>renderCart</code>、<code>openCart</code>……这些名字全部挂在<strong>全局作用域</strong>上。</p>
             <p>现在没问题，因为整个站只有一个 JS 文件。但假设将来要加第二个文件（比如一个统计脚本，或者一个从 CDN 引的库），那个文件里只要有一行 <code>const state = ...</code>，浏览器就会抛：</p>
@@ -4211,7 +4211,7 @@ document.addEventListener("keydown", (event) =&gt; {
               <tr><td>JS 每帧改变量</td><td><strong>鼠标 / 滚动事件</strong></td><td>首屏玩具跟随鼠标、卡片光晕跟着光标（第 9 章）</td></tr>
             </tbody>
           </table>
-<pre><code>/* transition 的例子：抽屉滑出（styles.css:2279） */
+<pre data-file="assets/styles.css" dropzone="file"><code>/* transition 的例子：抽屉滑出（styles.css:2279） */
 .cart-drawer {
   transform: translateX(104%);
   transition: transform 260ms cubic-bezier(.2,.8,.2,1);

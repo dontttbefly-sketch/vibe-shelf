@@ -5,6 +5,7 @@
   if (!main) return;
 
   var BOOK = window.SHELF_BOOK || "default"; // 由 build.mjs 注入；书名决定注释存到 data/<书名>.json
+  var STATIC_MODE = false; // GitHub Pages 等纯静态部署：阅读+本地批注可用，AI 生成不可用
   var notes = [];
   var blocks = [];
   var anchorMap = [];
@@ -13,10 +14,28 @@
   var thinkTimer = null;
   var closeTimer = null;
   var explainSeq = 0;
+  // ---- 文件上下文（追问时勾选注入 prompt） ----
+  var bookFiles = null;          // { path, size }[] 全本书候选（懒加载，供 size 查询）
+  var fileContents = Object.create(null); // path -> { path, content, tooLarge? } 已读取缓存
+  var pendingCandidates = [];    // 本次提问相关的候选文件（选中文字/代码块命中）
+  var pendingFiles = [];         // path[] 用户实际勾选的文件
   var explainCtrl = null;
   var resultState = null;        // 当前结果视图 { existingId, question, body, editing, promoted, quote, sectionTitle }
   var resultReachedBottom = false;
   var subchip = null;
+  var subchipRange = null;
+  // "追问这段"chip 跟随文字：滚动时按活 range 重算（末行末字右缘下方）
+  function positionSubchip() {
+    if (!subchip || !subchipRange) return;
+    try {
+      var rs = subchipRange.getClientRects();
+      var lr = rs[rs.length - 1];
+      if (!lr || lr.height === 0) return;
+      var w = subchip.offsetWidth || 90;
+      subchip.style.left = Math.max(12, Math.min(lr.right - w / 2, window.innerWidth - w - 12)) + "px";
+      subchip.style.top = Math.min(lr.bottom + 6, window.innerHeight - 40) + "px";
+    } catch (e) {}
+  }
   var viewToken = 0;             // 视图切换 token，防过期的 loading 过渡覆盖新内容
 
   // ================= Markdown 渲染器（旁注专用，精简） =================
@@ -138,6 +157,92 @@
     if (hit) return hit;
     return blocks.find(function (b) { var bt = norm(b.textContent); return bt.indexOf(t) >= 0 || t.indexOf(bt) >= 0; }) || null;
   }
+
+  // ---- 文件上下文：检测/加载/读取/渲染 ----
+  function detectFiles(host) {
+    // 沿 DOM 向上找带 data-file 的祖先；只取第一个（最近的）
+    var cur = host;
+    while (cur && cur !== main && cur !== document.body) {
+      if (cur.getAttribute && cur.getAttribute("data-file")) {
+        return [cur.getAttribute("data-file")];
+      }
+      cur = cur.parentElement;
+    }
+    return [];
+  }
+  // 文本匹配：选中/所在块文字里出现了文件名（如 index.html、styles.css）→ 视为要喂的文件
+  function matchFilesByText(text) {
+    if (!bookFiles || !bookFiles.length || !text) return [];
+    var hits = [];
+    for (var i = 0; i < bookFiles.length; i++) {
+      var p = bookFiles[i].path;
+      var base = p.split("/").pop(); // assets/styles.css → styles.css
+      if (text.indexOf(p) >= 0 || text.indexOf(base) >= 0) {
+        if (hits.indexOf(p) < 0) hits.push(p);
+      }
+    }
+    return hits;
+  }
+  async function loadBookFiles(force) {
+    if (!force && bookFiles) return bookFiles;
+    try {
+      var r = await fetch("/api/files?book=" + encodeURIComponent(BOOK));
+      var d = await r.json();
+      bookFiles = d.files || [];
+    } catch (e) { bookFiles = []; }
+    return bookFiles;
+  }
+  async function readFiles(paths) {
+    var out = [];
+    for (var i = 0; i < paths.length; i++) {
+      var p = paths[i];
+      if (fileContents[p]) { out.push(fileContents[p]); continue; }
+      try {
+        var r = await fetch("/api/file?book=" + encodeURIComponent(BOOK) + "&path=" + encodeURIComponent(p));
+        if (!r.ok) continue;
+        var d = await r.json();
+        fileContents[p] = d;
+        out.push(d);
+      } catch (e) {}
+    }
+    return out;
+  }
+  // 文件勾选直接平铺在一级界面（解释按钮下方），默认全勾，无常驻 chip、无展开收起
+  function renderFilesList() {
+    var m = pendingCandidates.length;
+    if (!m) return "";
+    var html = '<div class="nb-files-list">';
+    for (var i = 0; i < m; i++) {
+      var p = pendingCandidates[i];
+      var checked = pendingFiles.indexOf(p) >= 0 ? " checked" : "";
+      var sz = "";
+      if (bookFiles) {
+        for (var k = 0; k < bookFiles.length; k++) {
+          if (bookFiles[k].path === p) {
+            sz = bookFiles[k].size < 1024 ? bookFiles[k].size + " B" : (bookFiles[k].size / 1024).toFixed(1) + " KB";
+            break;
+          }
+        }
+      }
+      html += '<label class="nb-file-row">' +
+        '<input type="checkbox" data-file-path="' + esc2(p) + '"' + checked + '>' +
+        '<span class="nb-file-name">' + esc2(p) + '</span>' +
+        (sz ? '<span class="nb-file-size">' + sz + '</span>' : '') +
+        '</label>';
+    }
+    html += '</div>';
+    return html;
+  }
+  function bindFilesList() {
+    bubbleBody.querySelectorAll('.nb-files-list input[type="checkbox"]').forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        var p = cb.getAttribute("data-file-path");
+        var idx = pendingFiles.indexOf(p);
+        if (cb.checked && idx < 0) pendingFiles.push(p);
+        else if (!cb.checked && idx >= 0) pendingFiles.splice(idx, 1);
+      });
+    });
+  }
   function markQuote(block, quote, id) {
     if (!quote) return;
     var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null);
@@ -166,6 +271,9 @@
   var TRASH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
   var BOOKMARK_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
   var BOOKMARK_SVG_FILLED = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
+  var EXPAND_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+  var PEN_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>';
+  var COLLAPSE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="10" y1="14" x2="3" y2="21"></line></svg>';
   function renderPromoted(note) {
     clearPromoted(note.id);
     if (!note.promoted || !note.body) return;
@@ -273,7 +381,8 @@
     bubble.className = "nb-bubble";
     bubble.innerHTML =
       '<div class="nb-bubble-head"><p class="nb-bubble-title" id="nbTitle"></p>' +
-      '<button class="nb-pen" id="nbPen" title="修改" hidden>✎</button>' +
+      '<button class="nb-pen" id="nbPen" title="修改" hidden>' + PEN_SVG + "</button>" +
+      '<button class="nb-expand" id="nbExpand" title="放大查看" aria-label="放大">' + EXPAND_SVG + "</button>" +
       '<button class="nb-close" id="nbClose">×</button></div>' +
       '<div class="nb-bubble-body" id="nbBody"></div>';
     document.body.appendChild(bubble);
@@ -281,14 +390,66 @@
     bubbleTitle = bubble.querySelector("#nbTitle");
     bubble.querySelector("#nbClose").addEventListener("click", closeBubble);
     bubble.querySelector("#nbPen").addEventListener("click", function () { toggleEdit(); });
+    bubble.querySelector("#nbExpand").addEventListener("click", function () { toggleExpand(); });
+    // 双击标题栏空白或标题文字：放大/缩小切换（双击按钮除外）
+    bubble.querySelector(".nb-bubble-head").addEventListener("dblclick", function (e) {
+      if (e.target.closest("button")) return;
+      toggleExpand();
+    });
     bubbleBody.addEventListener("scroll", function () {
       if (bubbleAtBottom()) resultReachedBottom = true;
+      positionAskPop(); // 追问气泡跟随文字滚动
+      positionSubchip(); // "追问这段"跟随文字滚动
     });
     bubbleBody.addEventListener("mouseup", handleNoteMouseup);
     document.addEventListener("mousedown", function (e) {
       if (subchip && !subchip.contains(e.target)) hideSubchip();
     });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeBubble(); });
+    // 正文页面滚动时，"＋补注释"浮窗跟随选段文字
+    window.addEventListener("scroll", function () {
+      if (floatBtn) positionFloat(window.getSelection());
+    }, { passive: true });
+    // 隐形快捷键：划词后按 Enter 直接唤出聊天框（无 UI 提示）
+    // 气泡内划词 → 追问小气泡；正文划词 → 补注释提问框
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      var t = e.target;
+      if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.isContentEditable)) return;
+      if (isDiffMode() || isAskPopOpen()) return;
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      var text = sel.toString().trim();
+      if (!text || text.length > 300) return;
+      var node = sel.anchorNode;
+      var el = node && (node.nodeType === 3 ? node.parentElement : node);
+      if (!el) return;
+      if (bubbleBody.contains(el)) {
+        if (!resultState || el.closest("#nbEdit")) return;
+        e.preventDefault();
+        openAskPop("edit", text, mouseAnchor(), "");
+        hideSubchip();
+      } else if (main.contains(el) && !el.closest(".nb-promoted")) {
+        e.preventDefault();
+        hideFloat();
+        var host = el.closest(BLOCK_SEL);
+        if (!host) return;
+        pending = {
+          section: (host.closest(".chapter") || {}).id || "",
+          sectionTitle: sectionTitle(host),
+          blockText: norm(host.textContent),
+          quote: text,
+          files: detectFiles(host),
+        };
+        viewAsk();
+      }
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        if (isAskPopOpen()) { closeAskPop(); return; }
+        if (isExpanded()) { toggleExpand(); return; }
+        closeBubble();
+      }
+    });
   }
   function openBubble(titleHtml, fromEl) {
     if (!bubble) buildBubble();
@@ -314,6 +475,10 @@
     bubble.style.transition = "transform .4s cubic-bezier(.2,.8,.2,1), opacity .26s ease";
     bubble.style.transform = "translate(0,0) scale(1)";
     bubble.style.opacity = "1";
+    // 入场动画结束后清掉 inline transition，否则它会挡住 CSS 里 left/width 的放大/缩小过渡
+    setTimeout(function () {
+      if (bubble && bubble.classList.contains("nb-show")) bubble.style.transition = "";
+    }, 460);
   }
   function resetBubbleState() {
     setActive(null);
@@ -324,15 +489,37 @@
     if (!bubbleBody) return true;
     return bubbleBody.scrollHeight - bubbleBody.scrollTop - bubbleBody.clientHeight < 24;
   }
+  // 生成内容的衔接：连续扫开（clip-path 从上往下展开），只用于"刚生成完"的新内容
+  function revealSweep() {
+    var nb = bubbleBody.querySelector(".nb-note-body");
+    if (!nb) return;
+    nb.classList.remove("nb-sweep");
+    void nb.offsetWidth;
+    // 时长随内容高度微调，长文不会扫得太快
+    var h = nb.scrollHeight;
+    nb.style.animationDuration = Math.min(1.2, Math.max(0.6, h / 420)) + "s";
+    nb.classList.add("nb-sweep");
+  }
+  // 滑到底只做标记（resultReachedBottom），不立即保存；关闭气泡时一次性保存
   function setPenVisible(on) {
     if (!bubble) return;
     var pen = bubble.querySelector("#nbPen");
     if (pen) pen.hidden = !on;
   }
+  function toggleExpand() {
+    if (!bubble) return;
+    var expanded = bubble.classList.toggle("nb-bubble--expanded");
+    var btn = bubble.querySelector("#nbExpand");
+    if (btn) {
+      btn.innerHTML = expanded ? COLLAPSE_SVG : EXPAND_SVG;
+      btn.setAttribute("title", expanded ? "收起" : "放大查看");
+    }
+  }
+  function isExpanded() { return bubble && bubble.classList.contains("nb-bubble--expanded"); }
   function closeBubble(point) {
     if (!bubble) { resetBubbleState(); return; }
     viewToken++;
-    // 新注释结果态：滑到底 = 认可 → 自动保存；否则丢弃不保存
+    // 新注释结果态：滑过底 = 认可；关闭气泡的这一刻统一保存一次
     if (resultState && !resultState.existingId) {
       var rs = resultState;
       resultState = null;
@@ -340,6 +527,7 @@
         saveNote(null, rs.question, rs.body, false);
       }
     }
+    closeAskPop();
     explainSeq++;
     if (explainCtrl) { try { explainCtrl.abort(); } catch (e) {} explainCtrl = null; }
     resetBubbleState();
@@ -370,40 +558,51 @@
   }
 
   // ================= 生成中的思考流 + 文字模糊 =================
-  function startThink() {
-    var lines = ["读懂你圈出的这句话", "往回翻它所在的那一段", "想起相关的前端知识", "挑一个贴切的例子", "组织成一段解释"];
-    var think = bubbleBody.querySelector(".nb-think");
-    if (!think) return;
-    think.innerHTML =
-      '<div class="nb-think-window"><div class="nb-think-track"></div></div>' +
-      '<div class="nb-think-dots"><i></i><i></i><i></i></div>';
-    var track = think.querySelector(".nb-think-track");
+  // 滚动思考流：首问与追问共用同一套机制与节奏（每行 停 .6s + 滚 .75s，点点点 1.3s）
+  var THINK_LINES_ASK = ["读懂你圈出的这句话", "往回翻它所在的那一段", "想起相关的前端知识", "挑一个贴切的例子", "组织成一段解释"];
+  var THINK_LINES_FOLLOWUP = ["对照你的要求", "比对新旧内容", "找出要增删的部分", "整理成修改清单"];
+  var thinkTimer = null; // 首问 roller 的 stop 函数
+  function buildThinkHTML() {
+    return '<div class="nb-think-window"><div class="nb-think-track"></div></div>' +
+           '<div class="nb-think-dots"><i></i><i></i><i></i></div>';
+  }
+  function makeRoller(container, lines) {
+    var track = container.querySelector(".nb-think-track");
     function lineEl(t) {
       var d = document.createElement("div");
       d.className = "nb-think-line";
       d.textContent = t;
       return d;
     }
-    track.appendChild(lineEl(lines[0]));
-    track.appendChild(lineEl(lines[1]));
-    track.appendChild(lineEl(lines[2]));
+    for (var i = 0; i < 3 && i < lines.length; i++) track.appendChild(lineEl(lines[i]));
     var pi = 3;
-    var lh = track.querySelector(".nb-think-line").getBoundingClientRect().height;
-    thinkTimer = setInterval(function () {
-      track.style.transition = "transform .6s cubic-bezier(.45,0,.2,1)";
+    var lh = track.children[0].getBoundingClientRect().height;
+    var stopped = false, t1 = null, t2 = null;
+    function roll() {
+      if (stopped) return;
+      track.style.transition = "transform .75s cubic-bezier(.45,.05,.35,1)";
       track.style.transform = "translateY(-" + lh + "px)";
-      setTimeout(function () {
+      t1 = setTimeout(function () {
+        if (stopped) return;
         track.removeChild(track.firstChild);
         track.appendChild(lineEl(lines[pi % lines.length]));
         pi++;
         track.style.transition = "none";
         track.style.transform = "translateY(0)";
         void track.offsetWidth;
-        track.style.transition = "";
-      }, 610);
-    }, 1150);
+        t2 = setTimeout(roll, 600);
+      }, 760);
+    }
+    roll();
+    return function stop() { stopped = true; clearTimeout(t1); clearTimeout(t2); };
   }
-  function stopThink() { if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; } }
+  function startThink() {
+    var think = bubbleBody.querySelector(".nb-think");
+    if (!think) return;
+    think.innerHTML = buildThinkHTML();
+    thinkTimer = makeRoller(think, THINK_LINES_ASK);
+  }
+  function stopThink() { if (thinkTimer) { thinkTimer(); thinkTimer = null; } }
 
   function setProcessing(on) {
     if (!pending) return;
@@ -425,26 +624,48 @@
   }
 
   // ================= 提问 / 生成 / 保存 =================
-  function viewAsk() {
-    viewToken++;
+  async function viewAsk() {
+    var tok = ++viewToken;
     openBubble(titleFor(pending.quote, "补注释"));
+    // 候选文件 = 代码块 data-file 祖先 ∪ 选中文字/所在块里出现的文件名；默认全勾，用户可取消
+    try { await loadBookFiles(); } catch (e) {}
+    if (tok !== viewToken) return; // await 期间视图已被切换
+    var textHits = matchFilesByText((pending.quote || "") + "\n" + (pending.blockText || ""));
+    pendingCandidates = (pending.files || []).slice();
+    for (var ti = 0; ti < textHits.length; ti++) {
+      if (pendingCandidates.indexOf(textHits[ti]) < 0) pendingCandidates.push(textHits[ti]);
+    }
+    pendingFiles = pendingCandidates.slice(); // 默认全勾，用户可取消
     bubbleBody.innerHTML =
       '<div class="nb-ask">' +
       '<textarea id="nbQ" placeholder="哪里没懂？"></textarea>' +
-      '<div class="nb-row"><button class="nb-btn primary nb-go" id="nbGo">解释</button></div>' +
+      '<div class="nb-row">' +
+        '<button class="nb-go" id="nbGo" aria-label="发送">' +
+          '<span class="nb-go-label">解释</span>' +
+          '<span class="nb-go-icon">↵</span>' +
+        '</button>' +
+      '</div>' +
+      renderFilesList() +
       "</div>";
+    bindFilesList();
     var ta = bubbleBody.querySelector("#nbQ");
     var btn = bubbleBody.querySelector("#nbGo");
     ta.focus();
+    // 隐形快捷键：焦点在文件勾选框等非输入区时按回车 = 直接发送（用默认问题）
+    bubbleBody.querySelector(".nb-ask").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target !== ta) { e.preventDefault(); submit(); }
+    });
+    function refreshEnter() {
+      if (ta.value.trim()) btn.classList.add("is-enter");
+      else btn.classList.remove("is-enter");
+    }
     function submit() {
       var q = ta.value.trim() || (pending.quote ? "这几个字是什么意思" : "这一段我没看懂");
       doExplain(q);
     }
     btn.addEventListener("click", submit);
-    ta.addEventListener("input", function () {
-      if (ta.value.trim()) { btn.classList.add("is-enter"); btn.textContent = "↵"; }
-      else { btn.classList.remove("is-enter"); btn.textContent = "解释"; }
-    });
+    ta.addEventListener("input", refreshEnter);
+    refreshEnter();
     ta.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
@@ -467,6 +688,7 @@
     }, 170);
   }
   async function doExplain(question) {
+    if (STATIC_MODE) { toast("静态演示不支持 AI 生成 · clone 仓库本地运行即可体验"); return; }
     viewLoading();
     setProcessing(true);
     var seq = ++explainSeq;
@@ -474,6 +696,8 @@
     explainCtrl = ctrl;
     var t = setTimeout(function () { ctrl.abort(); }, 120000);
     try {
+      // 注入文件上下文：先读已勾选文件
+      var files = pendingFiles.length ? await readFiles(pendingFiles) : [];
       var res = await fetch("/api/explain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -482,6 +706,7 @@
           question: question,
           sectionTitle: pending.sectionTitle || "",
           blockText: pending.blockText || "",
+          files: files,
         }),
         signal: ctrl.signal,
       });
@@ -507,7 +732,7 @@
     }
   }
   function viewResult(body, question, existingId) {
-    viewToken++;
+    var tok = ++viewToken;
     var note = existingId ? notes.find(function (n) { return n.id === existingId; }) : null;
     resultState = {
       existingId: existingId,
@@ -520,40 +745,99 @@
     };
     resultReachedBottom = false;
     setPenVisible(true);
-    paintResult();
+    // 衔接动画：旧内容（思考态/清单）模糊上移淡出 → 新结果连续扫开（仅首次生成）
+    bubbleBody.classList.add("nb-body-exit");
+    setTimeout(function () {
+      if (tok !== viewToken) return;
+      bubbleBody.classList.remove("nb-body-exit");
+      paintResult();
+      if (!existingId) revealSweep(); // 打开旧注释不播，只有刚生成的才播
+    }, 170);
   }
 
   function currentBody() {
     var s = resultState;
     if (!s) return "";
     if (s.editing) {
-      var ta = bubbleBody.querySelector("#nbEdit");
-      if (ta) s.body = ta.value;
+      var ed = bubbleBody.querySelector("#nbEdit");
+      if (ed) s.body = htmlToMd(ed);
     }
     return s.body;
+  }
+  // contenteditable DOM → Markdown 源（覆盖 renderMarkdown 的元素集合，自产自销）
+  function htmlToMd(root) {
+    function inline(node) {
+      var out = "";
+      node.childNodes.forEach(function (n) {
+        if (n.nodeType === 3) { out += n.nodeValue; return; }
+        if (n.nodeType !== 1) return;
+        var tag = n.tagName;
+        if (tag === "STRONG" || tag === "B") out += "**" + inline(n) + "**";
+        else if (tag === "EM" || tag === "I") out += "*" + inline(n) + "*";
+        else if (tag === "CODE") out += "`" + n.textContent + "`";
+        else if (tag === "A") out += "[" + inline(n) + "](" + (n.getAttribute("href") || "") + ")";
+        else if (tag === "BR") out += "\n";
+        else out += inline(n);
+      });
+      return out;
+    }
+    function block(el) {
+      var tag = el.tagName;
+      if (tag === "H3") return "### " + inline(el);
+      if (tag === "H4") return "#### " + inline(el);
+      if (tag === "BLOCKQUOTE") return "> " + inline(el);
+      if (tag === "PRE") {
+        var codeEl = el.querySelector("code");
+        var lang = "";
+        if (codeEl && codeEl.className) {
+          var mcls = codeEl.className.match(/lang-([\w-]+)/);
+          if (mcls) lang = mcls[1];
+        }
+        return "```" + lang + "\n" + (codeEl ? codeEl.textContent : el.textContent).replace(/\n$/, "") + "\n```";
+      }
+      if (tag === "UL") return Array.prototype.map.call(el.children, function (li) { return "- " + inline(li); }).join("\n");
+      if (tag === "OL") {
+        var num = parseInt(el.getAttribute("start") || "1", 10);
+        return Array.prototype.map.call(el.children, function (li) { return (num++) + ". " + inline(li); }).join("\n");
+      }
+      if (tag === "TABLE") {
+        var rows = [];
+        var ths = el.querySelectorAll("thead th");
+        if (ths.length) {
+          rows.push("| " + Array.prototype.map.call(ths, function (t) { return inline(t); }).join(" | ") + " |");
+          rows.push("|" + Array.prototype.map.call(ths, function () { return " --- "; }).join("|") + "|");
+        }
+        el.querySelectorAll("tbody tr").forEach(function (tr) {
+          rows.push("| " + Array.prototype.map.call(tr.children, function (td) { return inline(td); }).join(" | ") + " |");
+        });
+        return rows.join("\n");
+      }
+      return inline(el);
+    }
+    var parts = [];
+    root.childNodes.forEach(function (n) {
+      if (n.nodeType === 3) { var t = n.nodeValue.replace(/^\s+|\s+$/g, ""); if (t) parts.push(t); }
+      else if (n.nodeType === 1) parts.push(block(n));
+    });
+    return parts.join("\n\n");
   }
 
   function paintResult() {
     var s = resultState;
     if (!s) return;
     var isNew = !s.existingId;
+    // 编辑态：所见即所得（飞书云文档式）——渲染后的 Markdown 直接可编辑，保存时转回 md 源
     var bodyHtml = s.editing
-      ? '<textarea id="nbEdit" style="width:100%;min-height:220px;resize:vertical;box-sizing:border-box;font:inherit;font-size:14px;line-height:1.7;padding:11px 13px;border:1px solid var(--line-strong);border-radius:13px;background:var(--paper);color:var(--ink);outline:none">' + esc2(s.body) + "</textarea>"
+      ? '<div id="nbEdit" contenteditable="true" class="nb-edit-md">' + renderMarkdown(s.body) + "</div>"
       : '<div class="nb-note-body">' + renderMarkdown(s.body) + "</div>";
     bubbleBody.innerHTML =
       bodyHtml +
       '<div class="nb-row">' +
-      (isNew ? '<button class="nb-btn primary" id="nbSave">保存</button>' : "") +
-      '<button class="nb-icon-btn" id="nbPromote" data-tip="' + (isNew ? "晋升为正文" : (s.promoted ? "撤销晋升" : "晋升为正文")) + '">' + (s.promoted ? BOOKMARK_SVG_FILLED : BOOKMARK_SVG) + "</button>" +
+      '<button class="nb-icon-btn" id="nbPromote" data-tip="' + (isNew ? "添加为正文" : (s.promoted ? "从正文移除" : "添加为正文")) + '">' + (s.promoted ? BOOKMARK_SVG_FILLED : BOOKMARK_SVG) + "</button>" +
       (isNew ? "" : '<button class="nb-icon-btn danger" id="nbDelete" data-tip="删除">' + TRASH_SVG + "</button>") +
-      "</div>" +
-      '<button class="nb-more" id="nbMore" title="在末尾补充">＋</button>';
+      '<button class="nb-icon-btn nb-more-btn" id="nbMore" data-tip="在末尾补充">＋</button>' +
+      "</div>";
 
-    if (isNew) {
-      bubbleBody.querySelector("#nbSave").addEventListener("click", function () {
-        saveNote(null, s.question, currentBody(), false);
-      });
-    }
     bubbleBody.querySelector("#nbPromote").addEventListener("click", function () {
       if (isNew) saveNote(null, s.question, currentBody(), true);
       else saveNote(s.existingId, s.question, currentBody(), !s.promoted);
@@ -575,12 +859,17 @@
         }, 3000);
       });
     }
-    bubbleBody.querySelector("#nbMore").addEventListener("click", function () { toggleSubbox("append", ""); });
+    bubbleBody.querySelector("#nbMore").addEventListener("click", function () {
+      if (isDiffMode()) return; // diff 模式锁定：＋号禁用
+      if (isAskPopOpen()) { closeAskPop(); return; }
+      openAskPop("append", "", mouseAnchor(), "");
+    });
   }
 
   function toggleEdit() {
     var s = resultState;
     if (!s) return;
+    if (isDiffMode()) return; // diff 模式锁定：铅笔禁用
     if (s.editing) {
       currentBody();
       s.editing = false;
@@ -611,43 +900,119 @@
     });
   }
 
-  function toggleSubbox(mode, selection) {
-    var old = bubbleBody.querySelector(".nb-subbox");
-    if (old) { old.remove(); return; }
-    var s = resultState;
-    if (!s) return;
-    var label = mode === "append" ? "在末尾补充" : "修改选中的这段话";
-    var selHint = (mode === "edit" && selection) ? "已选中「" + cut(norm(selection), 24) + "」" : "";
-    var box = document.createElement("div");
-    box.className = "nb-subbox";
-    box.innerHTML =
-      '<div class="nb-subbox-tag">' + esc2(label) + (selHint ? " · " + esc2(selHint) : "") + "</div>" +
-      '<textarea class="nb-subbox-ta" placeholder="让它再讲讲 / 补充点什么"></textarea>' +
-      '<div class="nb-subbox-actions"><button class="nb-subbox-go">↵</button></div>';
-    var more = bubbleBody.querySelector("#nbMore");
-    if (more) bubbleBody.insertBefore(box, more);
-    else bubbleBody.appendChild(box);
-    var ta = box.querySelector(".nb-subbox-ta");
-    var go = box.querySelector(".nb-subbox-go");
-    ta.focus();
-    function submit() {
-      var v = ta.value.trim();
-      if (!v) return;
-      followup(mode, selection, v);
-    }
-    go.addEventListener("click", submit);
-    ta.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); submit(); }
-    });
+  // ================= 追问小气泡：跟随文字的独立浮层 =================
+  var askPop = null;        // 浮层元素
+  var askPopAnchor = null;  // { getRect: fn } 锚点
+  var askPopCtx = null;     // { mode, selection }
+  var askRollerStop = null; // 追问思考滚动 stop
+  // 鼠标最后停留位置：追问气泡锚定在这里（方便鼠标就地点击）
+  var lastMouse = { x: window.innerWidth / 2, y: window.innerHeight / 3 };
+  document.addEventListener("mousedown", function (e) {
+    lastMouse.x = e.clientX; lastMouse.y = e.clientY;
+  }, true);
+  function mouseAnchor() {
+    return { getRect: function () {
+      return { left: lastMouse.x, top: lastMouse.y, right: lastMouse.x, bottom: lastMouse.y + 6, width: 0, height: 6 };
+    } };
   }
 
-  async function followup(mode, selection, instruction) {
+  function ensureAskPop() {
+    if (askPop) return askPop;
+    askPop = document.createElement("div");
+    askPop.className = "nb-askpop";
+    askPop.innerHTML =
+      '<div class="nb-askpop-tag"></div>' +
+      '<div class="nb-askpop-wrap">' +
+        '<textarea class="nb-askpop-ta" placeholder="让它再讲讲 / 补充点什么"></textarea>' +
+        '<button type="button" class="nb-askpop-go" aria-label="发送">↵</button>' +
+      '</div>';
+    document.body.appendChild(askPop);
+    // 点外部关闭（nbMore 自己负责 toggle，排除）
+    // 捕获阶段：点 askPop 以外任何区域（含注释区）都关小气泡；大气泡不联动
+    document.addEventListener("mousedown", function (e) {
+      if (!askPop || !askPop.classList.contains("nb-show")) return;
+      if (askPop.contains(e.target)) return;
+      if (e.target.closest && e.target.closest("#nbMore")) return;
+      closeAskPop();
+    }, true);
+    return askPop;
+  }
+  function openAskPop(mode, selection, anchor, prefill) {
     var s = resultState;
     if (!s) return;
-    var box = bubbleBody.querySelector(".nb-subbox");
-    var go = box ? box.querySelector(".nb-subbox-go") : null;
-    if (box) box.classList.add("nb-sub-loading");
+    ensureAskPop();
+    askPopCtx = { mode: mode, selection: selection };
+    askPopAnchor = anchor || { getRect: function () { return bubble ? bubble.getBoundingClientRect() : null; } };
+    askPop.querySelector(".nb-askpop-tag").textContent = mode === "append" ? "在末尾补充" : "修改选中的这段话";
+    var ta = askPop.querySelector(".nb-askpop-ta");
+    var go = askPop.querySelector(".nb-askpop-go");
+    ta.disabled = false; go.disabled = false;
+    ta.value = prefill || "";
+    askPop.querySelector(".nb-askpop-wrap").style.display = "";
+    askPop.querySelector(".nb-askpop-tag").style.display = "";
+    askPop.classList.add("nb-show");
+    void askPop.offsetWidth;
+    positionAskPop();
+    function refreshEnter() { ta.value.trim() ? go.classList.add("has-text") : go.classList.remove("has-text"); }
+    ta.oninput = refreshEnter;
+    ta.onkeydown = function (e) {
+      if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); submitAsk(); }
+    };
+    go.onclick = submitAsk;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    refreshEnter();
+  }
+  function positionAskPop() {
+    if (!askPop || !askPop.classList.contains("nb-show") || !askPopAnchor) return;
+    var r = askPopAnchor.getRect();
+    if (!r) return;
+    var pw = askPop.offsetWidth, ph = askPop.offsetHeight;
+    var left = Math.min(Math.max(12, r.left), window.innerWidth - pw - 12);
+    var top = r.bottom + 8;
+    if (top + ph > window.innerHeight - 12) top = Math.max(12, r.top - ph - 8);
+    askPop.style.left = left + "px";
+    askPop.style.top = top + "px";
+  }
+  function closeAskPop() {
+    if (!askPop) return;
+    if (askRollerStop) { askRollerStop(); askRollerStop = null; }
+    askPop.classList.remove("nb-show");
+    askPopAnchor = null;
+    askPopCtx = null;
+  }
+  function isAskPopOpen() { return askPop && askPop.classList.contains("nb-show"); }
+  function submitAsk() {
+    var s = resultState;
+    if (!s || !askPopCtx) return;
+    var ta = askPop.querySelector(".nb-askpop-ta");
+    var v = ta.value.trim();
+    if (!v) return;
+    s.__pendingInstruction = v;
+    askFollowup(askPopCtx.mode, askPopCtx.selection, v);
+  }
+  async function askFollowup(mode, selection, instruction) {
+    var s = resultState;
+    if (!s) return;
+    if (STATIC_MODE) { closeAskPop(); toast("静态演示不支持 AI 生成 · clone 仓库本地运行即可体验"); return; }
+    var ta = askPop ? askPop.querySelector(".nb-askpop-ta") : null;
+    var go = askPop ? askPop.querySelector(".nb-askpop-go") : null;
     if (go) go.disabled = true;
+    if (ta) ta.disabled = true;
+    // 思考态：输入框隐藏，显示滚动文字 + 点点点（与首问同节奏）
+    if (askPop) {
+      askPop.querySelector(".nb-askpop-wrap").style.display = "none";
+      var think = askPop.querySelector(".nb-sub-think");
+      if (!think) {
+        think = document.createElement("div");
+        think.className = "nb-sub-think";
+        askPop.appendChild(think);
+      }
+      think.hidden = false;
+      think.innerHTML = buildThinkHTML();
+      askRollerStop = makeRoller(think, THINK_LINES_FOLLOWUP);
+      positionAskPop();
+    }
     try {
       var res = await fetch("/api/followup", {
         method: "POST",
@@ -655,57 +1020,290 @@
         body: JSON.stringify({
           mode: mode, selection: selection, instruction: instruction,
           context: s.body, quote: s.quote, sectionTitle: s.sectionTitle, question: s.question,
+          files: [],
         }),
       });
       var data = await res.json();
       if (!res.ok) throw new Error(data.error && data.error.message ? data.error.message : "修改失败");
-      s.body = data.content;
+      var modified = data.content;
+      closeAskPop();
+      s.__diffOriginal = s.body;
+      s.__diffModified = modified;
+      s.__diffMode = mode;
+      s.__diffSelection = selection;
+      s.__diffInstruction = instruction;
+      paintDiff();
+    } catch (err) {
+      if (askPop) {
+        askPop.querySelector(".nb-askpop-wrap").style.display = "";
+        var th = askPop.querySelector(".nb-sub-think");
+        if (th) th.hidden = true;
+      }
+      if (go) go.disabled = false;
+      if (ta) { ta.disabled = false; ta.focus(); }
+      toast(err.message);
+    }
+  }
+
+  // ---- 序列 diff（LCS）：输入字符串数组（行或 markdown 块），输出 same/add/del 序列 ----
+  function sequenceDiff(aArr, bArr) {
+    var al = aArr, bl = bArr;
+    var m = al.length, n = bl.length;
+    var dp = []; for (var i = 0; i <= m; i++) { dp.push(new Uint16Array(n + 1)); }
+    for (var i = 1; i <= m; i++) {
+      for (var j = 1; j <= n; j++) {
+        dp[i][j] = al[i - 1] === bl[j - 1]
+          ? dp[i - 1][j - 1] + 1
+          : Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+    var ops = []; var i = m, j = n;
+    while (i > 0 && j > 0) {
+      if (al[i - 1] === bl[j - 1]) { ops.push({ t: "same", line: bl[j - 1] }); i--; j--; }
+      else if (dp[i - 1][j] >= dp[i][j - 1]) { ops.push({ t: "del", line: al[i - 1] }); i--; }
+      else { ops.push({ t: "add", line: bl[j - 1] }); j--; }
+    }
+    while (i > 0) { ops.push({ t: "del", line: al[i - 1] }); i--; }
+    while (j > 0) { ops.push({ t: "add", line: bl[j - 1] }); j--; }
+    return ops.reverse();
+  }
+
+  // markdown → 块数组：代码块（含围栏）整体一块，其余按空行分段——保证代码块不被 diff 切碎
+  function splitMdBlocks(md) {
+    var lines = md.split("\n");
+    var parts = [];   // {type:'code'|'text', text}
+    var cur = [], inCode = false, codeBuf = [];
+    for (var i = 0; i < lines.length; i++) {
+      var L = lines[i];
+      if (/^\s*```/.test(L)) {
+        if (!inCode) {
+          if (cur.join("").trim()) parts.push({ type: "text", text: cur.join("\n") });
+          cur = [];
+          inCode = true; codeBuf = [L];
+        } else {
+          codeBuf.push(L);
+          parts.push({ type: "code", text: codeBuf.join("\n") });
+          codeBuf = []; inCode = false;
+        }
+      } else if (inCode) codeBuf.push(L);
+      else cur.push(L);
+    }
+    if (inCode && codeBuf.join("").trim()) parts.push({ type: "code", text: codeBuf.join("\n") });
+    if (cur.join("").trim()) parts.push({ type: "text", text: cur.join("\n") });
+    var blocks = [];
+    parts.forEach(function (p) {
+      if (p.type === "code") { blocks.push(p.text); return; }
+      p.text.split(/\n{2,}/).forEach(function (seg) {
+        var t = seg.replace(/^\n+|\n+$/g, "");
+        if (t) blocks.push(t);
+      });
+    });
+    return blocks;
+  }
+
+  // diff 模式判定：审阅卡在场时，全站追问入口冻结，只能确认覆盖或返回
+  function isDiffMode() { return !!(resultState && resultState.__diffOriginal); }
+  function paintDiff() {
+    var s = resultState;
+    if (!s || !s.__diffOriginal) return;
+    // 块级 diff：代码块整体参与对比，段落按空行分块
+    var aBlocks = splitMdBlocks(s.__diffOriginal);
+    var bBlocks = splitMdBlocks(s.__diffModified);
+    var ops = sequenceDiff(aBlocks, bBlocks);
+    var adds = ops.filter(function (o) { return o.t === "add"; }).length;
+    var dels = ops.filter(function (o) { return o.t === "del"; }).length;
+    var modeLabel = s.__diffMode === "edit" ? "修改选中的这段话" : "在末尾补充";
+    var statTxt = [];
+    if (adds) statTxt.push("新增 " + adds + " 段");
+    if (dels) statTxt.push("删除 " + dels + " 段");
+    // 改动大 → 默认左右对比；小 → 默认分块对照
+    var view0 = (ops.length > 8 || adds + dels >= 4) ? "split" : "flow";
+    var box = document.createElement("div");
+    box.className = "nb-diff";
+    box.dataset.view = view0;
+    var flowR = renderDiffFlow(ops);
+    var splitR = renderDiffSplit(ops);
+    box.innerHTML =
+      '<div class="nb-diff-op">' +
+        '<span class="nb-diff-op-mode">' + esc2(modeLabel) + "</span>" +
+        (s.__diffInstruction ? '<span class="nb-diff-op-instruction">“' + esc2(cut(s.__diffInstruction, 40)) + "”</span>" : "") +
+        (statTxt.length ? '<span class="nb-diff-op-stat">' + esc2(statTxt.join(" · ")) + "</span>" : "") +
+        '<div class="nb-diff-views">' +
+          '<button type="button" data-dview="flow">对照</button>' +
+          '<button type="button" data-dview="split">左右对比</button>' +
+        "</div>" +
+      "</div>" +
+      '<div class="nb-diff-body">' +
+        '<div class="nb-diff-changes">' +
+          '<div class="nb-diff-changes-tag">修改区域</div>' +
+          '<div class="nb-diff-flow">' + (flowR.changes || '<div class="nb-diff-none">这一版没有内容变化</div>') + "</div>" +
+          '<div class="nb-diff-split">' + (splitR.changedCount ? splitR.changes : '<div class="nb-diff-none">这一版没有内容变化</div>') + "</div>" +
+        "</div>" +
+        (flowR.unchanged
+          ? '<div class="nb-diff-unchanged">' +
+              '<button type="button" class="nb-diff-unchanged-toggle">未改动内容（' + flowR.sameCount + "）</button>" +
+              '<div class="nb-diff-unchanged-body" hidden>' +
+                '<div class="nb-diff-flow">' + flowR.unchanged + "</div>" +
+                '<div class="nb-diff-split">' + splitR.unchanged + "</div>" +
+              "</div>" +
+            "</div>"
+          : "") +
+      "</div>" +
+      '<div class="nb-diff-actions">' +
+        '<button type="button" class="nb-diff-revert">返回上一句话</button>' +
+        '<button type="button" class="nb-diff-apply">确认覆盖</button>' +
+      "</div>";
+    var existing = bubbleBody.firstChild;
+    bubbleBody.insertBefore(box, existing);
+    // diff 模式锁定：收掉所有追问入口，此状态只允许「确认覆盖 / 返回上一句话」
+    hideFloat();
+    hideSubchip();
+    setPenVisible(false);
+    box.querySelectorAll("[data-dview]").forEach(function (b) {
+      if (b.getAttribute("data-dview") === view0) b.classList.add("active");
+      b.addEventListener("click", function () {
+        box.dataset.view = b.getAttribute("data-dview");
+        box.querySelectorAll("[data-dview]").forEach(function (x) { x.classList.toggle("active", x === b); });
+      });
+    });
+    var uToggle = box.querySelector(".nb-diff-unchanged-toggle");
+    if (uToggle) uToggle.addEventListener("click", function () {
+      var uBody = box.querySelector(".nb-diff-unchanged-body");
+      var open = !uBody.hidden;
+      uBody.hidden = open;
+      uToggle.textContent = open ? "未改动内容（" + flowR.sameCount + "）" : "收起未改动内容";
+    });
+    bubbleBody.scrollTop = 0;
+    resultReachedBottom = false;
+
+    box.querySelector(".nb-diff-apply").addEventListener("click", function () {
+      s.body = s.__diffModified;
+      clearDiff();
       resultReachedBottom = false;
       paintResult();
       if (s.existingId) updateExisting();
       if (bubbleAtBottom()) resultReachedBottom = true;
-    } catch (err) {
-      if (box) box.classList.remove("nb-sub-loading");
-      if (go) go.disabled = false;
-      toast(err.message);
+      toast("已应用");
+    });
+    box.querySelector(".nb-diff-revert").addEventListener("click", function () {
+      revertDiff();
+    });
+  }
+  // 单个 diff 块的渲染（flow/split 共用）
+  function diffBlockHtml(op) {
+    // 无标签 pill：用行首 +/− 符号（git diff 语言）区分增删，更简洁
+    var txt = op.line;
+    if (op.t === "add") return '<div class="nb-diff-block add">' + renderMarkdown(txt) + "</div>";
+    if (op.t === "del") return '<div class="nb-diff-block del">' + renderMarkdown(txt) + "</div>";
+    return '<div class="nb-diff-block same">' + renderMarkdown(txt) + "</div>";
+  }
+  // 分块对照：改动块进 changes（主视觉），same 块进 unchanged（折叠）
+  function renderDiffFlow(ops) {
+    var groups = [];
+    ops.forEach(function (o) {
+      var last = groups[groups.length - 1];
+      if (last && last.t === o.t) last.texts.push(o.line);
+      else groups.push({ t: o.t, texts: [o.line] });
+    });
+    var changes = "", unchanged = "", sameCount = 0;
+    groups.forEach(function (g) {
+      var txt = g.texts.join("\n\n");
+      var html = diffBlockHtml({ t: g.t, line: txt });
+      if (g.t === "same") { unchanged += html; sameCount += g.texts.length; }
+      else changes += html;
+    });
+    return { changes: changes, unchanged: unchanged, sameCount: sameCount };
+  }
+  // 左右对比：含改动的行对进 changes（主视觉），纯 same 行对进 unchanged（折叠）
+  function renderDiffSplit(ops) {
+    var pairs = [];
+    var i = 0;
+    while (i < ops.length) {
+      var o = ops[i];
+      if (o.t === "same") { pairs.push({ l: o, r: o }); i++; continue; }
+      if (o.t === "del" && i + 1 < ops.length && ops[i + 1].t === "add") { pairs.push({ l: o, r: ops[i + 1] }); i += 2; continue; }
+      if (o.t === "add" && i + 1 < ops.length && ops[i + 1].t === "del") { pairs.push({ l: ops[i + 1], r: o }); i += 2; continue; }
+      if (o.t === "del") { pairs.push({ l: o, r: null }); i++; continue; }
+      pairs.push({ l: null, r: o }); i++;
     }
+    var COLS = '<div class="nb-diff-cols-head"><span>原版</span><span>修改后</span></div>';
+    var mk = function (rows) { return COLS + '<div class="nb-diff-rows">' + rows + "</div>"; };
+    var changedRows = "", unchangedRows = "", sameCount = 0, changedCount = 0;
+    pairs.forEach(function (p) {
+      var row = '<div class="nb-diff-row">' +
+        '<div class="nb-diff-cell">' + (p.l ? diffBlockHtml(p.l) : "") + "</div>" +
+        '<div class="nb-diff-cell">' + (p.r ? diffBlockHtml(p.r) : "") + "</div>" +
+        "</div>";
+      var isPureSame = p.l && p.r && p.l.t === "same" && p.r.t === "same";
+      if (isPureSame) { unchangedRows += row; sameCount++; }
+      else { changedRows += row; changedCount++; }
+    });
+    return {
+      changes: changedRows ? mk(changedRows) : "",
+      unchanged: unchangedRows ? mk(unchangedRows) : "",
+      sameCount: sameCount,
+      changedCount: changedCount,
+    };
+  }
+  function clearDiff() {
+    var d = bubbleBody.querySelector(".nb-diff");
+    if (d) d.remove();
+    var s = resultState;
+    if (s) { s.__diffOriginal = null; s.__diffModified = null; s.__diffMode = null; s.__diffSelection = null; s.__diffInstruction = null; }
+  }
+  function revertDiff() {
+    var s = resultState;
+    if (!s) return;
+    // 先取值再清理（clearDiff 会把 __diff* 置空）
+    var mode = s.__diffMode || "append";
+    var selection = s.__diffSelection || "";
+    var instruction = s.__diffInstruction || "";
+    clearDiff();
+    // 重开追问小气泡：上次那句话回填进输入框，光标到末尾，可继续编辑
+    openAskPop(mode, selection, mouseAnchor(), instruction);
+    toast("已回到上一句话，可继续修改");
   }
 
   function hideSubchip() {
     if (!subchip) return;
     var c = subchip;
     subchip = null;
+    subchipRange = null;
     c.classList.remove("nb-show");
     setTimeout(function () { c.remove(); }, 160);
   }
   function handleNoteMouseup() {
     setTimeout(function () {
       hideSubchip();
+      if (isDiffMode()) return; // diff 模式锁定：diff 内外的选字都不触发追问
       var sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) return;
       var node = sel.anchorNode;
       var el = node && (node.nodeType === 3 ? node.parentElement : node);
       if (!el || !bubbleBody.contains(el)) return;
-      if (el.closest(".nb-subbox") || el.closest("#nbEdit")) return;
+      if (el.closest("#nbEdit")) return;
       var text = sel.toString().trim();
       if (!text || text.length > 300) return;
       var range = sel.getRangeAt(0);
       var rect = range.getBoundingClientRect();
       if (!rect || rect.height === 0) return;
+      // 以"最后一个字"为定位线：取选区最后一个行片段的右缘
+      var rects = range.getClientRects();
+      var lastRect = rects[rects.length - 1] || rect;
       var chip = document.createElement("button");
       chip.className = "nb-subchip";
       chip.textContent = "追问这段";
       chip.addEventListener("mousedown", function (e) { e.preventDefault(); });
       chip.addEventListener("click", function () {
         hideSubchip();
-        toggleSubbox("edit", text);
+        openAskPop("edit", text, mouseAnchor(), "");
       });
       document.body.appendChild(chip);
-      chip.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - 120)) + "px";
-      chip.style.top = Math.min(rect.bottom + 6, window.innerHeight - 40) + "px";
+      subchip = chip;
+      subchipRange = range;
+      positionSubchip();
       void chip.offsetWidth;
       chip.classList.add("nb-show");
-      subchip = chip;
     }, 0);
   }
   function saveNote(existingId, question, body, promote) {
@@ -752,6 +1350,16 @@
   }
   function deleteNote(id) {
     resultState = null;
+    if (STATIC_MODE) {
+      notes = notes.filter(function (n) { return n.id !== id; });
+      try { localStorage.setItem("shelf-notes-" + BOOK, JSON.stringify(notes)); } catch (e) {}
+      clearMarkers(id);
+      anchorMap = anchorMap.filter(function (x) { return x.note.id !== id; });
+      updateNav();
+      closeBubble();
+      toast("已删除（本地）");
+      return;
+    }
     fetch("/api/notes?book=" + BOOK + "&id=" + encodeURIComponent(id), { method: "DELETE" }).then(function (r) { return r.json(); }).then(function (d) {
       notes = d.notes;
       clearMarkers(id);
@@ -761,12 +1369,20 @@
       toast("已删除");
     });
   }
+  function persistLocal(note) {
+    var idx = notes.findIndex(function (n) { return n.id === note.id; });
+    if (idx >= 0) notes[idx] = note; else notes.push(note);
+    try { localStorage.setItem("shelf-notes-" + BOOK, JSON.stringify(notes)); } catch (e) {}
+    return Promise.resolve();
+  }
   function persist(note) {
+    if (STATIC_MODE) return persistLocal(note);
     return fetch("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ book: BOOK, note: note }),
-    }).then(function (r) { return r.json(); }).then(function (d) { notes = d.notes; });
+    }).then(function (r) { return r.json(); }).then(function (d) { notes = d.notes; })
+      .catch(function () { return persistLocal(note); });
   }
 
   function viewNote(id, fromEl) {
@@ -828,6 +1444,7 @@
     document.addEventListener("mouseup", function () {
       setTimeout(function () {
         hideFloat();
+        if (isDiffMode()) return; // diff 模式锁定：正文选字不触发补注释
         var sel = window.getSelection();
         if (!sel || sel.isCollapsed || !sel.rangeCount) return;
         var quote = sel.toString().trim();
@@ -842,11 +1459,13 @@
         floatBtn.addEventListener("mousedown", function (e) { e.preventDefault(); });
         floatBtn.addEventListener("click", function () {
           hideFloat();
+          // 文件上下文来源一：找最近的 [data-file] 祖先（代码块）；来源二（文本匹配）在 viewAsk 里做
           pending = {
             section: (host.closest(".chapter") || {}).id || "",
             sectionTitle: sectionTitle(host),
             blockText: norm(host.textContent),
             quote: quote,
+            files: detectFiles(host),
           };
           viewAsk();
         });
@@ -931,7 +1550,12 @@
   setupNav();
   buildBubble();
   fetch("/api/notes?book=" + BOOK)
-    .then(function (r) { return r.json(); })
+    .then(function (r) { if (!r.ok) throw new Error("static"); return r.json(); })
     .then(function (list) { notes = list || []; refreshAll(); })
-    .catch(function () { refreshAll(); });
+    .catch(function () {
+      STATIC_MODE = true;
+      try { notes = JSON.parse(localStorage.getItem("shelf-notes-" + BOOK) || "[]"); } catch (e) { notes = []; }
+      refreshAll();
+      toast("静态演示：阅读与本地批注可用 · AI 生成请本地运行");
+    });
 })();
