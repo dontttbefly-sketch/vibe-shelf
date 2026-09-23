@@ -321,12 +321,23 @@ html[data-theme="dark"] .shelf-theme-toggle:focus-visible {
   }
 }
 
-/* ---- 正在被 AI 加工的文字：轻微模糊 ---- */
+/* ---- 正在被 AI 加工的文字：保持清晰，只用暖色提示 ---- */
 .book-main mark.nb-quote.nb-processing,
 .book-main .nb-block.nb-processing {
-  filter: blur(1.6px);
-  opacity: .45;
-  transition: filter .45s ease, opacity .45s ease;
+  opacity: 1;
+  transition:
+    background .22s ease,
+    border-color .22s ease,
+    box-shadow .22s ease;
+}
+.book-main mark.nb-quote.nb-processing {
+  background: rgba(206, 123, 81, 0.10);
+  border-bottom-color: rgba(206, 123, 81, 0.86);
+  box-shadow: inset 0 -0.42em 0 rgba(206, 123, 81, 0.08);
+}
+.book-main .nb-block.nb-processing::before {
+  background: rgba(206, 123, 81, 0.38);
+  width: 3px;
 }
 
 /* ---- 晋升为正文的「补充」块（可收缩，默认收起） ---- */

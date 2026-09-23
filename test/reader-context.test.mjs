@@ -42,3 +42,14 @@ test("reader allows long code selections to open annotation entry", () => {
   assert.match(source, /text\.length > MAX_SELECTION_QUOTE_CHARS/);
   assert.doesNotMatch(source, /(?:quote|text)\.length > 300/);
 });
+
+test("reader keeps processing selections sharp and legible", () => {
+  const styles = fs.readFileSync("public/notes.css", "utf8");
+  const processingRule = styles.match(
+    /\.book-main mark\.nb-quote\.nb-processing,[\s\S]*?\.book-main \.nb-block\.nb-processing[\s\S]*?\}/
+  );
+
+  assert.ok(processingRule, "expected processing selection styles to exist");
+  assert.doesNotMatch(processingRule[0], /filter:\s*blur\(/);
+  assert.doesNotMatch(processingRule[0], /opacity:\s*\.[0-9]+/);
+});
