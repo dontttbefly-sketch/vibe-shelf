@@ -264,3 +264,20 @@ test("reader header copy leaves room for the floating top controls", () => {
     /body\[data-shelf-reader\]\s+\.book-header\s+\.sub\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/s,
   );
 });
+
+test("dark reader theme also skins annotation popovers", () => {
+  const readerStyles = fs.readFileSync("public/notes.css", "utf8");
+
+  assert.match(
+    readerStyles,
+    /html\[data-theme="dark"\]\s+\.nb-bubble\s*\{[^}]*background:\s*rgba\(28,\s*24,\s*21,\s*\.92\)[^}]*border-color:\s*rgba\(238,\s*231,\s*221,\s*\.12\)/s,
+  );
+  assert.match(
+    readerStyles,
+    /html\[data-theme="dark"\]\s+\.nb-askpop\s*\{[^}]*background:\s*rgba\(28,\s*24,\s*21,\s*\.95\)[^}]*border-color:\s*rgba\(226,\s*154,\s*112,\s*\.36\)/s,
+  );
+  assert.match(
+    readerStyles,
+    /html\[data-theme="dark"\]\s+\.nb-btn\.primary\s*\{[^}]*background:\s*rgba\(226,\s*154,\s*112,\s*\.14\)[^}]*color:\s*#ffc29e/s,
+  );
+});
