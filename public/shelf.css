@@ -1,0 +1,838 @@
+/*
+  知识书架首页 · 圆润官网版全量重设计
+  设计语言：纸面暖色 + 大圆角 + 柔影 + serif 书卷标题；无锐角、无边框堆叠、无深色压场。
+  首屏唯一主动作：中央开始框（导入项目 → 后台生成主书）。
+*/
+:root {
+  --ink: #24211e;
+  --ink-soft: #4d4843;
+  --muted: #706861;
+  --faint: #9a9088;
+  --paper: #fcfbf8;
+  --paper-strong: #ffffff;
+  --paper-soft: #f6f1eb;
+  --paper-warm: #fbf5ee;
+  --mist: #edf0ed;
+  --line: #e9e1d8;
+  --line-soft: #f0e9e0;
+  --line-strong: #cdc1b5;
+  --clay: #c8754d;
+  --clay-deep: #87391f;
+  --clay-pale: #f7e8dc;
+  --focus: rgba(200, 117, 77, .45);
+  --shadow-soft: 0 10px 30px rgba(46, 36, 28, .06), 0 2px 6px rgba(46, 36, 28, .04);
+  --shadow-lift: 0 24px 60px rgba(46, 36, 28, .10), 0 4px 12px rgba(46, 36, 28, .05);
+  --radius-xl: 30px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-pill: 999px;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-display: Iowan Old Style, "Songti SC", STSong, "Noto Serif CJK SC", Georgia, serif;
+  font-synthesis: none;
+  line-break: strict;
+  overflow-wrap: break-word;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #efe8df;
+  --ink-soft: #d8ccbf;
+  --muted: #aea398;
+  --faint: #7f756c;
+  --paper: #12100e;
+  --paper-strong: #1c1815;
+  --paper-soft: #24201c;
+  --paper-warm: #201914;
+  --mist: #2b2722;
+  --line: #332d27;
+  --line-soft: #28231f;
+  --line-strong: #5a4c40;
+  --clay: #e29a70;
+  --clay-deep: #ffc29e;
+  --clay-pale: rgba(226, 154, 112, .16);
+  --focus: rgba(226, 154, 112, .46);
+  --shadow-soft: 0 16px 40px rgba(0, 0, 0, .34), 0 2px 8px rgba(0, 0, 0, .26);
+  --shadow-lift: 0 26px 70px rgba(0, 0, 0, .48), 0 8px 18px rgba(0, 0, 0, .28);
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); color: var(--ink); scroll-behavior: smooth; }
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-feature-settings: "liga" 1, "calt" 1;
+  line-height: 1.7;
+}
+
+.shelf-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 253, 247, .92), rgba(252, 251, 248, .78) 48%, rgba(252, 251, 248, .94) 100%);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(1.018);
+}
+
+html[data-theme="dark"] .shelf-page::before {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(36, 28, 22, .86), rgba(18, 16, 14, .78) 48%, rgba(18, 16, 14, .94) 100%);
+}
+
+.shelf-page.shelf-is-opening-book::before {
+  animation: shelf-open-book 240ms var(--ease-out) forwards;
+}
+
+button, input, textarea { font: inherit; }
+a { color: inherit; }
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+
+.shelf-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- 顶栏 ---- */
+.shelf-topbar {
+  display: flex;
+  width: min(calc(100% - 64px), 1160px);
+  min-height: 76px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin: 0 auto;
+}
+
+.shelf-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 660;
+  letter-spacing: .01em;
+  text-decoration: none;
+}
+
+.shelf-brand-mark {
+  display: grid;
+  width: 32px; height: 32px;
+  place-items: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  transition: border-radius 400ms var(--ease-out), background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+.shelf-brand:hover .shelf-brand-mark { border-radius: 999px; background: var(--clay-pale); border-color: var(--clay); color: var(--clay-deep); }
+
+.shelf-existing-link {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 620;
+  text-decoration: none;
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  transition: color 200ms ease, background-color 200ms ease;
+}
+
+.shelf-existing-link:hover { color: var(--ink); background: var(--paper-soft); }
+
+.shelf-theme-toggle {
+  appearance: none;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--paper-strong) 76%, transparent);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+  padding: 0 13px;
+  box-shadow: 0 8px 24px rgba(46, 36, 28, .05);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 220ms var(--ease-out);
+}
+
+.shelf-theme-toggle:hover {
+  border-color: var(--line-strong);
+  background: var(--paper-soft);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.shelf-theme-toggle:active {
+  transform: translateY(0) scale(.98);
+}
+
+/* ---- Hero：首屏唯一主动作是中央开始框 ---- */
+.shelf-home {
+  width: min(calc(100% - 48px), 1080px);
+  margin: 0 auto 96px;
+}
+
+.shelf-hero {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding: clamp(20px, 3.5vh, 40px) 0 clamp(22px, 3vh, 34px);
+  overflow: hidden;
+}
+
+/* 书卷水印：低透明度的巨大衬线"书"字，给页面一个安静的母题 */
+.shelf-hero-watermark {
+  position: absolute;
+  right: clamp(-40px, 2vw, 40px);
+  top: 50%;
+  transform: translateY(-52%) rotate(4deg);
+  font-family: var(--font-display);
+  font-size: clamp(300px, 34vw, 520px);
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(200, 117, 77, .05);
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+
+.shelf-hero > *:not(.shelf-hero-watermark) { position: relative; z-index: 1; }
+
+.shelf-hero-kicker {
+  margin: 0 0 14px;
+  color: var(--clay);
+  font-size: 11.5px;
+  font-weight: 720;
+  letter-spacing: .34em;
+  animation: shelf-heading-arrive 620ms var(--ease-out) backwards;
+}
+
+.shelf-hero h1 {
+  margin: 0 auto;
+  max-width: 720px;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 2.9vw, 44px);
+  font-weight: 590;
+  letter-spacing: -.01em;
+  line-height: 1.22;
+  text-align: center;
+  animation: shelf-heading-arrive 620ms var(--ease-out) 60ms backwards;
+}
+
+.shelf-hero-copy {
+  margin: 16px auto 0;
+  max-width: 520px;
+  color: var(--muted);
+  font-size: 15.5px;
+  line-height: 1.75;
+  text-align: center;
+  animation: shelf-heading-arrive 620ms var(--ease-out) 120ms backwards;
+}
+
+/* ---- 开始框：圆润一体式，首屏最大元素 ---- */
+.shelf-launcher {
+  position: relative;
+  width: min(100%, 640px);
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-xl);
+  background: var(--paper-strong);
+  box-shadow: var(--shadow-lift);
+  transform: translateZ(0);
+  transition: transform 520ms var(--ease-out), border-color 260ms ease, box-shadow 420ms var(--ease-out);
+  animation: shelf-launcher-arrive 780ms var(--ease-out) 180ms backwards;
+}
+
+.shelf-launcher:focus-within {
+  border-color: var(--clay);
+  box-shadow: 0 30px 70px rgba(46, 36, 28, .12), 0 0 0 4px rgba(200, 117, 77, .12);
+  transform: translateY(-2px);
+}
+
+.shelf-launcher-field { position: relative; }
+
+/* 飞书式浮动标签：聚焦/有值时缩成粘土小标签，平时是占位文案 */
+.shelf-float-label {
+  position: absolute;
+  left: 32px;
+  top: 30px;
+  color: var(--faint);
+  font-size: clamp(19px, 2.1vw, 23px);
+  font-weight: 560;
+  line-height: 1.45;
+  pointer-events: none;
+  transform-origin: left top;
+  transition: transform 320ms var(--ease-out), color 220ms ease;
+}
+
+.shelf-import-name:focus ~ .shelf-float-label,
+.shelf-import-name:not(:placeholder-shown) ~ .shelf-float-label {
+  transform: translateY(-19px) scale(.58);
+  color: var(--clay);
+  font-weight: 680;
+}
+
+.shelf-import-name {
+  display: block;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  caret-color: var(--clay);
+  font-family: var(--font-body);
+  font-size: clamp(19px, 2.1vw, 23px);
+  font-weight: 570;
+  line-height: 1.45;
+  padding: 34px 32px 22px;
+}
+
+.shelf-launcher-sources {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 18px;
+}
+
+.shelf-source-option {
+  position: relative;
+  display: flex;
+  min-height: 74px;
+  align-items: center;
+  gap: 12px;
+  border: 1.5px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 13px 16px;
+  text-align: left;
+  transition: border-color 220ms ease, background-color 220ms ease, transform 360ms var(--ease-out);
+}
+
+.shelf-source-option:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+.shelf-source-option:active { transform: scale(.99); }
+.shelf-source-option:focus-within,
+.shelf-source-option:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.shelf-source-option.is-coming { border-style: dashed; color: var(--faint); background: transparent; }
+.shelf-source-option.is-coming:hover { color: var(--muted); border-color: var(--line-strong); }
+
+.shelf-source-mark {
+  width: 11px; height: 11px;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 50%;
+  transition: transform 360ms var(--ease-out), background-color 180ms ease, border-color 180ms ease;
+}
+
+.shelf-source-option.is-coming .shelf-source-mark { border-style: dashed; }
+
+.shelf-source-copy { display: grid; min-width: 0; gap: 2px; flex: 1; }
+
+.shelf-source-copy strong { font-size: 14.5px; font-weight: 660; line-height: 1.35; }
+
+.shelf-source-copy small {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelf-source-action {
+  color: var(--clay-deep);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  transition: color 180ms ease, transform 360ms var(--ease-out);
+}
+
+.shelf-source-option:hover .shelf-source-action { transform: translateX(3px); }
+.shelf-source-option.is-coming:hover .shelf-source-action { color: var(--clay); }
+
+.shelf-source-option input {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.is-complete .shelf-source-mark {
+  background: var(--clay);
+  border-color: var(--clay);
+  transform: scale(1.15);
+}
+
+.is-complete .shelf-source-action { color: var(--clay-deep); }
+
+/* 主按钮：粘土 pill，决策性动作 */
+.shelf-import-submit {
+  display: flex;
+  width: calc(100% - 36px);
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 18px 4px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--clay);
+  color: #fffdf9;
+  cursor: pointer;
+  padding: 14px 22px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  transition: transform 360ms var(--ease-out), background-color 180ms ease, border-radius 400ms var(--ease-out);
+}
+
+.shelf-submit-arrow { font-size: 19px; font-weight: 400; transition: transform 360ms var(--ease-out); }
+.shelf-import-submit:hover { background: var(--clay-deep); transform: translateY(-2px); border-radius: var(--radius-pill); }
+.shelf-import-submit:hover .shelf-submit-arrow { transform: translateX(4px); }
+.shelf-import-submit:active { transform: scale(.99); }
+.shelf-import-submit:disabled { cursor: wait; opacity: .55; transform: none; }
+
+.shelf-import-status {
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: max-height 360ms var(--ease-out), margin 360ms var(--ease-out), opacity 180ms ease, transform 360ms var(--ease-out);
+}
+
+.shelf-import-status[data-state]:not([data-state=""]) {
+  max-height: 70px;
+  margin: 10px 20px 0;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.shelf-import-status[data-state="error"] { color: #a04535; }
+.shelf-import-status[data-state="info"] { color: var(--clay-deep); }
+.shelf-import-status[data-state="loading"] { color: var(--clay-deep); }
+
+/* 生成中：不确定进度条 */
+.shelf-generating {
+  margin: 12px 18px 4px;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  background: var(--clay-pale);
+}
+
+.shelf-generating[hidden] { display: none; }
+
+.shelf-generating-bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: rgba(200, 117, 77, .25);
+}
+
+.shelf-generating-bar i {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 40%;
+  border-radius: var(--radius-pill);
+  background: var(--clay);
+  animation: shelf-generating-sweep 1.4s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+
+@keyframes shelf-generating-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(280%); }
+}
+
+.shelf-generating-stage {
+  margin: 9px 0 0;
+  color: var(--clay-deep);
+  font-size: 13px;
+}
+
+.shelf-local-note {
+  margin: 14px 0 0;
+  color: var(--faint);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+/* 三步路径：源码 → 主书 → 探索 */
+.shelf-reading-journey {
+  position: relative;
+  display: grid;
+  width: min(100%, 420px);
+  grid-template-columns: repeat(3, 1fr);
+  margin: 30px auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shelf-reading-journey::before {
+  position: absolute;
+  top: 6px; right: 16%; left: 16%;
+  height: 1.5px;
+  background: var(--line-strong);
+  content: "";
+}
+
+.shelf-reading-journey li {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.shelf-reading-journey li i {
+  width: 12px; height: 12px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.shelf-reading-journey li:nth-child(2) i { background: var(--clay); }
+.shelf-reading-journey li:nth-child(3) i { background: var(--paper); border-color: var(--line-strong); }
+
+/* ---- 它是怎么工作的：与页面同底的流程排布 ---- */
+.shelf-how {
+  scroll-margin-top: 24px;
+  padding: clamp(56px, 8vw, 96px) 0 0;
+}
+
+.shelf-how-title {
+  margin: 0 0 34px;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 570;
+  text-align: center;
+}
+
+.shelf-how-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 34px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.shelf-how-card { position: relative; }
+
+.shelf-how-card:not(:last-child)::after {
+  content: "\2192";
+  position: absolute;
+  top: 22px;
+  right: -26px;
+  color: var(--line-strong);
+  font-size: 19px;
+}
+
+.shelf-how-num {
+  display: inline-grid;
+  width: 46px; height: 46px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--clay-pale);
+  color: var(--clay-deep);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 0 0 7px var(--paper);
+}
+
+.shelf-how-card h3 { margin: 16px 0 8px; font-size: 17px; font-weight: 680; }
+.shelf-how-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.75; }
+
+/* ---- 我的书架 ---- */
+/* 深色实木书架板块：全页唯一的深色锚点，书本白卡摆上去 */
+.shelf-bookshelf {
+  scroll-margin-top: 24px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(160deg, #2a2f3a 0%, #22262f 60%, #1d212a 100%);
+  padding: clamp(28px, 4vw, 46px) clamp(24px, 3.4vw, 42px) clamp(30px, 4vw, 46px);
+  box-shadow: 0 34px 80px rgba(29, 25, 20, .28), inset 0 1px 0 rgba(255, 253, 247, .06);
+}
+
+.shelf-bookshelf-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.shelf-bookshelf-kicker {
+  margin: 0 0 8px;
+  color: rgba(200, 117, 77, .9);
+  font-size: 11px;
+  font-weight: 720;
+  letter-spacing: .3em;
+}
+
+.shelf-bookshelf h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 2.8vw, 36px);
+  font-weight: 570;
+  line-height: 1.2;
+  color: var(--paper-strong);
+}
+
+.shelf-bookshelf-head > p { margin: 0 0 5px; color: rgba(255, 253, 247, .5); font-size: 13px; }
+
+.shelf-project-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+/* 书本白卡：hover 时沿书脊方向"抽出" */
+.shelf-book-card {
+  display: flex;
+  min-height: 148px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--paper-strong);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: 0 14px 34px rgba(10, 12, 16, .35);
+  transition: transform 420ms var(--ease-out), box-shadow 420ms var(--ease-out);
+}
+
+.shelf-book-card:hover {
+  transform: translateX(8px);
+  box-shadow: 0 22px 48px rgba(10, 12, 16, .5);
+}
+
+.shelf-book-card.is-opening {
+  opacity: .72;
+  transform: translateX(14px) scale(.986);
+  box-shadow: 0 30px 70px rgba(10, 12, 16, .56);
+  pointer-events: none;
+}
+
+.shelf-book-spine {
+  display: grid;
+  width: 46px;
+  flex: 0 0 auto;
+  place-items: center;
+  background: linear-gradient(180deg, var(--clay) 0%, #b05f3a 100%);
+  color: #fff6ef;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  transition: width 420ms var(--ease-out);
+}
+
+.shelf-book-card:hover .shelf-book-spine { width: 54px; }
+.shelf-book-card.is-opening .shelf-book-spine { width: 58px; }
+
+.shelf-book-card-content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 22px;
+}
+
+.shelf-book-card-content strong {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 570;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelf-book-card-content small { color: var(--muted); font-size: 12.5px; }
+
+.shelf-book-card.is-generating .shelf-book-card-content small { position: relative; color: var(--clay-deep); font-weight: 640; }
+
+.shelf-book-card.is-failed { box-shadow: 0 14px 34px rgba(10, 12, 16, .35), inset 0 0 0 2px rgba(178, 59, 46, .5); }
+.shelf-book-card.is-failed .shelf-book-spine { background: linear-gradient(180deg, #a04535, #873528); }
+
+/* 空书架：深色板块上的邀请 */
+.shelf-empty {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 0;
+  border: 1.5px dashed rgba(255, 253, 247, .22);
+  border-radius: var(--radius-lg);
+  padding: 44px 24px;
+  color: rgba(255, 253, 247, .55);
+  text-align: center;
+}
+
+/* ---- 焦点可见性 ---- */
+.shelf-brand:focus-visible,
+.shelf-existing-link:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+/* 开始框输入框的聚焦反馈由容器承担，自身 outline 关闭（否则是横穿的线） */
+.shelf-import-name:focus-visible { outline: none; }
+
+/* ---- 动效 ---- */
+@keyframes shelf-heading-arrive {
+  0% { opacity: 0; transform: translateY(13px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shelf-launcher-arrive {
+  0% { opacity: 0; transform: translateY(24px) scale(.985); }
+  74% { opacity: 1; transform: translateY(-2px) scale(1.004); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes shelf-source-notice {
+  0% { transform: translateX(0); }
+  35% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes shelf-open-book {
+  0% { opacity: 0; transform: scale(1.018); }
+  100% { opacity: .92; transform: scale(1); }
+}
+
+.is-noticing { animation: shelf-source-notice 480ms cubic-bezier(.34, 1.56, .64, 1); }
+
+/* ---- 页脚 ---- */
+.shelf-footer {
+  display: flex;
+  width: min(calc(100% - 64px), 1160px);
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 auto;
+  padding: 26px 0 34px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--faint);
+  font-size: 12.5px;
+}
+
+.shelf-footer a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.shelf-footer a:hover { color: var(--ink); background: var(--paper-soft); }
+
+/* ---- 响应式 ---- */
+@media (max-width: 720px) {
+  .shelf-topbar { width: min(calc(100% - 40px), 1160px); min-height: 66px; }
+  .shelf-home { width: min(calc(100% - 32px), 1080px); margin-bottom: 72px; }
+  .shelf-hero { min-height: calc(100svh - 66px); padding: 34px 0 56px; }
+  .shelf-hero h1 { font-size: clamp(30px, 8.4vw, 40px); }
+  .shelf-hero-copy { font-size: 14px; }
+  .shelf-launcher { width: min(100%, 640px); }
+  .shelf-how-grid { grid-template-columns: 1fr; }
+  .shelf-section-head { display: block; }
+  .shelf-section-head > p { margin-top: 7px; }
+  .shelf-footer { width: min(calc(100% - 40px), 1160px); }
+}
+
+@media (max-width: 480px) {
+  .shelf-topbar { width: min(calc(100% - 32px), 1160px); }
+  .shelf-hero { align-content: start; padding-top: 46px; }
+  .shelf-launcher { border-radius: var(--radius-lg); }
+  .shelf-import-name { font-size: 17px; padding: 24px 22px 18px; }
+  .shelf-launcher-sources { padding: 0 14px; grid-template-columns: 1fr; }
+  .shelf-import-submit { width: calc(100% - 28px); margin: 12px 14px 4px; }
+  .shelf-generating { margin: 10px 14px 4px; }
+  .shelf-local-note { text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---- 双态：新用户（new）/ 回归用户（returning） ---- */
+/* 书架卡状态 */
+.shelf-book-card.is-generating { border-style: dashed; }
+.shelf-book-card.is-generating .shelf-book-spine { background: var(--mist); color: var(--muted); }
+.shelf-book-card.is-failed { border-color: rgba(178, 59, 46, .35); }
+.shelf-book-card.is-failed .shelf-book-spine { background: rgba(178, 59, 46, .08); color: #a04535; }
+.shelf-book-retry {
+  justify-self: start;
+  border-radius: var(--radius-pill);
+  background: rgba(178, 59, 46, .1);
+  color: #a04535;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 12px;
+  transition: background-color 180ms ease, color 180ms ease;
+  width: fit-content;
+}
+.shelf-book-retry:hover { background: #a04535; color: #fffdf9; }
+
+/* ---- 滚动入场：data-reveal 元素依次浮现 ---- */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity .7s var(--ease-out), transform .7s var(--ease-out);
+}
+
+[data-reveal].is-visible { opacity: 1; transform: none; }
+
+.shelf-reading-journey[data-reveal] li i {
+  transition: background-color 420ms ease, border-color 420ms ease;
+  transition-delay: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+}

@@ -2,3 +2,12 @@
 .DS_Store
 notes-local/
 *.log
+.superpowers/
+.workbuddy/
+data/projects.json
+data/projects/*
+!data/projects/pupkit/
+!data/projects/pupkit/**
+public/projects/*
+!public/projects/pupkit/
+!public/projects/pupkit/**

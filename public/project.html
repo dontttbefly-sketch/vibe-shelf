@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>正在打开主书 · 知识书架</title>
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="shelf.css">
+</head>
+<body class="shelf-page">
+  <main class="shelf-home" style="min-height: 70vh; display: grid; place-items: center; text-align: center;">
+    <div>
+      <p>正在打开主书…</p>
+      <p><a href="index.html#bookshelf">返回书架</a></p>
+    </div>
+  </main>
+  <script>
+    (function () {
+      "use strict";
+      var id = new URLSearchParams(window.location.search).get("id");
+      if (id) {
+        window.location.replace("projects/" + encodeURIComponent(id) + "/books/main/");
+        return;
+      }
+      window.location.replace("index.html#bookshelf");
+    }());
+  </script>
+</body>
+</html>

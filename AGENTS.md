@@ -4,19 +4,21 @@
 
 ## 项目是什么
 
-**把 AI 生成的项目（代码、文档）变成"可以学习的书架"**：一本单文件 HTML 教学书 + 一层旁注阅读层。读者选中书中任何文字，AI 生成贴合上下文的教学旁注；旁注可审核、可追问修改（带 diff）、可晋升为正文。
+**把一个项目的源码变成"可以学习和继续生长的书架"**：首页是项目书架，项目主书是读者进入项目后的主界面；旁注层负责划词解释、追问、全局问答和补充卡；书底探索负责把新方向沉淀为探索小书。
 
-一句话：**AI 生成的项目 → 可划词提问的学习书架**。
+一句话：**项目源码 → 主书 → 旁注/探索 → 可回看的项目知识书架**。
 
-## 架构（四个文件，职责严格分离）
+## 架构（根目录就是项目书架主线）
 
-| 文件 | 职责 | 绝不做什么 |
+| 位置 | 职责 | 绝不做什么 |
 |---|---|---|
-| `build.mjs` | 把任意"书 HTML"编译进书架：提取 CSS/正文/脚本，注入 `window.SHELF_BOOK`，给代码块智能加 `data-file` | 不改动源书文件 |
-| `public/index.html` | 构建产物，**不要手改**（会被 build 覆盖） | — |
-| `public/notes.js` | 全部旁注层逻辑（IIFE，无依赖） | 不修改原书正文 DOM 结构 |
-| `public/notes.css` | 旁注层样式，类名前缀 `nb-` | 不污染原书样式 |
-| `server.mjs` | 本地服务：静态文件 + 注释 CRUD + AI 代理（.env 配 OpenAI 兼容接口） | 无依赖、零框架 |
+| `public/index.html` / `public/shelf.js` / `public/shelf.css` | 项目书架首页：导入本地文件夹、展示项目小书、进入主书 | 不承担项目内页；项目点击后直接进主书 |
+| `lib/main-book-generation.mjs` / `lib/prompts.mjs` | 读取项目源码快照，生成项目主书 | 不凭空编造源码里不存在的结论 |
+| `lib/book-compiler.mjs` / `build.mjs` | 把书 HTML 编译成可阅读页面，注入 `SHELF_CONTEXT`、阅读器、探索入口和返回书架导航 | 不覆盖书架首页 |
+| `public/notes.js` / `public/notes.css` | 唯一阅读器主线：划词旁注、追问 diff、晋升/恢复、全局问答、插卡动效 | 不修改原书正文 DOM 结构；不污染原书样式 |
+| `public/explore.js` / `public/explore.css` | 书底探索会话；用户确认后生成探索小书 | 不把普通聊天自动塞进主书 |
+| `lib/app.mjs` / `server.mjs` | 本地服务：静态资源、项目 API、notes/explain/followup/search、探索、小书生成、AI 代理 | 不把 API Key 暴露到前端 |
+| `lib/project-service.mjs` / `lib/books.mjs` / `lib/explorations.mjs` | 项目、源码快照、书、探索记录的数据服务 | 不破坏已有项目快照的不可变性 |
 
 **旁注层叠加原则**：所有功能都是对原书的"叠加"（浮层、高亮、锚点标记），永远不改变原书正文的结构与样式。这是整个项目能适配任何书的前提。
 
@@ -77,10 +79,10 @@ diff 模式锁定：审阅卡在场时，所有追问入口冻结（chip/浮窗/
 
 ## 部署与运行模式
 
-- **本地完整版**：`node server.mjs`（.env 填 OpenAI 兼容接口）→ AI 生成 + 注释存 `data/<书名>.json`
+- **本地完整版**：`node server.mjs`（.env 填 OpenAI 兼容接口）→ 项目导入、主书生成、旁注、探索和小书生成
 - **静态演示版**（GitHub Pages）：阅读、划词、本地批注（localStorage）全部可用；AI 接口自动降级——toast 提示"clone 本地运行"。降级标记 `STATIC_MODE`，入口：启动 fetch 失败、explain/followup 拦截、persist/delete 落 localStorage
 - **Pages 部署**：`.github/workflows/pages.yml`，push main 自动部署 `public/` 到 Pages
-- **换一本书**：`node build.mjs <书.html> --book <名字> --out public/index.html`
+- **单独编译一本书**：`node build.mjs <书.html> --book <名字> --out public/books/<名字>/index.html`
 
 ## Agent 开发流程（每次改动的标准动作）
 

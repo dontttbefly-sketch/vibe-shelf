@@ -5,6 +5,27 @@
   if (!main) return;
 
   var BOOK = window.SHELF_BOOK || "default"; // 由 build.mjs 注入；书名决定注释存到 data/<书名>.json
+  // 新书页带有项目上下文；旧书页继续走原来的单书接口与本地存储键。
+  var CONTEXT = window.SHELF_CONTEXT || {
+    projectId: null,
+    bookId: BOOK,
+    sourceSnapshotId: null,
+    staticNotesUrl: "data/" + BOOK + ".json",
+  };
+  CONTEXT.bookId = CONTEXT.bookId || BOOK;
+  function projectNotesPath() {
+    if (!CONTEXT.projectId) return "/api/notes?book=" + encodeURIComponent(BOOK);
+    return "/api/projects/" + encodeURIComponent(CONTEXT.projectId) + "/books/" + encodeURIComponent(CONTEXT.bookId) + "/notes";
+  }
+  function projectBookPath(action) {
+    return "/api/projects/" + encodeURIComponent(CONTEXT.projectId) + "/books/" + encodeURIComponent(CONTEXT.bookId) + "/" + action;
+  }
+  function projectSnapshotPath(action) {
+    return "/api/projects/" + encodeURIComponent(CONTEXT.projectId) + "/snapshots/" + encodeURIComponent(CONTEXT.sourceSnapshotId) + "/" + action;
+  }
+  function localNotesKey() {
+    return CONTEXT.projectId ? "shelf-notes-" + CONTEXT.projectId + "-" + CONTEXT.bookId : "shelf-notes-" + BOOK;
+  }
   var STATIC_MODE = false; // GitHub Pages 等纯静态部署：阅读+本地批注可用，AI 生成不可用
   var notes = [];
   var blocks = [];
@@ -13,6 +34,8 @@
   var pending = null;   // { section, sectionTitle, blockText, quote }
   var thinkTimer = null;
   var closeTimer = null;
+  var miniTimer = null;      // 思考收进右上角迷你卡的延迟触发
+  var miniRollStop = null;   // 迷你卡里滚动文字的 stop 函数
   var explainSeq = 0;
   // ---- 文件上下文（追问时勾选注入 prompt） ----
   var bookFiles = null;          // { path, size }[] 全本书候选（懒加载，供 size 查询）
@@ -24,6 +47,10 @@
   var resultReachedBottom = false;
   var subchip = null;
   var subchipRange = null;
+  var searchPanel = null;
+  var searchCtrl = null;
+  var searchMatches = [];
+  var searchLast = null;
   // "追问这段"chip 跟随文字：滚动时按活 range 重算（末行末字右缘下方）
   function positionSubchip() {
     if (!subchip || !subchipRange) return;
@@ -186,7 +213,7 @@
   async function loadBookFiles(force) {
     if (!force && bookFiles) return bookFiles;
     try {
-      var r = await fetch("/api/files?book=" + encodeURIComponent(BOOK));
+      var r = await fetch(CONTEXT.projectId ? projectSnapshotPath("files") : "/api/files?book=" + encodeURIComponent(BOOK));
       var d = await r.json();
       bookFiles = d.files || [];
     } catch (e) { bookFiles = []; }
@@ -198,7 +225,7 @@
       var p = paths[i];
       if (fileContents[p]) { out.push(fileContents[p]); continue; }
       try {
-        var r = await fetch("/api/file?book=" + encodeURIComponent(BOOK) + "&path=" + encodeURIComponent(p));
+        var r = await fetch(CONTEXT.projectId ? projectSnapshotPath("file") + "?path=" + encodeURIComponent(p) : "/api/file?book=" + encodeURIComponent(BOOK) + "&path=" + encodeURIComponent(p));
         if (!r.ok) continue;
         var d = await r.json();
         fileContents[p] = d;
@@ -243,22 +270,53 @@
       });
     });
   }
+  // 划线标记：先在注释所属块内匹配；quote 跨块（表格多行/代码块+正文）时升级全书范围兜底
   function markQuote(block, quote, id) {
     if (!quote) return;
-    var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null);
-    var node;
-    while ((node = walker.nextNode())) {
-      var idx = node.nodeValue.indexOf(quote);
-      if (idx < 0) continue;
-      var range = document.createRange();
-      range.setStart(node, idx);
-      range.setEnd(node, idx + quote.length);
+    if (markQuoteIn(block, quote, id)) return;
+    if (main) markQuoteIn(main, quote, id);
+  }
+  function markQuoteIn(scope, quote, id) {
+    if (!quote || !scope) return false;
+    var walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, null);
+    var nodes = [], flat = "", n;
+    while ((n = walker.nextNode())) { nodes.push({ node: n, start: flat.length }); flat += n.nodeValue; }
+    if (!flat) return false;
+    var idx = flat.indexOf(quote), end = idx + quote.length;
+    if (idx < 0) {
+      // 去空白容错：sel.toString 会在块级边界插入 \n，DOM 文本流里没有——两边都删空白后再对位
+      var map = [], normFlat = "";
+      for (var i = 0; i < flat.length; i++) {
+        if (!/\s/.test(flat[i])) { normFlat += flat[i]; map.push(i); }
+      }
+      var nq = quote.replace(/\s+/g, "");
+      var nIdx = normFlat.indexOf(nq);
+      if (nIdx < 0 || !map.length) return false;
+      idx = map[nIdx];
+      end = map[Math.min(nIdx + nq.length - 1, map.length - 1)] + 1;
+    }
+    // 找覆盖到的文本节点分段（文档序）
+    var parts = [];
+    for (var k = 0; k < nodes.length; k++) {
+      var s = nodes[k].start, e = s + nodes[k].node.nodeValue.length;
+      if (e <= idx || s >= end) continue;
+      parts.push({ node: nodes[k].node, lo: Math.max(idx, s) - s, hi: Math.min(end, e) - s });
+    }
+    if (!parts.length) return false;
+    // 倒序逐段包裹（插入 mark 不影响未处理的前置节点偏移）
+    for (var j = parts.length - 1; j >= 0; j--) {
+      var p = parts[j];
+      if (p.hi - p.lo <= 0) continue;
+      var r = document.createRange();
+      r.setStart(p.node, p.lo);
+      r.setEnd(p.node, p.hi);
       var m = document.createElement("mark");
       m.className = "nb-quote";
       m.setAttribute("data-note", id);
-      try { range.surroundContents(m); } catch (e) { return; }
-      return;
+      m.appendChild(r.extractContents());
+      r.insertNode(m);
     }
+    return true;
   }
   function unmarkQuote(id) {
     main.querySelectorAll('mark.nb-quote[data-note="' + id + '"]').forEach(function (m) {
@@ -274,6 +332,8 @@
   var EXPAND_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
   var PEN_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>';
   var COLLAPSE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="10" y1="14" x2="3" y2="21"></line></svg>';
+  var RESTORE_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>';
+  var SEARCH_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>';
   function renderPromoted(note) {
     clearPromoted(note.id);
     if (!note.promoted || !note.body) return;
@@ -284,15 +344,13 @@
     d.setAttribute("data-note", note.id);
     d.innerHTML =
       '<div class="nb-promoted-head"><span class="nb-promoted-tag">补充</span>' +
-      '<span class="nb-promoted-actions">' +
-      '<button class="nb-promoted-del" type="button" title="从正文移除">' + TRASH_SVG + "</button>" +
-      '<button class="nb-promoted-toggle" type="button">展开</button>' +
-      "</span></div>" +
+      '<span class="nb-promoted-head-actions"><button class="nb-promoted-toggle" type="button">展开</button>' +
+      '<button class="nb-promoted-restore" type="button" title="返回回注释" aria-label="返回回注释">' + RESTORE_SVG + "</button></span></div>" +
       '<div class="nb-promoted-body"><div class="nb-note-body">' + renderMarkdown(note.body) + "</div></div>";
     var body = d.querySelector(".nb-promoted-body");
     var toggle = d.querySelector(".nb-promoted-toggle");
     d.querySelector(".nb-promoted-head").addEventListener("click", function (e) {
-      if (e.target.closest(".nb-promoted-del")) return; // 点垃圾桶不触发展开
+      if (e.target.closest(".nb-promoted-restore")) return; // 点返回图标不触发展开
       clearTimeout(d.__collapseTimer);
       if (d.classList.contains("open")) {
         // 收起：先锁住当前真实高度，再归零（否则 max-height 会从 none/大值直接跳变）
@@ -309,22 +367,71 @@
         d.__collapseTimer = setTimeout(function () { body.style.maxHeight = "none"; }, 360);
       }
     });
-    d.querySelector(".nb-promoted-del").addEventListener("click", function (e) {
+    d.querySelector(".nb-promoted-restore").addEventListener("click", function (e) {
       e.stopPropagation();
       if (d.classList.contains("nb-removing")) return;
-      // 塌缩承接：整卡锁高→合拢，内容同步淡出，下方正文平滑补位（无 blur，不吃性能）
+      // 返回为注释：整卡退场后恢复原注释锚点与划线。
       d.style.maxHeight = d.offsetHeight + "px";
       void d.offsetWidth;
-      d.classList.add("nb-removing");
+      d.classList.add("nb-restoring", "nb-removing");
       setTimeout(function () {
         var id = note.id;
-        clearPromoted(id);
         var n = notes.find(function (x) { return x.id === id; });
-        if (n) { n.promoted = false; persist(n); }
-        toast("已从正文移除，注释仍保留");
+        if (!n) return;
+        n.promoted = false;
+        persist(n).then(function () {
+          var restored = notes.find(function (x) { return x.id === id; }) || n;
+          applyNotePlacement(restored, { animate: "restore" });
+          toast("已返回回注释");
+        });
       }, 360);
     });
     block.insertAdjacentElement("afterend", d);
+  }
+  function removeAnchor(id) {
+    anchorMap = anchorMap.filter(function (x) { return x.note.id !== id; });
+  }
+  function sortAnchors() {
+    anchorMap.sort(function (a, b) { return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1; });
+  }
+  function addNoteAnchor(note) {
+    if (note.promoted) return;
+    var block = findBlock(note);
+    if (!block) return;
+    block.classList.add("nb-block");
+    block.setAttribute("data-note", note.id);
+    markQuote(block, note.quote, note.id);
+    removeAnchor(note.id);
+    anchorMap.push({ el: block, note: note });
+    sortAnchors();
+  }
+  function animateRestoredNote(id) {
+    var targets = Array.from(main.querySelectorAll('.nb-block[data-note="' + id + '"], mark.nb-quote[data-note="' + id + '"]'));
+    if (!targets.length) return;
+    targets.forEach(function (el) { el.classList.remove("nb-restored"); });
+    void main.offsetWidth;
+    targets.forEach(function (el) { el.classList.add("nb-restored"); });
+    setTimeout(function () {
+      targets.forEach(function (el) { el.classList.remove("nb-restored"); });
+    }, 760);
+  }
+  function applyNotePlacement(note, opts) {
+    opts = opts || {};
+    clearMarkers(note.id);
+    removeAnchor(note.id);
+    if (note.promoted) renderPromoted(note);
+    else addNoteAnchor(note);
+    updateNav();
+    if (opts.animate === "restore") animateRestoredNote(note.id);
+    if (opts.animate === "insert") animateInsertedPromoted(note.id);
+  }
+  function animateInsertedPromoted(id) {
+    var card = main.querySelector('.nb-promoted[data-note="' + id + '"]');
+    if (!card) return;
+    card.classList.remove("nb-inserted");
+    void card.offsetWidth;
+    card.classList.add("nb-inserted");
+    setTimeout(function () { card.classList.remove("nb-inserted"); }, 820);
   }
   function clearMarkers(id) {
     var b = main.querySelector('.nb-block[data-note="' + id + '"]');
@@ -340,15 +447,9 @@
     main.querySelectorAll(".nb-promoted").forEach(function (d) { d.remove(); });
     anchorMap = [];
     notes.forEach(function (note) {
-      var block = findBlock(note);
-      if (!block) return;
-      block.classList.add("nb-block");
-      block.setAttribute("data-note", note.id);
-      markQuote(block, note.quote, note.id);
-      if (note.promoted) renderPromoted(note);
-      anchorMap.push({ el: block, note: note });
+      if (note.promoted) { renderPromoted(note); return; }
+      addNoteAnchor(note);
     });
-    anchorMap.sort(function (a, b) { return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1; });
     updateNav();
   }
   function activeIdx() {
@@ -358,10 +459,13 @@
   function updateNav() {
     var nav = document.getElementById("nbNav");
     if (!nav) return;
-    if (anchorMap.length === 0) { nav.hidden = true; return; }
     nav.hidden = false;
     var c = document.getElementById("nbCount");
-    if (c) c.textContent = (activeIdx() + 1) + " / " + anchorMap.length;
+    if (c) c.textContent = anchorMap.length ? ((activeIdx() + 1) + " / " + anchorMap.length) : "0 / 0";
+    ["nbPrev", "nbNext", "nbListBtn"].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (btn) btn.disabled = anchorMap.length === 0;
+    });
   }
   function setActive(id) {
     activeId = id;
@@ -381,7 +485,6 @@
     bubble.className = "nb-bubble";
     bubble.innerHTML =
       '<div class="nb-bubble-head"><p class="nb-bubble-title" id="nbTitle"></p>' +
-      '<button class="nb-pen" id="nbPen" title="修改" hidden>' + PEN_SVG + "</button>" +
       '<button class="nb-expand" id="nbExpand" title="放大查看" aria-label="放大">' + EXPAND_SVG + "</button>" +
       '<button class="nb-close" id="nbClose">×</button></div>' +
       '<div class="nb-bubble-body" id="nbBody"></div>';
@@ -389,7 +492,6 @@
     bubbleBody = bubble.querySelector("#nbBody");
     bubbleTitle = bubble.querySelector("#nbTitle");
     bubble.querySelector("#nbClose").addEventListener("click", closeBubble);
-    bubble.querySelector("#nbPen").addEventListener("click", function () { toggleEdit(); });
     bubble.querySelector("#nbExpand").addEventListener("click", function () { toggleExpand(); });
     // 双击标题栏空白或标题文字：放大/缩小切换（双击按钮除外）
     bubble.querySelector(".nb-bubble-head").addEventListener("dblclick", function (e) {
@@ -451,10 +553,18 @@
       }
     });
   }
+  // 重置放大态：关闭后下次打开必须回到右上角收起态（尺寸/位置/按钮图标）
+  function resetExpandedState() {
+    if (!bubble) return;
+    bubble.classList.remove("nb-bubble--expanded");
+    bubble.style.translate = "";
+    var btn = bubble.querySelector("#nbExpand");
+    if (btn) { btn.innerHTML = EXPAND_SVG; btn.setAttribute("title", "放大查看"); }
+  }
   function openBubble(titleHtml, fromEl) {
     if (!bubble) buildBubble();
     clearTimeout(closeTimer); closeTimer = null;
-    setPenVisible(false);
+    resetExpandedState(); // 防御：快速关-开路径会打断关闭动画里的清理，这里兜底
     bubbleTitle.innerHTML = titleHtml;
     bubble.classList.add("nb-show");
     bubble.style.transition = "none";
@@ -501,11 +611,6 @@
     nb.classList.add("nb-sweep");
   }
   // 滑到底只做标记（resultReachedBottom），不立即保存；关闭气泡时一次性保存
-  function setPenVisible(on) {
-    if (!bubble) return;
-    var pen = bubble.querySelector("#nbPen");
-    if (pen) pen.hidden = !on;
-  }
   function toggleExpand() {
     if (!bubble) return;
     var expanded = bubble.classList.toggle("nb-bubble--expanded");
@@ -514,10 +619,22 @@
       btn.innerHTML = expanded ? COLLAPSE_SVG : EXPAND_SVG;
       btn.setAttribute("title", expanded ? "收起" : "放大查看");
     }
+    // 阅读主焦点：对准正文栏中心（左侧目录使视觉重心偏右，几何居中反而偏左）
+    // dx = 正文栏中心 - expanded 右锚定时的几何中心（与 CSS 联动：width min(880, vw-120)、right 28px）
+    if (expanded && main && main.getBoundingClientRect) {
+      var mr = main.getBoundingClientRect();
+      var w = Math.min(880, window.innerWidth - 120);
+      var anchorCenter = window.innerWidth - 28 - w / 2;
+      var dx = Math.round((mr.left + mr.right) / 2 - anchorCenter);
+      bubble.style.translate = dx + "px 0";
+    } else if (bubble) {
+      bubble.style.translate = "";
+    }
   }
   function isExpanded() { return bubble && bubble.classList.contains("nb-bubble--expanded"); }
   function closeBubble(point) {
     if (!bubble) { resetBubbleState(); return; }
+    exitMini(); // 清迷你卡（滚动定时器/class/内联高度），防下次打开残留
     viewToken++;
     // 新注释结果态：滑过底 = 认可；关闭气泡的这一刻统一保存一次
     if (resultState && !resultState.existingId) {
@@ -550,6 +667,7 @@
         bubble.style.transition = "";
         bubble.style.transform = "";
         bubble.style.opacity = "";
+        resetExpandedState(); // 退出动画结束后重置放大态（动画期间保持原尺寸，避免收跳）
       }
     }, 280);
   }
@@ -603,6 +721,47 @@
     thinkTimer = makeRoller(think, THINK_LINES_ASK);
   }
   function stopThink() { if (thinkTimer) { thinkTimer(); thinkTimer = null; } }
+
+  // ---- 思考中迷你态：气泡收缩成右上角小卡（不打扰阅读），完成后飞回展开 ----
+  // 高度走 FLIP（auto↔数值不可过渡，两侧都用数值，结束后释放回 auto）；宽度交给 CSS transition
+  function miniHTML() {
+    return '<div class="nb-mini-think">' +
+      '<div class="nb-mini-label">思考中</div>' +
+      '<div class="nb-mini-roll"><div class="nb-think-window nb-mini-window"><div class="nb-think-track"></div></div></div>' +
+      '<div class="nb-think-dots"><i></i><i></i><i></i></div>' +
+      "</div>";
+  }
+  function enterMini() {
+    if (!bubble || !bubble.classList.contains("nb-show")) return;
+    if (bubble.classList.contains("nb-mini")) return;
+    stopThink();
+    var h0 = bubble.offsetHeight, w0 = bubble.offsetWidth;
+    bubble.classList.add("nb-mini");
+    bubbleBody.innerHTML = miniHTML();
+    var h1 = bubble.offsetHeight;
+    bubble.style.transition = "none";
+    bubble.style.height = h0 + "px";
+    bubble.style.width = w0 + "px";
+    void bubble.offsetWidth; // 冻结在旧尺寸后再放行过渡
+    bubble.style.transition = "";
+    bubble.style.height = h1 + "px";
+    bubble.style.width = ""; // 回到 .nb-mini 的 CSS 宽度 → 宽度过渡
+    miniRollStop = makeRoller(bubbleBody, THINK_LINES_ASK);
+    setTimeout(function () { if (bubble) bubble.style.height = ""; }, 420);
+  }
+  function exitMini() {
+    if (miniTimer) { clearTimeout(miniTimer); miniTimer = null; }
+    if (miniRollStop) { miniRollStop(); miniRollStop = null; }
+    if (!bubble || !bubble.classList.contains("nb-mini")) return;
+    var h0 = bubble.offsetHeight, w0 = bubble.offsetWidth;
+    bubble.classList.remove("nb-mini");
+    bubble.style.transition = "none";
+    bubble.style.height = h0 + "px";
+    bubble.style.width = w0 + "px";
+    void bubble.offsetWidth;
+    bubble.style.transition = "";
+    bubble.style.width = ""; // 宽度过渡回 392px；高度交给 viewResult 的内容扫开
+  }
 
   function setProcessing(on) {
     if (!pending) return;
@@ -691,6 +850,11 @@
     if (STATIC_MODE) { toast("静态演示不支持 AI 生成 · clone 仓库本地运行即可体验"); return; }
     viewLoading();
     setProcessing(true);
+    // 思考收进右上角迷你卡：等内容过渡（170ms）落位后再收缩；
+    // 触发前确认气泡里仍是本次的思考态（期间用户点开别的注释时跳过，不误伤新内容）
+    miniTimer = setTimeout(function () {
+      if (bubbleBody && bubbleBody.querySelector(".nb-think")) enterMini();
+    }, 240);
     var seq = ++explainSeq;
     var ctrl = new AbortController();
     explainCtrl = ctrl;
@@ -698,7 +862,7 @@
     try {
       // 注入文件上下文：先读已勾选文件
       var files = pendingFiles.length ? await readFiles(pendingFiles) : [];
-      var res = await fetch("/api/explain", {
+      var res = await fetch(CONTEXT.projectId ? projectBookPath("explain") : "/api/explain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -717,13 +881,18 @@
       explainCtrl = null;
       stopThink();
       setProcessing(false);
+      exitMini(); // 迷你卡飞回展开
       viewResult(data.content, question, null);
+      // 生成即保存：不再等"滑到底/关闭气泡"，落地为已有注释（编辑/晋升/删除随即全部可用）
+      var saved = saveNote(null, question, data.content, false, { silent: true });
+      if (saved && resultState) resultState.existingId = saved.id;
     } catch (err) {
       clearTimeout(t);
       if (seq !== explainSeq) return;
       explainCtrl = null;
       stopThink();
       setProcessing(false);
+      exitMini(); // 失败也回到大卡显示重试
       bubbleBody.innerHTML =
         '<div class="nb-row"><button class="nb-btn" id="nbRetry">再试一次</button></div>';
       var msg = err.name === "AbortError" ? "超时了，再试一次" : err.message;
@@ -740,18 +909,18 @@
       body: body,
       editing: false,
       promoted: note ? !!note.promoted : false,
+      fresh: !existingId, // 刚生成的才播扫开动画（自动保存会把 existingId 立即补上，不能用它判断）
       quote: (pending && pending.quote) || (note ? note.quote : "") || "",
       sectionTitle: (pending && pending.sectionTitle) || (note ? note.sectionTitle : "") || "",
     };
     resultReachedBottom = false;
-    setPenVisible(true);
     // 衔接动画：旧内容（思考态/清单）模糊上移淡出 → 新结果连续扫开（仅首次生成）
     bubbleBody.classList.add("nb-body-exit");
     setTimeout(function () {
       if (tok !== viewToken) return;
       bubbleBody.classList.remove("nb-body-exit");
       paintResult();
-      if (!existingId) revealSweep(); // 打开旧注释不播，只有刚生成的才播
+      if (resultState && resultState.fresh) revealSweep(); // 打开旧注释不播，只有刚生成的才播
     }, 170);
   }
 
@@ -825,6 +994,12 @@
   function paintResult() {
     var s = resultState;
     if (!s) return;
+    // 释放迷你态/FLIP 残留的壳高锁：过渡到内容实际高度后交还 auto（否则内容被锁在小框里滚动）
+    if (bubble && bubble.style.height) {
+      var h1 = bubble.scrollHeight;
+      bubble.style.height = h1 + "px";
+      setTimeout(function () { if (bubble) bubble.style.height = ""; }, 420);
+    }
     var isNew = !s.existingId;
     // 编辑态：所见即所得（飞书云文档式）——渲染后的 Markdown 直接可编辑，保存时转回 md 源
     var bodyHtml = s.editing
@@ -833,11 +1008,13 @@
     bubbleBody.innerHTML =
       bodyHtml +
       '<div class="nb-row">' +
+      '<button class="nb-icon-btn' + (s.editing ? " nb-editing" : "") + '" id="nbEditBtn" data-tip="' + (s.editing ? "完成编辑" : "编辑") + '">' + PEN_SVG + "</button>" +
       '<button class="nb-icon-btn" id="nbPromote" data-tip="' + (isNew ? "添加为正文" : (s.promoted ? "从正文移除" : "添加为正文")) + '">' + (s.promoted ? BOOKMARK_SVG_FILLED : BOOKMARK_SVG) + "</button>" +
       (isNew ? "" : '<button class="nb-icon-btn danger" id="nbDelete" data-tip="删除">' + TRASH_SVG + "</button>") +
       '<button class="nb-icon-btn nb-more-btn" id="nbMore" data-tip="在末尾补充">＋</button>' +
       "</div>";
 
+    bubbleBody.querySelector("#nbEditBtn").addEventListener("click", function () { toggleEdit(); });
     bubbleBody.querySelector("#nbPromote").addEventListener("click", function () {
       if (isNew) saveNote(null, s.question, currentBody(), true);
       else saveNote(s.existingId, s.question, currentBody(), !s.promoted);
@@ -1014,7 +1191,7 @@
       positionAskPop();
     }
     try {
-      var res = await fetch("/api/followup", {
+      var res = await fetch(CONTEXT.projectId ? projectBookPath("followup") : "/api/followup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1158,7 +1335,6 @@
     // diff 模式锁定：收掉所有追问入口，此状态只允许「确认覆盖 / 返回上一句话」
     hideFloat();
     hideSubchip();
-    setPenVisible(false);
     box.querySelectorAll("[data-dview]").forEach(function (b) {
       if (b.getAttribute("data-dview") === view0) b.classList.add("active");
       b.addEventListener("click", function () {
@@ -1178,12 +1354,21 @@
 
     box.querySelector(".nb-diff-apply").addEventListener("click", function () {
       s.body = s.__diffModified;
-      clearDiff();
-      resultReachedBottom = false;
-      paintResult();
-      if (s.existingId) updateExisting();
-      if (bubbleAtBottom()) resultReachedBottom = true;
-      toast("已应用");
+      // 原位替换动画：旧段落塌缩消失 → 新段落原位展开（下方文字自然让位）
+      var inPlace = applyDiffInPlace(s);
+      box.classList.add("nb-absorbing");
+      box.style.maxHeight = box.offsetHeight + "px";
+      setTimeout(function () {
+        clearDiff();
+        if (s.existingId) updateExisting();
+        if (!inPlace) {
+          // DOM 与块对不齐 → 兜底全量替换 + 光带
+          resultReachedBottom = false;
+          paintResult();
+          flashNoteBody();
+        }
+        toast("已应用到注释");
+      }, 240);
     });
     box.querySelector(".nb-diff-revert").addEventListener("click", function () {
       revertDiff();
@@ -1244,6 +1429,99 @@
       sameCount: sameCount,
       changedCount: changedCount,
     };
+  }
+  // 原位替换动画：diff 块与现有 DOM 顶层元素一一对应时，逐段执行
+  // vanish（旧段塌缩消失）/ replace（原位变身）/ insert（新段展开插入）；same 段纹丝不动
+  function applyDiffInPlace(s) {
+    var nb = bubbleBody.querySelector(".nb-note-body");
+    if (!nb) return false;
+    var aBlocks = splitMdBlocks(s.__diffOriginal);
+    var bBlocks = splitMdBlocks(s.__diffModified);
+    var kids = Array.prototype.slice.call(nb.children);
+    if (kids.length !== aBlocks.length || kids.length === 0) return false;
+    var ops = sequenceDiff(aBlocks, bBlocks);
+    var actions = [];
+    var oldIdx = 0, i = 0, delay = 0, hasChange = false;
+    while (i < ops.length) {
+      var o = ops[i];
+      if (o.t === "same") { oldIdx++; i++; continue; }
+      hasChange = true;
+      if (o.t === "del" && i + 1 < ops.length && ops[i + 1].t === "add") {
+        actions.push({ type: "replace", el: kids[oldIdx], html: renderMarkdown(ops[i + 1].line), delay: delay });
+        i += 2; oldIdx++; delay += 160;
+      } else if (o.t === "del") {
+        actions.push({ type: "vanish", el: kids[oldIdx], delay: delay });
+        i++; oldIdx++; delay += 160;
+      } else {
+        actions.push({ type: "insert", ref: kids[oldIdx] || null, html: renderMarkdown(o.line), delay: delay, atEnd: oldIdx >= kids.length });
+        i++; delay += 160;
+      }
+    }
+    if (!hasChange) return false;
+    actions.forEach(function (a) {
+      setTimeout(function () {
+        if (a.type === "vanish") {
+          var el = a.el;
+          el.style.maxHeight = el.offsetHeight + "px";
+          el.style.overflow = "hidden";
+          void el.offsetWidth;
+          el.classList.add("nb-vanish");
+          setTimeout(function () { el.remove(); }, 340);
+        } else if (a.type === "replace") {
+          var el2 = a.el;
+          el2.style.maxHeight = el2.offsetHeight + "px";
+          el2.style.overflow = "hidden";
+          void el2.offsetWidth;
+          el2.classList.add("nb-vanish");
+          setTimeout(function () {
+            var wrapEl = document.createElement("div");
+            wrapEl.innerHTML = a.html;
+            var newEl = wrapEl.firstElementChild;
+            if (!newEl) { el2.remove(); return; }
+            newEl.style.maxHeight = "0px";
+            newEl.style.overflow = "hidden";
+            el2.parentNode.replaceChild(newEl, el2);
+            requestAnimationFrame(function () {
+              newEl.style.transition = "max-height .42s cubic-bezier(.2,.8,.2,1)";
+              newEl.style.maxHeight = newEl.scrollHeight + 60 + "px";
+              newEl.classList.add("nb-appear-fade");
+              setTimeout(function () {
+                newEl.style.maxHeight = ""; newEl.style.transition = ""; newEl.style.overflow = "";
+                newEl.classList.remove("nb-appear-fade");
+              }, 480);
+            });
+          }, 300);
+        } else {
+          var wrapEl2 = document.createElement("div");
+          wrapEl2.innerHTML = a.html;
+          var newEl2 = wrapEl2.firstElementChild;
+          if (!newEl2) return;
+          newEl2.style.maxHeight = "0px";
+          newEl2.style.overflow = "hidden";
+          if (a.ref && a.ref.parentNode === nb) nb.insertBefore(newEl2, a.ref);
+          else nb.appendChild(newEl2);
+          requestAnimationFrame(function () {
+            newEl2.style.transition = "max-height .42s cubic-bezier(.2,.8,.2,1)";
+            newEl2.style.maxHeight = newEl2.scrollHeight + 60 + "px";
+            newEl2.classList.add("nb-appear-fade");
+            setTimeout(function () {
+              newEl2.style.maxHeight = ""; newEl2.style.transition = ""; newEl2.style.overflow = "";
+              newEl2.classList.remove("nb-appear-fade");
+            }, 480);
+          });
+        }
+      }, a.delay);
+    });
+    return true;
+  }
+  // 兜底承接：光带扫过新注释（1.1s 后自清）
+  function flashNoteBody() {
+    var nb = bubbleBody.querySelector(".nb-note-body");
+    if (!nb) return;
+    nb.classList.remove("nb-flash");
+    void nb.offsetWidth;
+    nb.classList.add("nb-flash");
+    setTimeout(function () { nb.classList.remove("nb-flash"); }, 1150);
   }
   function clearDiff() {
     var d = bubbleBody.querySelector(".nb-diff");
@@ -1306,13 +1584,14 @@
       chip.classList.add("nb-show");
     }, 0);
   }
-  function saveNote(existingId, question, body, promote) {
-    resultState = null;
+  function saveNote(existingId, question, body, promote, opts) {
+    opts = opts || {};
+    if (!opts.silent) resultState = null; // silent（生成即保存）时保留结果态，由调用方升级 existingId
     resultReachedBottom = false;
     var note;
     if (existingId) {
       note = notes.find(function (n) { return n.id === existingId; });
-      if (!note) return;
+      if (!note) return null;
       note.body = body;
       note.question = note.question || question;
       if (promote !== undefined) note.promoted = promote;
@@ -1331,39 +1610,31 @@
       notes.push(note);
     }
     persist(note).then(function () {
-      clearMarkers(note.id);
-      var block = findBlock(note);
-      if (block) {
-        block.classList.add("nb-block");
-        block.setAttribute("data-note", note.id);
-        markQuote(block, note.quote, note.id);
-        anchorMap = anchorMap.filter(function (x) { return x.note.id !== note.id; });
-        anchorMap.push({ el: block, note: note });
-        anchorMap.sort(function (a, b) { return (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1; });
-      }
-      renderPromoted(note);
-      updateNav();
-      closeBubble();
-      toast(note.promoted ? "已晋升为正文" : "已记下");
+      var saved = notes.find(function (n) { return n.id === note.id; }) || note;
+      applyNotePlacement(saved);
       pending = null;
+      if (opts.silent) { toast("已记下"); return; } // 自动保存也要给"已落盘"的确认感
+      closeBubble();
+      toast(saved.promoted ? "已晋升为正文" : "已记下");
     });
+    return note;
   }
   function deleteNote(id) {
     resultState = null;
     if (STATIC_MODE) {
       notes = notes.filter(function (n) { return n.id !== id; });
-      try { localStorage.setItem("shelf-notes-" + BOOK, JSON.stringify(notes)); } catch (e) {}
+      try { localStorage.setItem(localNotesKey(), JSON.stringify(notes)); } catch (e) {}
       clearMarkers(id);
-      anchorMap = anchorMap.filter(function (x) { return x.note.id !== id; });
+      removeAnchor(id);
       updateNav();
       closeBubble();
       toast("已删除（本地）");
       return;
     }
-    fetch("/api/notes?book=" + BOOK + "&id=" + encodeURIComponent(id), { method: "DELETE" }).then(function (r) { return r.json(); }).then(function (d) {
+    fetch(projectNotesPath() + (CONTEXT.projectId ? "?id=" : "&id=") + encodeURIComponent(id), { method: "DELETE" }).then(function (r) { return r.json(); }).then(function (d) {
       notes = d.notes;
       clearMarkers(id);
-      anchorMap = anchorMap.filter(function (x) { return x.note.id !== id; });
+      removeAnchor(id);
       updateNav();
       closeBubble();
       toast("已删除");
@@ -1372,12 +1643,12 @@
   function persistLocal(note) {
     var idx = notes.findIndex(function (n) { return n.id === note.id; });
     if (idx >= 0) notes[idx] = note; else notes.push(note);
-    try { localStorage.setItem("shelf-notes-" + BOOK, JSON.stringify(notes)); } catch (e) {}
+    try { localStorage.setItem(localNotesKey(), JSON.stringify(notes)); } catch (e) {}
     return Promise.resolve();
   }
   function persist(note) {
     if (STATIC_MODE) return persistLocal(note);
-    return fetch("/api/notes", {
+    return fetch(projectNotesPath(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ book: BOOK, note: note }),
@@ -1387,7 +1658,7 @@
 
   function viewNote(id, fromEl) {
     var note = notes.find(function (n) { return n.id === id; });
-    if (!note) return;
+    if (!note || note.promoted) return;
     setActive(id);
     openBubble(titleFor(note.quote, note.sectionTitle || "旁注"), fromEl);
     viewResult(note.body, note.question, id);
@@ -1513,9 +1784,315 @@
       if (!t || !t.closest) return;
       if (bubble.contains(t)) return;
       if (t.closest(".nb-nav") || t.closest(".nb-float") || t.closest(".nb-subchip")) return;
+      if (t.closest(".nb-search-panel")) return;
       if (t.closest("mark.nb-quote")) return;
       closeBubble({ x: e.clientX, y: e.clientY });
     });
+  }
+
+  // ================= 全局问答 / 搜索 =================
+  function globalSearchTerms(question) {
+    var q = (question || "").toLowerCase();
+    var terms = [];
+    function add(x) {
+      if (!x) return;
+      x = String(x).toLowerCase().trim();
+      if (x && terms.indexOf(x) < 0) terms.push(x);
+    }
+    var raw = q.match(/[a-z0-9_.-]+|[\u4e00-\u9fa5]{2,}/g) || [];
+    raw.forEach(add);
+    [
+      { keys: ["动效", "动画", "过渡", "motion", "滑动"], vals: ["动效", "动画", "过渡", "缓动", "滑动", "transform", "transition", "translate", "scroll"] },
+      { keys: ["演算", "计算", "怎么算"], vals: ["计算", "演算", "clamp", "状态", "坐标", "transform"] },
+      { keys: ["设计", "怎么出来", "怎么做"], vals: ["设计", "实现", "效果", "代码", "逐块拆解"] },
+      { keys: ["css", "样式", "外观"], vals: ["css", "styles.css", "外观", "变量", "响应式"] },
+      { keys: ["js", "javascript", "交互", "行为"], vals: ["javascript", "app.js", "行为", "事件", "状态", "渲染"] },
+    ].forEach(function (group) {
+      if (group.keys.some(function (k) { return q.indexOf(k) >= 0; })) group.vals.forEach(add);
+    });
+    return terms.slice(0, 18);
+  }
+  function collectSearchMatches(question) {
+    collectBlocks();
+    var terms = globalSearchTerms(question);
+    if (!terms.length) return [];
+    var scored = [];
+    blocks.forEach(function (el, i) {
+      var title = sectionTitle(el);
+      var text = norm(el.textContent);
+      var hay = (title + "\n" + text).toLowerCase();
+      var score = 0;
+      terms.forEach(function (term) {
+        if (!term) return;
+        if ((title || "").toLowerCase().indexOf(term) >= 0) score += 5;
+        if (hay.indexOf(term) >= 0) score += 2;
+      });
+      if (score <= 0) return;
+      var sec = el.closest(".chapter");
+      scored.push({
+        el: el,
+        order: i,
+        score: score,
+        section: sec ? sec.id : "",
+        anchor: sec ? ("#" + sec.id) : "",
+        sectionTitle: title,
+        text: cut(text, 900),
+      });
+    });
+    scored.sort(function (a, b) { return b.score - a.score || a.order - b.order; });
+    return scored.slice(0, 6);
+  }
+  function searchPayload(matches) {
+    return matches.map(function (m, i) {
+      return { index: i, section: m.section, anchor: m.anchor, sectionTitle: m.sectionTitle, text: m.text };
+    });
+  }
+  function ensureGlobalSearchPanel() {
+    if (searchPanel) return searchPanel;
+    searchPanel = document.createElement("div");
+    searchPanel.className = "nb-search-panel";
+    searchPanel.setAttribute("aria-hidden", "true");
+    searchPanel.setAttribute("inert", "");
+    searchPanel.innerHTML =
+      '<form class="nb-search-form">' +
+        '<input id="nbGlobalSearchInput" type="text" autocomplete="off" placeholder="问这本书：比如动效是怎么设计出来的？">' +
+        '<button class="nb-search-go" type="submit" aria-label="提问">↵</button>' +
+        '<button class="nb-search-close" type="button" aria-label="关闭">×</button>' +
+      '</form>' +
+      '<div class="nb-search-output" aria-live="polite"></div>';
+    document.body.appendChild(searchPanel);
+    searchPanel.querySelector(".nb-search-close").addEventListener("click", closeGlobalSearch);
+    searchPanel.querySelector(".nb-search-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      submitGlobalSearch();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && searchPanel && searchPanel.classList.contains("nb-show")) {
+        e.preventDefault();
+        closeGlobalSearch();
+      }
+    });
+    return searchPanel;
+  }
+  function setupGlobalSearch() {
+    ensureGlobalSearchPanel();
+    var btn = document.getElementById("nbSearchBtn");
+    if (!btn || btn.__nbSearchBound) return;
+    btn.__nbSearchBound = true;
+    btn.addEventListener("click", function () {
+      if (searchPanel.classList.contains("nb-show")) closeGlobalSearch();
+      else openGlobalSearch();
+    });
+  }
+  function openGlobalSearch() {
+    ensureGlobalSearchPanel();
+    hideFloat();
+    closeAskPop();
+    searchPanel.removeAttribute("inert");
+    searchPanel.setAttribute("aria-hidden", "false");
+    searchPanel.classList.add("nb-show");
+    var btn = document.getElementById("nbSearchBtn");
+    if (btn) btn.classList.add("is-active");
+    setTimeout(function () {
+      var input = searchPanel.querySelector("#nbGlobalSearchInput");
+      if (input) input.focus();
+    }, 40);
+  }
+  function closeGlobalSearch() {
+    if (!searchPanel) return;
+    if (searchCtrl) { try { searchCtrl.abort(); } catch (e) {} searchCtrl = null; }
+    searchPanel.classList.remove("nb-show", "nb-loading", "nb-search-committing");
+    var out = searchPanel.querySelector(".nb-search-output");
+    if (out) out.classList.remove("nb-search-committing");
+    searchPanel.setAttribute("aria-hidden", "true");
+    searchPanel.setAttribute("inert", "");
+    var btn = document.getElementById("nbSearchBtn");
+    if (btn) btn.classList.remove("is-active");
+  }
+  function renderSearchLoading(question, matches) {
+    var out = searchPanel.querySelector(".nb-search-output");
+    out.innerHTML =
+      '<div class="nb-search-thinking">' +
+        '<span>正在翻书</span><i></i><i></i><i></i>' +
+      '</div>' +
+      (matches.length ? '<p class="nb-search-hint">先找到了 ' + matches.length + ' 处可能相关的位置。</p>' : '<p class="nb-search-hint">书里暂时没有明显命中，我会按项目常识补充。</p>');
+    searchPanel.classList.add("nb-loading");
+  }
+  async function submitGlobalSearch() {
+    var input = searchPanel.querySelector("#nbGlobalSearchInput");
+    var question = input ? input.value.trim() : "";
+    if (!question) return;
+    if (searchCtrl) { try { searchCtrl.abort(); } catch (e) {} searchCtrl = null; }
+    searchMatches = collectSearchMatches(question);
+    renderSearchLoading(question, searchMatches);
+    if (STATIC_MODE) {
+      renderSearchResult({
+        matchType: searchMatches.length ? "partial" : "none",
+        jumpIndex: searchMatches.length ? 0 : null,
+        jumpTitle: searchMatches[0] ? searchMatches[0].sectionTitle : "",
+        question: question,
+        answer: searchMatches.length
+          ? "静态演示不能调用模型，但我先替你找到了书里可能相关的位置。点下面的按钮可以跳过去继续看。"
+          : "静态演示不能调用模型，也没有在当前书里找到明显相关段落。请本地运行服务后再问，我会给你补充解释。",
+      });
+      return;
+    }
+    var ctrl = new AbortController();
+    searchCtrl = ctrl;
+    try {
+      var res = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ book: BOOK, question: question, matches: searchPayload(searchMatches) }),
+        signal: ctrl.signal,
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error && data.error.message ? data.error.message : "搜索失败");
+      if (searchCtrl === ctrl) searchCtrl = null;
+      data.question = question;
+      renderSearchResult(data);
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      searchCtrl = null;
+      renderSearchResult({
+        matchType: searchMatches.length ? "partial" : "none",
+        jumpIndex: searchMatches.length ? 0 : null,
+        jumpTitle: searchMatches[0] ? searchMatches[0].sectionTitle : "",
+        question: question,
+        answer: "模型这次没有接上。我先把书里最可能相关的位置放在下面，你可以跳过去看；也可以换个问法再试一次。\n\n错误：" + (err.message || "搜索失败"),
+      });
+    }
+  }
+  function searchTypeLabel(type, hit) {
+    if (type === "exact") return "书里写到了";
+    if (type === "partial" && hit) return "书里有相关线索";
+    return "书里没有明显写到";
+  }
+  function renderSearchResult(data) {
+    searchPanel.classList.remove("nb-loading");
+    var type = data && data.matchType ? data.matchType : (searchMatches.length ? "partial" : "none");
+    if (["exact", "partial", "none"].indexOf(type) < 0) type = searchMatches.length ? "partial" : "none";
+    var jumpIndex = Number.isInteger(data && data.jumpIndex) ? data.jumpIndex : null;
+    if ((type === "exact" || type === "partial") && (jumpIndex === null || !searchMatches[jumpIndex]) && searchMatches.length) jumpIndex = 0;
+    if (type === "none") jumpIndex = null;
+    var hit = jumpIndex !== null ? searchMatches[jumpIndex] : null;
+    var answer = (data && data.answer) || "暂时没有生成回答。";
+    var input = searchPanel.querySelector("#nbGlobalSearchInput");
+    var question = (data && data.question) || (input ? input.value.trim() : "");
+    var canInsert = type !== "exact";
+    searchLast = {
+      type: type,
+      jumpIndex: jumpIndex,
+      jumpTitle: (data && data.jumpTitle) || (hit && hit.sectionTitle) || "",
+      hit: hit,
+      question: question,
+      answer: answer,
+    };
+    var out = searchPanel.querySelector(".nb-search-output");
+    out.innerHTML =
+      '<div class="nb-search-status ' + esc2(type) + '">' +
+        '<span>' + esc2(searchTypeLabel(type, hit)) + "</span>" +
+        (hit ? '<b>' + esc2(data.jumpTitle || hit.sectionTitle || "相关位置") + "</b>" : "") +
+      "</div>" +
+      '<div class="nb-search-answer">' + renderMarkdown(answer) + "</div>" +
+      (hit || canInsert ? '<div class="nb-search-actions">' +
+        (hit ? '<button class="nb-search-jump" type="button" data-jump-index="' + jumpIndex + '">确认跳到这里</button>' : "") +
+        (canInsert ? '<button class="nb-search-insert" type="button">插成补充卡</button>' : "") +
+      "</div>" : "");
+    Array.from(out.querySelectorAll(".nb-search-answer > *")).forEach(function (el, i) {
+      el.style.setProperty("--i", i);
+      el.classList.add("nb-search-line");
+    });
+    out.querySelectorAll("[data-jump-index]").forEach(function (btn) {
+      btn.addEventListener("click", function () { jumpToSearchMatch(Number(btn.getAttribute("data-jump-index"))); });
+    });
+    var insertBtn = out.querySelector(".nb-search-insert");
+    if (insertBtn) insertBtn.addEventListener("click", function () { insertSearchCard(insertBtn); });
+  }
+  function currentVisibleBlock() {
+    collectBlocks();
+    var center = Math.max(120, window.innerHeight * 0.42);
+    var best = null;
+    var bestScore = Infinity;
+    blocks.forEach(function (el) {
+      var rect = el.getBoundingClientRect();
+      if (rect.bottom < 72 || rect.top > window.innerHeight - 72) return;
+      var mid = (Math.max(rect.top, 0) + Math.min(rect.bottom, window.innerHeight)) / 2;
+      var score = Math.abs(mid - center);
+      if (score < bestScore) { best = el; bestScore = score; }
+    });
+    return best || blocks[0] || null;
+  }
+  function resolveSearchInsertTarget() {
+    if (searchLast && searchLast.hit && searchLast.hit.el && main.contains(searchLast.hit.el)) return searchLast.hit.el;
+    return currentVisibleBlock();
+  }
+  function searchCardBody(result) {
+    var q = norm(result && result.question) || "全局补充";
+    var answer = norm(result && result.answer) ? result.answer : "这个点目前还没有生成完整补充。";
+    var lead = result && result.type === "partial"
+      ? "书里已经有一些线索，我把没有讲透的部分单独补成一张卡。"
+      : "书里没有明显写到这个点，我把它作为独立补充放在这里。";
+    return ["### " + q, "", "> " + lead, "", answer].join("\n").trim();
+  }
+  function playSearchInsertMotion(btn, block) {
+    if (searchPanel) {
+      searchPanel.classList.add("nb-search-committing");
+      var out = searchPanel.querySelector(".nb-search-output");
+      if (out) {
+        out.classList.remove("nb-search-committing");
+        void out.offsetWidth;
+        out.classList.add("nb-search-committing");
+      }
+    }
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add("nb-search-inserting");
+      btn.textContent = "插入中";
+    }
+    if (block) {
+      block.classList.remove("nb-search-insert-anchor");
+      void block.offsetWidth;
+      block.classList.add("nb-search-insert-anchor");
+      setTimeout(function () { block.classList.remove("nb-search-insert-anchor"); }, 720);
+    }
+  }
+  function insertSearchCard(btn) {
+    if (!searchLast) return;
+    var block = resolveSearchInsertTarget();
+    if (!block) { toast("没有找到合适的插入位置"); return; }
+    playSearchInsertMotion(btn, block);
+    var sec = block.closest(".chapter");
+    var note = {
+      id: "n" + Date.now().toString(36),
+      section: sec ? sec.id : "",
+      blockText: norm(block.textContent),
+      quote: "",
+      sectionTitle: sectionTitle(block) || searchLast.jumpTitle || "全局补充",
+      question: searchLast.question || "全局补充",
+      body: searchCardBody(searchLast),
+      promoted: true,
+      source: "global-search",
+      createdAt: today(),
+    };
+    notes.push(note);
+    persist(note).then(function () {
+      var saved = notes.find(function (n) { return n.id === note.id; }) || note;
+      applyNotePlacement(saved, { animate: "insert" });
+      var card = main.querySelector('.nb-promoted[data-note="' + saved.id + '"]');
+      if (card) card.scrollIntoView({ block: "center", behavior: "smooth" });
+      setTimeout(closeGlobalSearch, 180);
+      toast("已插成补充卡");
+    });
+  }
+  function jumpToSearchMatch(index) {
+    var hit = searchMatches[index];
+    if (!hit || !hit.el) return;
+    hit.el.scrollIntoView({ block: "center", behavior: "smooth" });
+    hit.el.classList.remove("nb-search-target");
+    void hit.el.offsetWidth;
+    hit.el.classList.add("nb-search-target");
+    setTimeout(function () { hit.el.classList.remove("nb-search-target"); }, 1400);
   }
 
   // ================= 导航 =================
@@ -1529,11 +2106,14 @@
       '<span class="nb-count" id="nbCount">0 / 0</span>' +
       '<button id="nbNext" title="下一处">›</button>' +
       '<span class="nb-divider"></span>' +
-      '<button id="nbListBtn" title="全部注释">☰</button>';
+      '<button id="nbListBtn" title="全部注释">☰</button>' +
+      '<span class="nb-divider"></span>' +
+      '<button id="nbSearchBtn" title="问这本书" aria-label="问这本书">' + SEARCH_SVG + "</button>";
     document.body.appendChild(nav);
     nav.querySelector("#nbPrev").addEventListener("click", function () { jump(-1); });
     nav.querySelector("#nbNext").addEventListener("click", function () { jump(1); });
     nav.querySelector("#nbListBtn").addEventListener("click", function (e) { viewList(e.target); });
+    setupGlobalSearch();
     function jump(delta) {
       if (!anchorMap.length) return;
       var next = (activeIdx() + delta + anchorMap.length) % anchorMap.length;
@@ -1549,21 +2129,21 @@
   setupDismiss();
   setupNav();
   buildBubble();
-  fetch("/api/notes?book=" + BOOK)
+  fetch(projectNotesPath())
     .then(function (r) { if (!r.ok) throw new Error("static"); return r.json(); })
     .then(function (list) { notes = list || []; refreshAll(); })
     .catch(function () {
       STATIC_MODE = true;
       var loadFromLocalStorage = function () {
-        try { notes = JSON.parse(localStorage.getItem("shelf-notes-" + BOOK) || "[]"); } catch (e) { notes = []; }
+        try { notes = JSON.parse(localStorage.getItem(localNotesKey()) || "[]"); } catch (e) { notes = []; }
         refreshAll();
         toast("静态演示：阅读与本地批注可用 · AI 生成请本地运行");
       };
       var saved = null;
-      try { saved = localStorage.getItem("shelf-notes-" + BOOK); } catch (e) {}
+      try { saved = localStorage.getItem(localNotesKey()); } catch (e) {}
       if (saved) { try { notes = JSON.parse(saved); } catch (e) { notes = []; } refreshAll(); return; }
       // 首次访问：读随书附带的示例注释
-      fetch("data/" + BOOK + ".json")
+      fetch(CONTEXT.staticNotesUrl || ("data/" + BOOK + ".json"))
         .then(function (r) { if (!r.ok) throw new Error("none"); return r.json(); })
         .then(function (list) { notes = list || []; refreshAll(); })
         .catch(loadFromLocalStorage);

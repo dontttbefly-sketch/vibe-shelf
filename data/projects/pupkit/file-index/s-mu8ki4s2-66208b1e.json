@@ -1,0 +1,18 @@
+[
+  {
+    "path": "assets/styles.css",
+    "startLine": 1,
+    "endLine": 13,
+    "text": "/* 图拉斯首页样式（节选） */\n:root {\n  --bg: #f5f1ea;\n  --ink: #151b1e;\n  --clay: #ce7b51;\n  --paper: #fffdf7;\n  --line: rgba(21, 27, 30, 0.12);\n}\n\nbody[data-page=\"home\"] .hero::after { … }\n\n.card.hidden { display: none; }\n.card.shown  { display: block; }",
+    "language": "css",
+    "hash": "ed3f2856daee5111326b0f323cc2ac3b65fbd5de5afa192ed2072b0fe76e5763"
+  },
+  {
+    "path": "index.html",
+    "startLine": 1,
+    "endLine": 19,
+    "text": "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>图拉斯 · 首页骨架</title>\n  <link rel=\"stylesheet\" href=\"assets/styles.css?v=20260524-route-solid-hold2-fix\">\n</head>\n<body data-page=\"home\">\n  <header class=\"topbar\">\n    <nav class=\"nav\">…</nav>\n  </header>\n  <section class=\"hero\">\n    <h1>买手机壳，先看图拉斯</h1>\n  </section>\n  <section class=\"product-list\" data-product-grid></section>\n  <footer class=\"footer\">…</footer>\n  <script src=\"assets/main.js?v=20260524-route-solid-hold2-fix\"></script>\n</body>\n</html>",
+    "language": "html",
+    "hash": "977b9b517f6bc9c7fc6a3e68d39f195a24e1c8b0471da4bc936080ea4f414226"
+  }
+]
