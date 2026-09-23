@@ -51,6 +51,7 @@
   var searchCtrl = null;
   var searchMatches = [];
   var searchLast = null;
+  var MAX_SELECTION_QUOTE_CHARS = 4000;
   // "追问这段"chip 跟随文字：滚动时按活 range 重算（末行末字右缘下方）
   function positionSubchip() {
     if (!subchip || !subchipRange) return;
@@ -521,7 +522,7 @@
       var sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) return;
       var text = sel.toString().trim();
-      if (!text || text.length > 300) return;
+      if (!text || text.length > MAX_SELECTION_QUOTE_CHARS) return;
       var node = sel.anchorNode;
       var el = node && (node.nodeType === 3 ? node.parentElement : node);
       if (!el) return;
@@ -1561,7 +1562,7 @@
       if (!el || !bubbleBody.contains(el)) return;
       if (el.closest("#nbEdit")) return;
       var text = sel.toString().trim();
-      if (!text || text.length > 300) return;
+      if (!text || text.length > MAX_SELECTION_QUOTE_CHARS) return;
       var range = sel.getRangeAt(0);
       var rect = range.getBoundingClientRect();
       if (!rect || rect.height === 0) return;
@@ -1719,7 +1720,7 @@
         var sel = window.getSelection();
         if (!sel || sel.isCollapsed || !sel.rangeCount) return;
         var quote = sel.toString().trim();
-        if (!quote || quote.length > 300) return;
+        if (!quote || quote.length > MAX_SELECTION_QUOTE_CHARS) return;
         var node = sel.anchorNode;
         var host = node && (node.nodeType === 3 ? node.parentElement : node);
         host = host && host.closest ? host.closest(BLOCK_SEL) : null;

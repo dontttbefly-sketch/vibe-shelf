@@ -33,3 +33,12 @@ test("reader includes the matured single-page annotation interactions", () => {
   assert.match(styles, /@keyframes nbPromotedInserted/);
   assert.match(styles, /@keyframes nbSearchCommit/);
 });
+
+test("reader allows long code selections to open annotation entry", () => {
+  const source = fs.readFileSync("public/notes.js", "utf8");
+
+  assert.match(source, /MAX_SELECTION_QUOTE_CHARS\s*=\s*4000/);
+  assert.match(source, /quote\.length > MAX_SELECTION_QUOTE_CHARS/);
+  assert.match(source, /text\.length > MAX_SELECTION_QUOTE_CHARS/);
+  assert.doesNotMatch(source, /(?:quote|text)\.length > 300/);
+});
