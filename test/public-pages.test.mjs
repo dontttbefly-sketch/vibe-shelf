@@ -251,3 +251,16 @@ test("dark reader theme covers the native book header chrome", () => {
     /html\[data-theme="dark"\]\s+body\[data-shelf-reader\]\s+\.book-header\s+\.glyph\s*\{[^}]*border-color:\s*rgba\(238,\s*231,\s*221,\s*\.74\)/s,
   );
 });
+
+test("reader header copy leaves room for the floating top controls", () => {
+  const readerStyles = fs.readFileSync("public/notes.css", "utf8");
+
+  assert.match(
+    readerStyles,
+    /body\[data-shelf-reader\]\s+\.book-header\s*\{[^}]*padding-right:\s*clamp\(360px,\s*24vw,\s*460px\)/s,
+  );
+  assert.match(
+    readerStyles,
+    /body\[data-shelf-reader\]\s+\.book-header\s+\.sub\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/s,
+  );
+});
