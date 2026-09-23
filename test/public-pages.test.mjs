@@ -236,3 +236,18 @@ test("theme toggle is painted after it is mounted", () => {
   assert.equal(button.getAttribute("aria-label"), "切换到日间模式");
   assert.equal(button.querySelector("[data-theme-text]").textContent, "日间");
 });
+
+test("dark reader theme covers the native book header chrome", () => {
+  const readerStyles = fs.readFileSync("public/notes.css", "utf8");
+  const pupkitReader = fs.readFileSync("public/projects/pupkit/books/main/index.html", "utf8");
+
+  assert.match(pupkitReader, /\.book-header\s*\{[^}]*background:\s*rgba\(251,\s*247,\s*237,\s*0\.92\)/s);
+  assert.match(
+    readerStyles,
+    /html\[data-theme="dark"\]\s+body\[data-shelf-reader\]\s+\.book-header\s*\{[^}]*background:\s*rgba\(18,\s*16,\s*14,\s*\.92\)/s,
+  );
+  assert.match(
+    readerStyles,
+    /html\[data-theme="dark"\]\s+body\[data-shelf-reader\]\s+\.book-header\s+\.glyph\s*\{[^}]*border-color:\s*rgba\(238,\s*231,\s*221,\s*\.74\)/s,
+  );
+});

@@ -19,6 +19,25 @@ html[data-theme="dark"] {
   --lemon: #e0c76a;
 }
 
+html[data-theme="dark"] body[data-shelf-reader] .book-header {
+  background: rgba(18, 16, 14, .92);
+  border-bottom-color: rgba(238, 231, 221, .10);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .36);
+}
+
+html[data-theme="dark"] body[data-shelf-reader] .book-header .glyph {
+  border-color: rgba(238, 231, 221, .74);
+  color: rgba(238, 231, 221, .86);
+}
+
+html[data-theme="dark"] body[data-shelf-reader] .book-header h1 {
+  color: rgba(238, 231, 221, .90);
+}
+
+html[data-theme="dark"] body[data-shelf-reader] .book-header .sub {
+  color: rgba(238, 231, 221, .48);
+}
+
 /* ---- 阅读器外层：进场与低存在感返回书架 ---- */
 body[data-shelf-reader] .book-main {
   animation: shelfReaderArrive 260ms cubic-bezier(.16, 1, .3, 1) 40ms backwards;
