@@ -65,8 +65,7 @@ vibe-shelf/
 │   ├── books/<书 id>/           书元数据与原始 HTML
 │   ├── notes/<书 id>.json       这本书的旁注
 │   └── explorations/            可回看的探索记录
-├── prompts/teaching-book.md     生成项目主书的提示词
-└── skills/                      WorkBuddy 可复用的 Skill 版本
+└── prompts/teaching-book.md     生成项目主书的提示词
 ```
 
 运行时新导入的项目数据和编译产物默认不会提交到 Git；仓库只保留 PUPKIT 作为可立即打开的示例。
