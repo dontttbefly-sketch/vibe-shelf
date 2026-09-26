@@ -24,10 +24,6 @@
     return storedTheme() || systemTheme();
   }
 
-  function buttonText(theme) {
-    return theme === "dark" ? "日间" : "夜间";
-  }
-
   function buttonLabel(theme) {
     return theme === "dark" ? "切换到日间模式" : "切换到夜间模式";
   }
@@ -39,9 +35,7 @@
       button.setAttribute("title", buttonLabel(theme));
       button.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
       var icon = button.querySelector("[data-theme-icon]");
-      var text = button.querySelector("[data-theme-text]");
       if (icon) icon.textContent = theme === "dark" ? "☼" : "☾";
-      if (text) text.textContent = buttonText(theme);
     });
   }
 
@@ -68,7 +62,7 @@
     button.type = "button";
     button.className = "shelf-theme-toggle";
     button.setAttribute("data-theme-toggle", "");
-    button.innerHTML = '<span data-theme-icon aria-hidden="true"></span><span data-theme-text></span>';
+    button.innerHTML = '<span data-theme-icon aria-hidden="true"></span>';
     button.addEventListener("click", toggleTheme);
     buttons.push(button);
     return button;
@@ -81,14 +75,8 @@
       return;
     }
     var topbar = document.querySelector(".shelf-topbar");
-    var breadcrumb = document.querySelector("[data-shelf-breadcrumb]");
     if (topbar) {
       topbar.appendChild(createButton());
-      updateButtons(currentTheme());
-      return;
-    }
-    if (breadcrumb) {
-      breadcrumb.appendChild(createButton());
       updateButtons(currentTheme());
     }
   }

@@ -12,11 +12,12 @@ test("PUPKIT migration is idempotent and retains existing notes", (t) => {
   const dataDir = path.join(fixtureRepo, "data");
   const publicDir = path.join(fixtureRepo, "public");
   const compiledBook = path.join(publicDir, "projects", "pupkit", "books", "main");
-  const legacyNotes = JSON.parse(fs.readFileSync("data/pupkit.json", "utf8"));
+  const liveNotesPath = path.join(dataDir, "projects", "pupkit", "notes", "main.json");
+  const liveNotes = JSON.parse(fs.readFileSync(liveNotesPath, "utf8"));
 
   // A fresh clone may retain the project data but not the generated reader or
   // the runtime project index. Migration should repair both without touching
-  // the historic PUPKIT notes.
+  // the existing PUPKIT notes.
   fs.rmSync(compiledBook, { recursive: true, force: true });
   fs.rmSync(path.join(dataDir, "projects.json"), { force: true });
 
@@ -26,15 +27,15 @@ test("PUPKIT migration is idempotent and retains existing notes", (t) => {
   assert.equal(first.id, "main");
   assert.equal(second.id, "main");
   assert.deepEqual(
-    JSON.parse(fs.readFileSync(path.join(dataDir, "projects", "pupkit", "notes", "main.json"), "utf8")),
-    legacyNotes,
+    JSON.parse(fs.readFileSync(liveNotesPath, "utf8")),
+    liveNotes,
   );
   const output = fs.readFileSync(path.join(compiledBook, "index.html"), "utf8");
   assert.match(output, /window\.SHELF_CONTEXT/);
   assert.match(output, /data-shelf-explore/);
   assert.deepEqual(
     JSON.parse(fs.readFileSync(path.join(compiledBook, "data", "main.json"), "utf8")),
-    legacyNotes,
+    liveNotes,
   );
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dataDir, "projects.json"), "utf8")).map((project) => project.id), ["pupkit"]);
 });

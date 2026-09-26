@@ -11,3 +11,4 @@ data/projects/*
 public/projects/*
 !public/projects/pupkit/
 !public/projects/pupkit/**
+.claude/

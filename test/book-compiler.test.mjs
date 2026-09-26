@@ -39,7 +39,7 @@ test("compiler injects project context and relative reader assets", (t) => {
   assert.match(html, /window\.SHELF_CONTEXT = \{"projectId":"demo","bookId":"main"/);
   assert.match(html, /href="\.\.\/\.\.\/\.\.\/\.\.\/notes\.css"/);
   assert.match(html, /src="\.\.\/\.\.\/\.\.\/\.\.\/explore\.js"/);
-  assert.match(html, /data-shelf-breadcrumb/);
+  assert.match(html, /data-shelf-reader-topbar/);
   assert.match(html, /href="\.\.\/\.\.\/\.\.\/\.\.\/index\.html#bookshelf"/);
   assert.match(html, /返回书架/);
   assert.doesNotMatch(html, /project\.html\?id/);

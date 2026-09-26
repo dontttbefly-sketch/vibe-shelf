@@ -60,19 +60,21 @@ test("reader keeps the shelf return as a quiet secondary control", () => {
 
   assert.match(compiler, /data-shelf-reader/);
   assert.match(compiler, /data-shelf-back/);
-  assert.match(readerStyles, /\[data-shelf-breadcrumb\]/);
+  assert.match(compiler, /class="shelf-topbar" data-shelf-reader-topbar/);
+  assert.match(readerStyles, /\[data-shelf-reader-topbar\]/);
   assert.match(readerStyles, /\[data-shelf-back\]/);
-  assert.match(readerStyles, /\[data-shelf-breadcrumb\]\s*\{[^}]*top: 18px;[^}]*right: 22px;[^}]*flex-direction: row-reverse;/s);
-  assert.match(readerStyles, /opacity: \.42/);
+  assert.match(readerStyles, /\[data-shelf-reader-topbar\]\s*\{[^}]*position: fixed;[^}]*top: 0;[^}]*backdrop-filter: blur\(12px\);/s);
+  assert.match(readerStyles, /\[data-shelf-reader-topbar\] \[data-shelf-book-title\]\s*\{[^}]*flex: 1;/s);
 });
 
 test("project docs describe the book-first project flow", () => {
   const readme = fs.readFileSync("README.md", "utf8");
-  const baseline = fs.readFileSync("docs/superpowers/specs/2026-09-20-knowledge-shelf-requirements-baseline.md", "utf8");
+  const agents = fs.readFileSync("AGENTS.md", "utf8");
 
   assert.match(readme, /项目是后台空间，主书是用户进入项目后的界面/);
-  assert.match(baseline, /决策 2026-09-23/);
-  assert.match(baseline, /不再把项目内页作为用户主流程/);
+  // 书架-first 的决策已沉淀进 AGENTS.md（原 baseline spec 文档已删除）
+  assert.match(agents, /项目主书是读者进入项目后的主界面/);
+  assert.match(agents, /不承担项目内页；项目点击后直接进主书/);
 });
 
 test("site supports a persisted dark theme across shelf and reader pages", () => {
@@ -124,11 +126,6 @@ test("theme toggle is painted after it is mounted", () => {
         const icon = new FakeElement("span");
         icon.setAttribute("data-theme-icon", "");
         this.appendChild(icon);
-      }
-      if (value.includes("data-theme-text")) {
-        const text = new FakeElement("span");
-        text.setAttribute("data-theme-text", "");
-        this.appendChild(text);
       }
     }
 
@@ -226,15 +223,15 @@ test("theme toggle is painted after it is mounted", () => {
   const button = topbar.querySelector("[data-theme-toggle]");
   assert.ok(button);
   assert.equal(button.getAttribute("aria-label"), "切换到夜间模式");
-  assert.equal(button.querySelector("[data-theme-text]").textContent, "夜间");
   assert.equal(button.querySelector("[data-theme-icon]").textContent, "☾");
+  assert.equal(button.querySelector("[data-theme-text]"), null);
 
   button.__listeners.click[0]();
 
   assert.equal(document.documentElement.dataset.theme, "dark");
   assert.equal(storage.get("shelf-theme"), "dark");
   assert.equal(button.getAttribute("aria-label"), "切换到日间模式");
-  assert.equal(button.querySelector("[data-theme-text]").textContent, "日间");
+  assert.equal(button.querySelector("[data-theme-icon]").textContent, "☼");
 });
 
 test("dark reader theme covers the native book header chrome", () => {
@@ -252,12 +249,12 @@ test("dark reader theme covers the native book header chrome", () => {
   );
 });
 
-test("reader header copy leaves room for the floating top controls", () => {
+test("reader body clears the unified topbar", () => {
   const readerStyles = fs.readFileSync("public/notes.css", "utf8");
 
   assert.match(
     readerStyles,
-    /body\[data-shelf-reader\]\s+\.book-header\s*\{[^}]*padding-right:\s*clamp\(360px,\s*24vw,\s*460px\)/s,
+    /body\[data-shelf-reader\]\s*\{[^}]*padding-top:\s*54px;/s,
   );
   assert.match(
     readerStyles,
@@ -274,10 +271,21 @@ test("dark reader theme also skins annotation popovers", () => {
   );
   assert.match(
     readerStyles,
-    /html\[data-theme="dark"\]\s+\.nb-askpop\s*\{[^}]*background:\s*rgba\(28,\s*24,\s*21,\s*\.95\)[^}]*border-color:\s*rgba\(226,\s*154,\s*112,\s*\.36\)/s,
-  );
-  assert.match(
-    readerStyles,
     /html\[data-theme="dark"\]\s+\.nb-btn\.primary\s*\{[^}]*background:\s*rgba\(226,\s*154,\s*112,\s*\.14\)[^}]*color:\s*#ffc29e/s,
   );
+});
+
+test("reader keeps follow-up inside the annotation bubble only", () => {
+  const source = fs.readFileSync("public/notes.js", "utf8");
+  const readerStyles = fs.readFileSync("public/notes.css", "utf8");
+
+  // 追问只有气泡内底部输入框一套：独立浮层小气泡彻底退场，避免气泡越开越多
+  assert.doesNotMatch(source, /nb-askpop/);
+  assert.doesNotMatch(source, /openAskPop|closeAskPop|isAskPopOpen|positionAskPop|mouseAnchor/);
+  assert.doesNotMatch(readerStyles, /\.nb-askpop/);
+
+  assert.match(source, /function openInlineAsk/);
+  assert.match(source, /function submitInlineAsk/);
+  assert.match(source, /openInlineAsk\("append"/);
+  assert.match(source, /openInlineAsk\("edit"/);
 });

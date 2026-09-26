@@ -200,16 +200,19 @@
   }
   // 文本匹配：选中/所在块文字里出现了文件名（如 index.html、styles.css）→ 视为要喂的文件
   function matchFilesByText(text) {
-    if (!bookFiles || !bookFiles.length || !text) return [];
-    var hits = [];
+    if (!bookFiles || !bookFiles.length || !text) return { full: [], base: [] };
+    // full = 完整路径出现在文字里（确定）；base = 仅文件名命中（可能同名歧义，如每章的 code.py）
+    var full = [], base = [];
     for (var i = 0; i < bookFiles.length; i++) {
       var p = bookFiles[i].path;
-      var base = p.split("/").pop(); // assets/styles.css → styles.css
-      if (text.indexOf(p) >= 0 || text.indexOf(base) >= 0) {
-        if (hits.indexOf(p) < 0) hits.push(p);
+      var baseName = p.split("/").pop(); // assets/styles.css → styles.css
+      if (text.indexOf(p) >= 0) {
+        if (full.indexOf(p) < 0) full.push(p);
+      } else if (text.indexOf(baseName) >= 0) {
+        if (base.indexOf(p) < 0) base.push(p);
       }
     }
-    return hits;
+    return { full: full, base: base };
   }
   async function loadBookFiles(force) {
     if (!force && bookFiles) return bookFiles;
@@ -501,7 +504,6 @@
     });
     bubbleBody.addEventListener("scroll", function () {
       if (bubbleAtBottom()) resultReachedBottom = true;
-      positionAskPop(); // 追问气泡跟随文字滚动
       positionSubchip(); // "追问这段"跟随文字滚动
     });
     bubbleBody.addEventListener("mouseup", handleNoteMouseup);
@@ -518,7 +520,7 @@
       if (e.key !== "Enter") return;
       var t = e.target;
       if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.isContentEditable)) return;
-      if (isDiffMode() || isAskPopOpen()) return;
+      if (isInlineAskOpen()) return;
       var sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) return;
       var text = sel.toString().trim();
@@ -529,8 +531,8 @@
       if (bubbleBody.contains(el)) {
         if (!resultState || el.closest("#nbEdit")) return;
         e.preventDefault();
-        openAskPop("edit", text, mouseAnchor(), "");
         hideSubchip();
+        openInlineAsk("edit", text, "");
       } else if (main.contains(el) && !el.closest(".nb-promoted")) {
         e.preventDefault();
         hideFloat();
@@ -548,7 +550,7 @@
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
-        if (isAskPopOpen()) { closeAskPop(); return; }
+        if (isInlineAskOpen()) { closeInlineAsk(); return; }
         if (isExpanded()) { toggleExpand(); return; }
         closeBubble();
       }
@@ -645,7 +647,7 @@
         saveNote(null, rs.question, rs.body, false);
       }
     }
-    closeAskPop();
+    closeInlineAsk();
     explainSeq++;
     if (explainCtrl) { try { explainCtrl.abort(); } catch (e) {} explainCtrl = null; }
     resetBubbleState();
@@ -787,15 +789,21 @@
   async function viewAsk() {
     var tok = ++viewToken;
     openBubble(titleFor(pending.quote, "补注释"));
-    // 候选文件 = 代码块 data-file 祖先 ∪ 选中文字/所在块里出现的文件名；默认全勾，用户可取消
+    // 候选文件 = 代码块 data-file 祖先 ∪ 选中文字/所在块里出现的文件名
+    // 默认只勾「确定的」（data-file 祖先 + 完整路径命中）；同名歧义的 basename 命中
+    // （如各章的 code.py）列出来但不勾，用户手动挑；唯一 basename 命中视为确定
     try { await loadBookFiles(); } catch (e) {}
     if (tok !== viewToken) return; // await 期间视图已被切换
     var textHits = matchFilesByText((pending.quote || "") + "\n" + (pending.blockText || ""));
     pendingCandidates = (pending.files || []).slice();
-    for (var ti = 0; ti < textHits.length; ti++) {
-      if (pendingCandidates.indexOf(textHits[ti]) < 0) pendingCandidates.push(textHits[ti]);
+    for (var fi = 0; fi < textHits.full.length; fi++) {
+      if (pendingCandidates.indexOf(textHits.full[fi]) < 0) pendingCandidates.push(textHits.full[fi]);
     }
-    pendingFiles = pendingCandidates.slice(); // 默认全勾，用户可取消
+    for (var bi = 0; bi < textHits.base.length; bi++) {
+      if (pendingCandidates.indexOf(textHits.base[bi]) < 0) pendingCandidates.push(textHits.base[bi]);
+    }
+    pendingFiles = (pending.files || []).concat(textHits.full); // 默认勾确定的
+    if (!pendingFiles.length && textHits.base.length === 1) pendingFiles = [textHits.base[0]];
     bubbleBody.innerHTML =
       '<div class="nb-ask">' +
       '<textarea id="nbQ" placeholder="哪里没懂？"></textarea>' +
@@ -1003,9 +1011,15 @@
     }
     var isNew = !s.existingId;
     // 编辑态：所见即所得（飞书云文档式）——渲染后的 Markdown 直接可编辑，保存时转回 md 源
+    var visibleBody = s.__inlineChangeHtml || renderMarkdown(s.body);
     var bodyHtml = s.editing
       ? '<div id="nbEdit" contenteditable="true" class="nb-edit-md">' + renderMarkdown(s.body) + "</div>"
-      : '<div class="nb-note-body">' + renderMarkdown(s.body) + "</div>";
+      : '<div class="nb-note-body' + (s.__inlineChangeHtml ? " nb-note-body--changed" : "") + '">' + visibleBody + "</div>";
+    // 追问痕迹：问句一行一条。问句列表 = 对话记录 = 版本历史，正文是对话的最新一稿
+    var trailHtml = (s.__versions || []).map(function (v) {
+      return '<div class="nb-trail-item">↳ 你问：' + esc2(cut(v.instruction, 34)) + "</div>";
+    }).join("");
+    if (trailHtml) trailHtml = '<div class="nb-ask-trail">' + trailHtml + "</div>";
     bubbleBody.innerHTML =
       bodyHtml +
       '<div class="nb-row">' +
@@ -1013,6 +1027,18 @@
       '<button class="nb-icon-btn" id="nbPromote" data-tip="' + (isNew ? "添加为正文" : (s.promoted ? "从正文移除" : "添加为正文")) + '">' + (s.promoted ? BOOKMARK_SVG_FILLED : BOOKMARK_SVG) + "</button>" +
       (isNew ? "" : '<button class="nb-icon-btn danger" id="nbDelete" data-tip="删除">' + TRASH_SVG + "</button>") +
       '<button class="nb-icon-btn nb-more-btn" id="nbMore" data-tip="在末尾补充">＋</button>' +
+      "</div>" +
+      trailHtml +
+      '<div class="nb-inline-ask" hidden>' +
+        '<div class="nb-inline-label">' +
+          '<span class="nb-inline-label-text"></span>' +
+          '<span class="nb-inline-sel" hidden></span>' +
+        "</div>" +
+        '<div class="nb-inline-wrap">' +
+          '<textarea class="nb-inline-textarea" placeholder="继续问一句，或让它补得更清楚"></textarea>' +
+          '<button type="button" class="nb-inline-go" aria-label="发送">↵</button>' +
+        "</div>" +
+        '<div class="nb-inline-think" hidden></div>' +
       "</div>";
 
     bubbleBody.querySelector("#nbEditBtn").addEventListener("click", function () { toggleEdit(); });
@@ -1038,19 +1064,18 @@
       });
     }
     bubbleBody.querySelector("#nbMore").addEventListener("click", function () {
-      if (isDiffMode()) return; // diff 模式锁定：＋号禁用
-      if (isAskPopOpen()) { closeAskPop(); return; }
-      openAskPop("append", "", mouseAnchor(), "");
+      if (isInlineAskOpen()) { closeInlineAsk(); return; }
+      openInlineAsk("append", "", "");
     });
   }
 
   function toggleEdit() {
     var s = resultState;
     if (!s) return;
-    if (isDiffMode()) return; // diff 模式锁定：铅笔禁用
     if (s.editing) {
       currentBody();
       s.editing = false;
+      s.__inlineChangeHtml = null;
       if (s.existingId) updateExisting();
       paintResult();
     } else {
@@ -1078,118 +1103,117 @@
     });
   }
 
-  // ================= 追问小气泡：跟随文字的独立浮层 =================
-  var askPop = null;        // 浮层元素
-  var askPopAnchor = null;  // { getRect: fn } 锚点
-  var askPopCtx = null;     // { mode, selection }
-  var askRollerStop = null; // 追问思考滚动 stop
-  // 鼠标最后停留位置：追问气泡锚定在这里（方便鼠标就地点击）
-  var lastMouse = { x: window.innerWidth / 2, y: window.innerHeight / 3 };
-  document.addEventListener("mousedown", function (e) {
-    lastMouse.x = e.clientX; lastMouse.y = e.clientY;
-  }, true);
-  function mouseAnchor() {
-    return { getRect: function () {
-      return { left: lastMouse.x, top: lastMouse.y, right: lastMouse.x, bottom: lastMouse.y + 6, width: 0, height: 6 };
-    } };
-  }
+  // ================= 追问：只在这一个气泡里进行（不再另开气泡） =================
+  // 追问一律收束到当前注释气泡底部的输入框：气泡一多，上下文就散了。
+  var inlineAskCtx = null;   // 注释卡底部追问 { mode, selection }
+  var inlineRollerStop = null;
+  var inlineShimmerStop = null;
 
-  function ensureAskPop() {
-    if (askPop) return askPop;
-    askPop = document.createElement("div");
-    askPop.className = "nb-askpop";
-    askPop.innerHTML =
-      '<div class="nb-askpop-tag"></div>' +
-      '<div class="nb-askpop-wrap">' +
-        '<textarea class="nb-askpop-ta" placeholder="让它再讲讲 / 补充点什么"></textarea>' +
-        '<button type="button" class="nb-askpop-go" aria-label="发送">↵</button>' +
-      '</div>';
-    document.body.appendChild(askPop);
-    // 点外部关闭（nbMore 自己负责 toggle，排除）
-    // 捕获阶段：点 askPop 以外任何区域（含注释区）都关小气泡；大气泡不联动
-    document.addEventListener("mousedown", function (e) {
-      if (!askPop || !askPop.classList.contains("nb-show")) return;
-      if (askPop.contains(e.target)) return;
-      if (e.target.closest && e.target.closest("#nbMore")) return;
-      closeAskPop();
-    }, true);
-    return askPop;
+  function inlineAskEl() {
+    return bubbleBody ? bubbleBody.querySelector(".nb-inline-ask") : null;
   }
-  function openAskPop(mode, selection, anchor, prefill) {
+  function isInlineAskOpen() {
+    var box = inlineAskEl();
+    return !!(box && !box.hidden && box.classList.contains("nb-show"));
+  }
+  function scrollInlineAskIntoView() {
+    if (!bubbleBody) return;
+    requestAnimationFrame(function () {
+      if (!bubbleBody) return;
+      if (bubbleBody.scrollTo) bubbleBody.scrollTo({ top: bubbleBody.scrollHeight, behavior: "smooth" });
+      else bubbleBody.scrollTop = bubbleBody.scrollHeight;
+    });
+  }
+  function openInlineAsk(mode, selection, prefill, opts) {
     var s = resultState;
     if (!s) return;
-    ensureAskPop();
-    askPopCtx = { mode: mode, selection: selection };
-    askPopAnchor = anchor || { getRect: function () { return bubble ? bubble.getBoundingClientRect() : null; } };
-    askPop.querySelector(".nb-askpop-tag").textContent = mode === "append" ? "在末尾补充" : "修改选中的这段话";
-    var ta = askPop.querySelector(".nb-askpop-ta");
-    var go = askPop.querySelector(".nb-askpop-go");
-    ta.disabled = false; go.disabled = false;
+    hideSubchip();
+    inlineAskCtx = { mode: mode, selection: selection || "" };
+    var box = inlineAskEl();
+    if (!box) { paintResult(); box = inlineAskEl(); }
+    if (!box) return;
+    var label = box.querySelector(".nb-inline-label");
+    var labelText = box.querySelector(".nb-inline-label-text");
+    var selChip = box.querySelector(".nb-inline-sel");
+    var wrap = box.querySelector(".nb-inline-wrap");
+    var think = box.querySelector(".nb-inline-think");
+    var ta = box.querySelector(".nb-inline-textarea");
+    var go = box.querySelector(".nb-inline-go");
+    var clipped = clipSelection(selection);
+    // free 态（写回后常驻重开）：整行指令标签都藏掉，只留输入框，存在感最低
+    if (label) label.hidden = mode === "free";
+    if (mode !== "free") (labelText || label).textContent = mode === "append" ? "在这条注释末尾补充" : "追问选中的这段";
+    // 选中内容的身份牌：前三个字 + 省略号，带特殊样式，让用户确认"选中的是这段"
+    if (selChip) {
+      if (clipped) {
+        selChip.textContent = clipped;
+        selChip.hidden = false;
+      } else {
+        selChip.textContent = "";
+        selChip.hidden = true;
+      }
+    }
+    box.hidden = false;
+    box.classList.remove("nb-thinking");
+    box.classList.add("nb-show");
+    wrap.hidden = false;
+    think.hidden = true;
+    stopInlineThink();
+    ta.disabled = false;
+    go.disabled = false;
     ta.value = prefill || "";
-    askPop.querySelector(".nb-askpop-wrap").style.display = "";
-    askPop.querySelector(".nb-askpop-tag").style.display = "";
-    askPop.classList.add("nb-show");
-    void askPop.offsetWidth;
-    positionAskPop();
     function refreshEnter() { ta.value.trim() ? go.classList.add("has-text") : go.classList.remove("has-text"); }
     ta.oninput = refreshEnter;
     ta.onkeydown = function (e) {
-      if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); submitAsk(); }
+      if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); submitInlineAsk(); }
     };
-    go.onclick = submitAsk;
-    ta.focus();
-    ta.setSelectionRange(ta.value.length, ta.value.length);
+    go.onclick = submitInlineAsk;
+    // silent（写回后重开）：只亮出来，不抢焦点不滚动——视线应该先落在正文的改动上
+    if (opts && opts.silent) { refreshEnter(); return; }
+    scrollInlineAskIntoView();
+    setTimeout(function () {
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }, 180);
     refreshEnter();
   }
-  function positionAskPop() {
-    if (!askPop || !askPop.classList.contains("nb-show") || !askPopAnchor) return;
-    var r = askPopAnchor.getRect();
-    if (!r) return;
-    var pw = askPop.offsetWidth, ph = askPop.offsetHeight;
-    var left = Math.min(Math.max(12, r.left), window.innerWidth - pw - 12);
-    var top = r.bottom + 8;
-    if (top + ph > window.innerHeight - 12) top = Math.max(12, r.top - ph - 8);
-    askPop.style.left = left + "px";
-    askPop.style.top = top + "px";
+  function closeInlineAsk() {
+    var box = inlineAskEl();
+    stopInlineThink();
+    inlineAskCtx = null;
+    if (!box) return;
+    box.classList.remove("nb-show", "nb-thinking");
+    setTimeout(function () {
+      if (!box.classList.contains("nb-show")) box.hidden = true;
+    }, 220);
   }
-  function closeAskPop() {
-    if (!askPop) return;
-    if (askRollerStop) { askRollerStop(); askRollerStop = null; }
-    askPop.classList.remove("nb-show");
-    askPopAnchor = null;
-    askPopCtx = null;
-  }
-  function isAskPopOpen() { return askPop && askPop.classList.contains("nb-show"); }
-  function submitAsk() {
+  function submitInlineAsk() {
     var s = resultState;
-    if (!s || !askPopCtx) return;
-    var ta = askPop.querySelector(".nb-askpop-ta");
-    var v = ta.value.trim();
+    if (!s || !inlineAskCtx) return;
+    var box = inlineAskEl();
+    var ta = box ? box.querySelector(".nb-inline-textarea") : null;
+    var v = ta ? ta.value.trim() : "";
     if (!v) return;
     s.__pendingInstruction = v;
-    askFollowup(askPopCtx.mode, askPopCtx.selection, v);
+    askFollowup(inlineAskCtx.mode, inlineAskCtx.selection, v);
   }
   async function askFollowup(mode, selection, instruction) {
     var s = resultState;
     if (!s) return;
-    if (STATIC_MODE) { closeAskPop(); toast("静态演示不支持 AI 生成 · clone 仓库本地运行即可体验"); return; }
-    var ta = askPop ? askPop.querySelector(".nb-askpop-ta") : null;
-    var go = askPop ? askPop.querySelector(".nb-askpop-go") : null;
+    if (STATIC_MODE) { closeInlineAsk(); toast("静态演示不支持 AI 生成 · clone 仓库本地运行即可体验"); return; }
+    var box = inlineAskEl();
+    var ta = box ? box.querySelector(".nb-inline-textarea") : null;
+    var go = box ? box.querySelector(".nb-inline-go") : null;
     if (go) go.disabled = true;
     if (ta) ta.disabled = true;
-    // 思考态：输入框隐藏，显示滚动文字 + 点点点（与首问同节奏）
-    if (askPop) {
-      askPop.querySelector(".nb-askpop-wrap").style.display = "none";
-      var think = askPop.querySelector(".nb-sub-think");
-      if (!think) {
-        think = document.createElement("div");
-        think.className = "nb-sub-think";
-        askPop.appendChild(think);
-      }
+    // 思考态：输入框原地收成一行，文字被扫光带过 + 尾部脉冲点（Claude 式）
+    if (box) {
+      box.classList.add("nb-thinking");
+      box.querySelector(".nb-inline-wrap").hidden = true;
+      var think = box.querySelector(".nb-inline-think");
       think.hidden = false;
-      think.innerHTML = buildThinkHTML();
-      askRollerStop = makeRoller(think, THINK_LINES_FOLLOWUP);
-      positionAskPop();
+      startInlineThink(think);
+      scrollInlineAskIntoView();
     }
     try {
       var res = await fetch(CONTEXT.projectId ? projectBookPath("followup") : "/api/followup", {
@@ -1204,18 +1228,17 @@
       var data = await res.json();
       if (!res.ok) throw new Error(data.error && data.error.message ? data.error.message : "修改失败");
       var modified = data.content;
-      closeAskPop();
-      s.__diffOriginal = s.body;
-      s.__diffModified = modified;
-      s.__diffMode = mode;
-      s.__diffSelection = selection;
-      s.__diffInstruction = instruction;
-      paintDiff();
+      var original = s.body;
+      // 版本栈：每次追问把上一稿连同问句一起留痕（内存态，随气泡会话消失）
+      (s.__versions = s.__versions || []).push({ instruction: instruction, body: original });
+      applyFollowupInline(original, modified, mode, selection, instruction);
     } catch (err) {
-      if (askPop) {
-        askPop.querySelector(".nb-askpop-wrap").style.display = "";
-        var th = askPop.querySelector(".nb-sub-think");
+      if (box) {
+        box.classList.remove("nb-thinking");
+        box.querySelector(".nb-inline-wrap").hidden = false;
+        var th = box.querySelector(".nb-inline-think");
         if (th) th.hidden = true;
+        stopInlineThink();
       }
       if (go) go.disabled = false;
       if (ta) { ta.disabled = false; ta.focus(); }
@@ -1223,41 +1246,170 @@
     }
   }
 
-  // ---- 序列 diff（LCS）：输入字符串数组（行或 markdown 块），输出 same/add/del 序列 ----
-  function sequenceDiff(aArr, bArr) {
-    var al = aArr, bl = bArr;
-    var m = al.length, n = bl.length;
-    var dp = []; for (var i = 0; i <= m; i++) { dp.push(new Uint16Array(n + 1)); }
+  function renderInlineChange(original, modified) {
+    var res = renderChangeHtml(original, modified);
+    // 改动说明不再用说教文案——"哪次追问改的"由问句痕（nb-ask-trail）承担，正文里只留字级标记
+    if (!res.changed) return renderMarkdown(modified || "");
+    return res.html;
+  }
+
+  function applyFollowupInline(original, modified, mode, selection, instruction) {
+    var s = resultState;
+    if (!s) return;
+    s.body = modified;
+    s.__inlineChangeHtml = renderInlineChange(original, modified);
+    s.__inlineChangeMode = mode;
+    s.__inlineChangeSelection = selection;
+    s.__inlineChangeInstruction = instruction;
+    resultReachedBottom = true;
+    if (s.existingId) updateExisting();
+    paintResult();
+    // 追问框常驻：写回后原地重开（free 态，不带指令标签），不打断继续追问
+    openInlineAsk("free", "", "", { silent: true });
+    // 改动落地：正文整体淡入，同时新增/删去处自己闪一下，视线自动落到改动点上
+    var nb = bubbleBody.querySelector(".nb-note-body");
+    if (nb) {
+      nb.classList.remove("nb-change-applied");
+      void nb.offsetWidth;
+      nb.classList.add("nb-change-applied");
+      setTimeout(function () { if (nb) nb.classList.remove("nb-change-applied"); }, 1400);
+    }
+    if (bubbleBody && bubbleBody.scrollTo) bubbleBody.scrollTo({ top: 0, behavior: "smooth" });
+    toast("已写进注释");
+  }
+
+  // ================= 字词级 diff：改动直接落进原文，不用 diff 卡 =================
+  // 目标：删掉的字被划掉、新增的字带底色，其余原文照旧排在那里——
+  // 读者一眼看到"这段变成了什么"，而不是去对照两张卡。
+
+  // ---- 字词级 diff 单测区（纯函数，勿依赖 DOM） ----
+  var DIFF_TOKEN_LIMIT = 1200; // 超过这个长度降级为整块增删，避免 O(n·m) 回溯卡顿
+  // 成对标记：\u0002 del 起 / \u0003 del 止 / \u0004 add 起 / \u0005 add 止
+  var MK_D0 = "\u0002", MK_D1 = "\u0003", MK_A0 = "\u0004", MK_A1 = "\u0005";
+  // 分词：ASCII 词/数字成块，中文按字切；标点与空白各自成块，保证不会把词拆碎
+  function tokenize(str) {
+    var s = String(str || "");
+    var re = /[A-Za-z0-9_]+|\s+|[\u4e00-\u9fff]|[\s\S]/g;
+    return s.match(re) || [];
+  }
+  // LCS 字词级 diff：返回 [{ t:'same'|'add'|'del', text }]，顺序为阅读顺序
+  function tokenDiff(aStr, bStr) {
+    var a = tokenize(aStr), b = tokenize(bStr);
+    var m = a.length, n = b.length;
+    if (m > DIFF_TOKEN_LIMIT || n > DIFF_TOKEN_LIMIT) {
+      if (aStr === bStr) return aStr ? [{ t: "same", text: aStr }] : [];
+      var big = [];
+      if (aStr) big.push({ t: "del", text: aStr });
+      if (bStr) big.push({ t: "add", text: bStr });
+      return big;
+    }
+    var dp = [];
+    for (var i = 0; i <= m; i++) dp.push(new Uint32Array(n + 1));
     for (var i = 1; i <= m; i++) {
       for (var j = 1; j <= n; j++) {
-        dp[i][j] = al[i - 1] === bl[j - 1]
+        dp[i][j] = a[i - 1] === b[j - 1]
           ? dp[i - 1][j - 1] + 1
           : Math.max(dp[i - 1][j], dp[i][j - 1]);
       }
     }
-    var ops = []; var i = m, j = n;
+    var rev = []; var i = m, j = n;
     while (i > 0 && j > 0) {
-      if (al[i - 1] === bl[j - 1]) { ops.push({ t: "same", line: bl[j - 1] }); i--; j--; }
-      else if (dp[i - 1][j] >= dp[i][j - 1]) { ops.push({ t: "del", line: al[i - 1] }); i--; }
-      else { ops.push({ t: "add", line: bl[j - 1] }); j--; }
+      if (a[i - 1] === b[j - 1]) { rev.push({ t: "same", text: b[j - 1] }); i--; j--; }
+      else if (dp[i - 1][j] >= dp[i][j - 1]) { rev.push({ t: "del", text: a[i - 1] }); i--; }
+      else { rev.push({ t: "add", text: b[j - 1] }); j--; }
     }
-    while (i > 0) { ops.push({ t: "del", line: al[i - 1] }); i--; }
-    while (j > 0) { ops.push({ t: "add", line: bl[j - 1] }); j--; }
-    return ops.reverse();
+    while (i > 0) { rev.push({ t: "del", text: a[i - 1] }); i--; }
+    while (j > 0) { rev.push({ t: "add", text: b[j - 1] }); j--; }
+    rev.reverse();
+    return cleanupDiff(mergeAdjacent(rev));
+  }
+  // 合并同类相邻块，减少碎片
+  function mergeAdjacent(ops) {
+    var out = [];
+    ops.forEach(function (o) {
+      var last = out[out.length - 1];
+      if (last && last.t === o.t) last.text += o.text;
+      else out.push({ t: o.t, text: o.text });
+    });
+    return out;
+  }
+  // 语义清理：把夹在增删之间的一两个相同字并入增删块。
+  // 否则会出现「划掉『很危』/ 高亮『存在注入风』/ 留着『险』」这种碎块，读起来很糟。
+  function cleanupDiff(ops) {
+    var out = ops.slice();
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (var i = 0; i < out.length - 2; i++) {
+        var a = out[i], c = out[i + 1], b = out[i + 2];
+        if (a.t === "del" && c.t === "same" && b.t === "add" && c.text.length <= 2) {
+          out.splice(i, 3, { t: "del", text: a.text + c.text }, { t: "add", text: c.text + b.text });
+          changed = true;
+          break;
+        }
+      }
+    }
+    // 同一处增删统一成"先删后增"，读起来才是"原来 X 变成 Y"
+    for (var k = 0; k < out.length - 1; k++) {
+      if (out[k].t === "add" && out[k + 1].t === "del") {
+        var tmp = out[k]; out[k] = out[k + 1]; out[k + 1] = tmp;
+      }
+    }
+    return mergeAdjacent(out);
+  }
+  // 把 diff 结果标成带成对标记的纯文本，交给 markdown 渲染器统一处理
+  function markMd(ops) {
+    return ops.map(function (o) {
+      if (o.t === "same") return o.text;
+      if (o.t === "del") return MK_D0 + o.text + MK_D1;
+      return MK_A0 + o.text + MK_A1;
+    }).join("");
+  }
+  function countMarkOps(ops) {
+    var adds = 0, dels = 0;
+    ops.forEach(function (o) { if (o.t === "add") adds++; else if (o.t === "del") dels++; });
+    return { adds: adds, dels: dels };
+  }
+  // 选中内容的标签文案：只露前三个字 + 省略号，让用户一眼确认"我选中的是这段"。
+  // 不足三个字时不加省略号（不加就不会谎报"后面还有内容"）。
+  function clipSelection(text) {
+    var s = String(text == null ? "" : text).replace(/\s+/g, " ").trim();
+    if (!s) return "";
+    return s.length > 3 ? s.slice(0, 3) + "…" : s;
+  }
+  // ---- 字词级 diff 单测区结束 ----
+
+  // 标记文本 → 渲染后的 HTML：把成对标记换成 <del>/<ins>
+  function markedToHtml(marked) {
+    return renderMarkdown(marked)
+      .replace(/\u0002([\s\S]*?)\u0003/g, '<del class="nb-w-del">$1</del>')
+      .replace(/\u0004([\s\S]*?)\u0005/g, '<ins class="nb-w-add">$1</ins>');
   }
 
-  // markdown → 块数组：代码块（含围栏）整体一块，其余按空行分段——保证代码块不被 diff 切碎
-  function splitMdBlocks(md) {
-    var lines = md.split("\n");
-    var parts = [];   // {type:'code'|'text', text}
+  // 含块级结构的段落（代码块/标题/列表/表格/引用/段内换行）不做字级切分，整段标色更可读
+  function isPlainPara(seg) {
+    var t = String(seg || "").trim();
+    if (!t) return false;
+    if (/^```/.test(t)) return false;
+    if (/^#{2,4}\s/.test(t)) return false;
+    if (/^\|/.test(t)) return false;
+    if (/^[-*]\s/.test(t)) return false;
+    if (/^\d+\.\s/.test(t)) return false;
+    if (/^>\s?/.test(t)) return false;
+    if (t.indexOf("\n") >= 0) return false;
+    return true;
+  }
+  // markdown → 段落数组（代码块整体一段，其余按空行切段）
+  function splitMdSegments(md) {
+    var lines = String(md || "").split("\n");
+    var parts = [];
     var cur = [], inCode = false, codeBuf = [];
     for (var i = 0; i < lines.length; i++) {
       var L = lines[i];
       if (/^\s*```/.test(L)) {
         if (!inCode) {
           if (cur.join("").trim()) parts.push({ type: "text", text: cur.join("\n") });
-          cur = [];
-          inCode = true; codeBuf = [L];
+          cur = []; inCode = true; codeBuf = [L];
         } else {
           codeBuf.push(L);
           parts.push({ type: "code", text: codeBuf.join("\n") });
@@ -1268,279 +1420,117 @@
     }
     if (inCode && codeBuf.join("").trim()) parts.push({ type: "code", text: codeBuf.join("\n") });
     if (cur.join("").trim()) parts.push({ type: "text", text: cur.join("\n") });
-    var blocks = [];
+    var segs = [];
     parts.forEach(function (p) {
-      if (p.type === "code") { blocks.push(p.text); return; }
-      p.text.split(/\n{2,}/).forEach(function (seg) {
-        var t = seg.replace(/^\n+|\n+$/g, "");
-        if (t) blocks.push(t);
+      if (p.type === "code") { segs.push(p.text); return; }
+      p.text.split(/\n{2,}/).forEach(function (s) {
+        var t = s.replace(/^\n+|\n+$/g, "");
+        if (t) segs.push(t);
       });
     });
-    return blocks;
+    return segs;
   }
-
-  // diff 模式判定：审阅卡在场时，全站追问入口冻结，只能确认覆盖或返回
-  function isDiffMode() { return !!(resultState && resultState.__diffOriginal); }
-  function paintDiff() {
-    var s = resultState;
-    if (!s || !s.__diffOriginal) return;
-    // 块级 diff：代码块整体参与对比，段落按空行分块
-    var aBlocks = splitMdBlocks(s.__diffOriginal);
-    var bBlocks = splitMdBlocks(s.__diffModified);
-    var ops = sequenceDiff(aBlocks, bBlocks);
-    var adds = ops.filter(function (o) { return o.t === "add"; }).length;
-    var dels = ops.filter(function (o) { return o.t === "del"; }).length;
-    var modeLabel = s.__diffMode === "edit" ? "修改选中的这段话" : "在末尾补充";
-    var statTxt = [];
-    if (adds) statTxt.push("新增 " + adds + " 段");
-    if (dels) statTxt.push("删除 " + dels + " 段");
-    // 改动大 → 默认左右对比；小 → 默认分块对照
-    var view0 = (ops.length > 8 || adds + dels >= 4) ? "split" : "flow";
-    var box = document.createElement("div");
-    box.className = "nb-diff";
-    box.dataset.view = view0;
-    var flowR = renderDiffFlow(ops);
-    var splitR = renderDiffSplit(ops);
-    box.innerHTML =
-      '<div class="nb-diff-op">' +
-        '<span class="nb-diff-op-mode">' + esc2(modeLabel) + "</span>" +
-        (s.__diffInstruction ? '<span class="nb-diff-op-instruction">“' + esc2(cut(s.__diffInstruction, 40)) + "”</span>" : "") +
-        (statTxt.length ? '<span class="nb-diff-op-stat">' + esc2(statTxt.join(" · ")) + "</span>" : "") +
-        '<div class="nb-diff-views">' +
-          '<button type="button" data-dview="flow">对照</button>' +
-          '<button type="button" data-dview="split">左右对比</button>' +
-        "</div>" +
-      "</div>" +
-      '<div class="nb-diff-body">' +
-        '<div class="nb-diff-changes">' +
-          '<div class="nb-diff-changes-tag">修改区域</div>' +
-          '<div class="nb-diff-flow">' + (flowR.changes || '<div class="nb-diff-none">这一版没有内容变化</div>') + "</div>" +
-          '<div class="nb-diff-split">' + (splitR.changedCount ? splitR.changes : '<div class="nb-diff-none">这一版没有内容变化</div>') + "</div>" +
-        "</div>" +
-        (flowR.unchanged
-          ? '<div class="nb-diff-unchanged">' +
-              '<button type="button" class="nb-diff-unchanged-toggle">未改动内容（' + flowR.sameCount + "）</button>" +
-              '<div class="nb-diff-unchanged-body" hidden>' +
-                '<div class="nb-diff-flow">' + flowR.unchanged + "</div>" +
-                '<div class="nb-diff-split">' + splitR.unchanged + "</div>" +
-              "</div>" +
-            "</div>"
-          : "") +
-      "</div>" +
-      '<div class="nb-diff-actions">' +
-        '<button type="button" class="nb-diff-revert">返回上一句话</button>' +
-        '<button type="button" class="nb-diff-apply">确认覆盖</button>' +
-      "</div>";
-    var existing = bubbleBody.firstChild;
-    bubbleBody.insertBefore(box, existing);
-    // diff 模式锁定：收掉所有追问入口，此状态只允许「确认覆盖 / 返回上一句话」
-    hideFloat();
-    hideSubchip();
-    box.querySelectorAll("[data-dview]").forEach(function (b) {
-      if (b.getAttribute("data-dview") === view0) b.classList.add("active");
-      b.addEventListener("click", function () {
-        box.dataset.view = b.getAttribute("data-dview");
-        box.querySelectorAll("[data-dview]").forEach(function (x) { x.classList.toggle("active", x === b); });
-      });
-    });
-    var uToggle = box.querySelector(".nb-diff-unchanged-toggle");
-    if (uToggle) uToggle.addEventListener("click", function () {
-      var uBody = box.querySelector(".nb-diff-unchanged-body");
-      var open = !uBody.hidden;
-      uBody.hidden = open;
-      uToggle.textContent = open ? "未改动内容（" + flowR.sameCount + "）" : "收起未改动内容";
-    });
-    bubbleBody.scrollTop = 0;
-    resultReachedBottom = false;
-
-    box.querySelector(".nb-diff-apply").addEventListener("click", function () {
-      s.body = s.__diffModified;
-      // 原位替换动画：旧段落塌缩消失 → 新段落原位展开（下方文字自然让位）
-      var inPlace = applyDiffInPlace(s);
-      box.classList.add("nb-absorbing");
-      box.style.maxHeight = box.offsetHeight + "px";
-      setTimeout(function () {
-        clearDiff();
-        if (s.existingId) updateExisting();
-        if (!inPlace) {
-          // DOM 与块对不齐 → 兜底全量替换 + 光带
-          resultReachedBottom = false;
-          paintResult();
-          flashNoteBody();
-        }
-        toast("已应用到注释");
-      }, 240);
-    });
-    box.querySelector(".nb-diff-revert").addEventListener("click", function () {
-      revertDiff();
-    });
-  }
-  // 单个 diff 块的渲染（flow/split 共用）
-  function diffBlockHtml(op) {
-    // 无标签 pill：用行首 +/− 符号（git diff 语言）区分增删，更简洁
-    var txt = op.line;
-    if (op.t === "add") return '<div class="nb-diff-block add">' + renderMarkdown(txt) + "</div>";
-    if (op.t === "del") return '<div class="nb-diff-block del">' + renderMarkdown(txt) + "</div>";
-    return '<div class="nb-diff-block same">' + renderMarkdown(txt) + "</div>";
-  }
-  // 分块对照：改动块进 changes（主视觉），same 块进 unchanged（折叠）
-  function renderDiffFlow(ops) {
-    var groups = [];
-    ops.forEach(function (o) {
-      var last = groups[groups.length - 1];
-      if (last && last.t === o.t) last.texts.push(o.line);
-      else groups.push({ t: o.t, texts: [o.line] });
-    });
-    var changes = "", unchanged = "", sameCount = 0;
-    groups.forEach(function (g) {
-      var txt = g.texts.join("\n\n");
-      var html = diffBlockHtml({ t: g.t, line: txt });
-      if (g.t === "same") { unchanged += html; sameCount += g.texts.length; }
-      else changes += html;
-    });
-    return { changes: changes, unchanged: unchanged, sameCount: sameCount };
-  }
-  // 左右对比：含改动的行对进 changes（主视觉），纯 same 行对进 unchanged（折叠）
-  function renderDiffSplit(ops) {
-    var pairs = [];
-    var i = 0;
-    while (i < ops.length) {
-      var o = ops[i];
-      if (o.t === "same") { pairs.push({ l: o, r: o }); i++; continue; }
-      if (o.t === "del" && i + 1 < ops.length && ops[i + 1].t === "add") { pairs.push({ l: o, r: ops[i + 1] }); i += 2; continue; }
-      if (o.t === "add" && i + 1 < ops.length && ops[i + 1].t === "del") { pairs.push({ l: ops[i + 1], r: o }); i += 2; continue; }
-      if (o.t === "del") { pairs.push({ l: o, r: null }); i++; continue; }
-      pairs.push({ l: null, r: o }); i++;
-    }
-    var COLS = '<div class="nb-diff-cols-head"><span>原版</span><span>修改后</span></div>';
-    var mk = function (rows) { return COLS + '<div class="nb-diff-rows">' + rows + "</div>"; };
-    var changedRows = "", unchangedRows = "", sameCount = 0, changedCount = 0;
-    pairs.forEach(function (p) {
-      var row = '<div class="nb-diff-row">' +
-        '<div class="nb-diff-cell">' + (p.l ? diffBlockHtml(p.l) : "") + "</div>" +
-        '<div class="nb-diff-cell">' + (p.r ? diffBlockHtml(p.r) : "") + "</div>" +
-        "</div>";
-      var isPureSame = p.l && p.r && p.l.t === "same" && p.r.t === "same";
-      if (isPureSame) { unchangedRows += row; sameCount++; }
-      else { changedRows += row; changedCount++; }
-    });
-    return {
-      changes: changedRows ? mk(changedRows) : "",
-      unchanged: unchangedRows ? mk(unchangedRows) : "",
-      sameCount: sameCount,
-      changedCount: changedCount,
-    };
-  }
-  // 原位替换动画：diff 块与现有 DOM 顶层元素一一对应时，逐段执行
-  // vanish（旧段塌缩消失）/ replace（原位变身）/ insert（新段展开插入）；same 段纹丝不动
-  function applyDiffInPlace(s) {
-    var nb = bubbleBody.querySelector(".nb-note-body");
-    if (!nb) return false;
-    var aBlocks = splitMdBlocks(s.__diffOriginal);
-    var bBlocks = splitMdBlocks(s.__diffModified);
-    var kids = Array.prototype.slice.call(nb.children);
-    if (kids.length !== aBlocks.length || kids.length === 0) return false;
-    var ops = sequenceDiff(aBlocks, bBlocks);
-    var actions = [];
-    var oldIdx = 0, i = 0, delay = 0, hasChange = false;
-    while (i < ops.length) {
-      var o = ops[i];
-      if (o.t === "same") { oldIdx++; i++; continue; }
-      hasChange = true;
-      if (o.t === "del" && i + 1 < ops.length && ops[i + 1].t === "add") {
-        actions.push({ type: "replace", el: kids[oldIdx], html: renderMarkdown(ops[i + 1].line), delay: delay });
-        i += 2; oldIdx++; delay += 160;
-      } else if (o.t === "del") {
-        actions.push({ type: "vanish", el: kids[oldIdx], delay: delay });
-        i++; oldIdx++; delay += 160;
-      } else {
-        actions.push({ type: "insert", ref: kids[oldIdx] || null, html: renderMarkdown(o.line), delay: delay, atEnd: oldIdx >= kids.length });
-        i++; delay += 160;
+  // 段级对齐：same / del / add / replace（一删一增配对成 replace，段内才好做字级）
+  function seqDiffBy(aArr, bArr) {
+    var m = aArr.length, n = bArr.length;
+    var dp = [];
+    for (var i = 0; i <= m; i++) dp.push(new Uint32Array(n + 1));
+    for (var i = 1; i <= m; i++) {
+      for (var j = 1; j <= n; j++) {
+        dp[i][j] = aArr[i - 1] === bArr[j - 1]
+          ? dp[i - 1][j - 1] + 1
+          : Math.max(dp[i - 1][j], dp[i][j - 1]);
       }
     }
-    if (!hasChange) return false;
-    actions.forEach(function (a) {
-      setTimeout(function () {
-        if (a.type === "vanish") {
-          var el = a.el;
-          el.style.maxHeight = el.offsetHeight + "px";
-          el.style.overflow = "hidden";
-          void el.offsetWidth;
-          el.classList.add("nb-vanish");
-          setTimeout(function () { el.remove(); }, 340);
-        } else if (a.type === "replace") {
-          var el2 = a.el;
-          el2.style.maxHeight = el2.offsetHeight + "px";
-          el2.style.overflow = "hidden";
-          void el2.offsetWidth;
-          el2.classList.add("nb-vanish");
-          setTimeout(function () {
-            var wrapEl = document.createElement("div");
-            wrapEl.innerHTML = a.html;
-            var newEl = wrapEl.firstElementChild;
-            if (!newEl) { el2.remove(); return; }
-            newEl.style.maxHeight = "0px";
-            newEl.style.overflow = "hidden";
-            el2.parentNode.replaceChild(newEl, el2);
-            requestAnimationFrame(function () {
-              newEl.style.transition = "max-height .42s cubic-bezier(.2,.8,.2,1)";
-              newEl.style.maxHeight = newEl.scrollHeight + 60 + "px";
-              newEl.classList.add("nb-appear-fade");
-              setTimeout(function () {
-                newEl.style.maxHeight = ""; newEl.style.transition = ""; newEl.style.overflow = "";
-                newEl.classList.remove("nb-appear-fade");
-              }, 480);
-            });
-          }, 300);
-        } else {
-          var wrapEl2 = document.createElement("div");
-          wrapEl2.innerHTML = a.html;
-          var newEl2 = wrapEl2.firstElementChild;
-          if (!newEl2) return;
-          newEl2.style.maxHeight = "0px";
-          newEl2.style.overflow = "hidden";
-          if (a.ref && a.ref.parentNode === nb) nb.insertBefore(newEl2, a.ref);
-          else nb.appendChild(newEl2);
-          requestAnimationFrame(function () {
-            newEl2.style.transition = "max-height .42s cubic-bezier(.2,.8,.2,1)";
-            newEl2.style.maxHeight = newEl2.scrollHeight + 60 + "px";
-            newEl2.classList.add("nb-appear-fade");
-            setTimeout(function () {
-              newEl2.style.maxHeight = ""; newEl2.style.transition = ""; newEl2.style.overflow = "";
-              newEl2.classList.remove("nb-appear-fade");
-            }, 480);
-          });
-        }
-      }, a.delay);
+    var rev = []; var i = m, j = n;
+    while (i > 0 && j > 0) {
+      if (aArr[i - 1] === bArr[j - 1]) { rev.push({ t: "same", text: bArr[j - 1] }); i--; j--; }
+      else if (dp[i - 1][j] >= dp[i][j - 1]) { rev.push({ t: "del", text: aArr[i - 1] }); i--; }
+      else { rev.push({ t: "add", text: bArr[j - 1] }); j--; }
+    }
+    while (i > 0) { rev.push({ t: "del", text: aArr[i - 1] }); i--; }
+    while (j > 0) { rev.push({ t: "add", text: bArr[j - 1] }); j--; }
+    rev.reverse();
+    var ops = [];
+    for (var k = 0; k < rev.length; k++) {
+      var o = rev[k];
+      if (o.t === "del" && rev[k + 1] && rev[k + 1].t === "add") {
+        ops.push({ t: "replace", a: o.text, b: rev[k + 1].text }); k++; continue;
+      }
+      if (o.t === "add" && rev[k + 1] && rev[k + 1].t === "del") {
+        ops.push({ t: "replace", a: rev[k + 1].text, b: o.text }); k++; continue;
+      }
+      ops.push(o);
+    }
+    return ops;
+  }
+
+  // 主入口：原文 + 改后文 → { html, changed, adds, dels }
+  // 未改动的段落原样渲染；改动段落内未变的字也原样保留，只把增删部分标记出来。
+  function renderChangeHtml(original, modified) {
+    var aSegs = splitMdSegments(original);
+    var bSegs = splitMdSegments(modified);
+    var ops = seqDiffBy(aSegs, bSegs);
+    var adds = 0, dels = 0, changed = false;
+    var html = "";
+    ops.forEach(function (op) {
+      if (op.t === "same") { html += renderMarkdown(op.text); return; }
+      if (op.t === "del") {
+        changed = true; dels++;
+        html += '<div class="nb-change-block nb-change-block--del">' + renderMarkdown(op.text) + "</div>";
+        return;
+      }
+      if (op.t === "add") {
+        changed = true; adds++;
+        html += '<div class="nb-change-block nb-change-block--add">' + renderMarkdown(op.text) + "</div>";
+        return;
+      }
+      // replace：段内做字词级切分，删/增都留在这一段的原位
+      changed = true;
+      if (isPlainPara(op.a) && isPlainPara(op.b)) {
+        var inner = tokenDiff(op.a, op.b);
+        var c = countMarkOps(inner);
+        adds += c.adds; dels += c.dels;
+        html += markedToHtml(markMd(inner));
+      } else {
+        // 结构复杂（代码块/列表/表格）：整段标色，不切字
+        adds++; dels++;
+        html += '<div class="nb-change-block nb-change-block--del">' + renderMarkdown(op.a) + "</div>" +
+          '<div class="nb-change-block nb-change-block--add">' + renderMarkdown(op.b) + "</div>";
+      }
     });
-    return true;
+    return { html: html, changed: changed, adds: adds, dels: dels };
   }
-  // 兜底承接：光带扫过新注释（1.1s 后自清）
-  function flashNoteBody() {
-    var nb = bubbleBody.querySelector(".nb-note-body");
-    if (!nb) return;
-    nb.classList.remove("nb-flash");
-    void nb.offsetWidth;
-    nb.classList.add("nb-flash");
-    setTimeout(function () { nb.classList.remove("nb-flash"); }, 1150);
+
+  // ================= 追问思考态：Claude 式扫光 =================
+  var THINK_LINES_FOLLOWUP = ["正在读你这句话", "对照注释原文", "找出要改的地方", "重写这一段", "校对措辞"];
+  var THINK_PHRASE_MS = 1900;
+  // 一行短语 + 一道从左到右扫过的光带 + 尾部脉冲点；只动 transform，不重绘背景
+  function startInlineThink(host) {
+    stopInlineThink();
+    host.innerHTML =
+      '<span class="nb-shimmer">' +
+        '<span class="nb-shimmer-text"></span>' +
+        '<span class="nb-shimmer-band" aria-hidden="true"></span>' +
+      "</span>" +
+      '<span class="nb-shimmer-dots"><i></i><i></i><i></i></span>';
+    var textEl = host.querySelector(".nb-shimmer-text");
+    var pi = 0;
+    function nextPhrase() {
+      if (!textEl || !textEl.isConnected) return;
+      textEl.textContent = THINK_LINES_FOLLOWUP[pi % THINK_LINES_FOLLOWUP.length];
+      pi++;
+    }
+    nextPhrase();
+    var phraseTimer = setInterval(nextPhrase, THINK_PHRASE_MS);
+    inlineShimmerStop = function () {
+      clearInterval(phraseTimer);
+      inlineShimmerStop = null;
+    };
   }
-  function clearDiff() {
-    var d = bubbleBody.querySelector(".nb-diff");
-    if (d) d.remove();
-    var s = resultState;
-    if (s) { s.__diffOriginal = null; s.__diffModified = null; s.__diffMode = null; s.__diffSelection = null; s.__diffInstruction = null; }
-  }
-  function revertDiff() {
-    var s = resultState;
-    if (!s) return;
-    // 先取值再清理（clearDiff 会把 __diff* 置空）
-    var mode = s.__diffMode || "append";
-    var selection = s.__diffSelection || "";
-    var instruction = s.__diffInstruction || "";
-    clearDiff();
-    // 重开追问小气泡：上次那句话回填进输入框，光标到末尾，可继续编辑
-    openAskPop(mode, selection, mouseAnchor(), instruction);
-    toast("已回到上一句话，可继续修改");
+  function stopInlineThink() {
+    if (inlineShimmerStop) { inlineShimmerStop(); inlineShimmerStop = null; }
+    if (inlineRollerStop) { inlineRollerStop(); inlineRollerStop = null; }
   }
 
   function hideSubchip() {
@@ -1554,7 +1544,6 @@
   function handleNoteMouseup() {
     setTimeout(function () {
       hideSubchip();
-      if (isDiffMode()) return; // diff 模式锁定：diff 内外的选字都不触发追问
       var sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) return;
       var node = sel.anchorNode;
@@ -1575,7 +1564,7 @@
       chip.addEventListener("mousedown", function (e) { e.preventDefault(); });
       chip.addEventListener("click", function () {
         hideSubchip();
-        openAskPop("edit", text, mouseAnchor(), "");
+        openInlineAsk("edit", text, "");
       });
       document.body.appendChild(chip);
       subchip = chip;
@@ -1716,7 +1705,6 @@
     document.addEventListener("mouseup", function () {
       setTimeout(function () {
         hideFloat();
-        if (isDiffMode()) return; // diff 模式锁定：正文选字不触发补注释
         var sel = window.getSelection();
         if (!sel || sel.isCollapsed || !sel.rangeCount) return;
         var quote = sel.toString().trim();
@@ -1888,7 +1876,6 @@
   function openGlobalSearch() {
     ensureGlobalSearchPanel();
     hideFloat();
-    closeAskPop();
     searchPanel.removeAttribute("inert");
     searchPanel.setAttribute("aria-hidden", "false");
     searchPanel.classList.add("nb-show");
@@ -2124,12 +2111,393 @@
     }
   }
 
+  // ================= 源码抽屉（书绑定的本地快照浏览） =================
+  var sourceDrawer = null, sourceTree = null, sourceCode = null, sourceHead = null, sourceBack = null;
+  var sourceActivePath = null;
+  var sourceCloseTimer = null;
+  var SRC_REF_RE = /([A-Za-z0-9_\-.]+\.(?:py|js|ts|tsx|jsx|mjs|cjs|go|rs|java|rb|php|sh|css|scss|html|json|yml|yaml|toml|vue|svelte)):(\d+)/g;
+  var SRC_TOKEN = /(#.*$|\/\/.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(def|class|return|if|elif|else|for|while|import|from|as|with|try|except|finally|raise|lambda|yield|async|await|function|const|let|var|new|extends|export|import|switch|case|break|continue|not|and|or|is|in|None|True|False|null|undefined|true|false|self|this|fn|impl|pub|struct|enum|match|type|interface)\b/g;
+
+  function snapshotAvailable() {
+    return Boolean(CONTEXT.projectId && CONTEXT.sourceSnapshotId);
+  }
+
+  function highlightSourceLine(text) {
+    return esc2(text).replace(SRC_TOKEN, function (m, comment, str, kw) {
+      if (comment) return '<span class="nb-src-comment">' + comment + '</span>';
+      if (str) return '<span class="nb-src-string">' + str + '</span>';
+      if (kw) return '<span class="nb-src-kw">' + kw + '</span>';
+      return m;
+    });
+  }
+
+  function ensureSourceDrawer() {
+    if (sourceDrawer) return sourceDrawer;
+    sourceDrawer = document.createElement("div");
+    sourceDrawer.className = "nb-source-drawer";
+    sourceDrawer.hidden = true;
+    sourceDrawer.innerHTML =
+      '<div class="nb-source-head">' +
+        '<span class="nb-source-path"></span>' +
+        '<button type="button" class="nb-source-close" aria-label="关闭源码面板">×</button>' +
+      '</div>' +
+      '<div class="nb-source-back" hidden></div>' +
+      '<div class="nb-source-body">' +
+        '<nav class="nb-source-tree" aria-label="源码文件树"></nav>' +
+        '<pre class="nb-source-code"><code></code></pre>' +
+      '</div>';
+    document.body.appendChild(sourceDrawer);
+    sourceTree = sourceDrawer.querySelector(".nb-source-tree");
+    sourceCode = sourceDrawer.querySelector(".nb-source-code");
+    sourceHead = sourceDrawer.querySelector(".nb-source-path");
+    sourceBack = sourceDrawer.querySelector(".nb-source-back");
+    sourceBack.addEventListener("click", function (event) {
+      var chip = event.target.closest("[data-back-chapter]");
+      if (!chip) return;
+      var el = document.getElementById(chip.getAttribute("data-back-chapter"));
+      if (!el) return;
+      // 窄屏抽屉是覆盖式，跳回正文前先收起；宽屏泊位式保留同屏
+      if (!window.matchMedia("(min-width: 1081px)").matches) toggleSourceDrawer(false);
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      var h = el.querySelector("h2");
+      if (h && h.animate) h.animate([{ opacity: 1 }, { opacity: .25 }, { opacity: 1 }], { duration: 900, easing: "ease-in-out" });
+    });
+    sourceDrawer.querySelector(".nb-source-close").addEventListener("click", function () { toggleSourceDrawer(false); });
+    sourceTree.addEventListener("click", function (event) {
+      var link = event.target.closest("[data-src-path]");
+      if (link) showSourceFile(link.getAttribute("data-src-path"));
+    });
+    return sourceDrawer;
+  }
+
+  function toggleSourceDrawer(show, skipRestore) {
+    var drawer = ensureSourceDrawer();
+    var next = typeof show === "boolean" ? show : drawer.hidden;
+    clearTimeout(sourceCloseTimer);
+    if (next) {
+      drawer.hidden = false;
+      if (!drawer.dataset.loaded) {
+        drawer.dataset.loaded = "1";
+        renderSourceTree();
+      }
+      // 重新打开时回到上次看的文件；srcref 跳转自带目标文件，跳过恢复
+      if (!skipRestore && sourceActivePath) showSourceFile(sourceActivePath);
+      void drawer.offsetWidth; // 强制 reflow，确保过渡从初始态开始
+      drawer.classList.add("nb-show");
+    } else {
+      drawer.classList.remove("nb-show");
+      // 等退场动画走完再摘 display，期间再打开由 clearTimeout 兜住
+      sourceCloseTimer = setTimeout(function () { drawer.hidden = true; }, 240);
+    }
+    document.body.classList.toggle("nb-source-open", next);
+  }
+
+  function renderSourceTree(activePath) {
+    var files = bookFiles || [];
+    var dirs = {};
+    for (var i = 0; i < files.length; i++) {
+      var parts = files[i].path.split("/");
+      var top = parts.length > 1 ? parts[0] : "/";
+      (dirs[top] = dirs[top] || []).push(files[i]);
+    }
+    var tops = Object.keys(dirs).sort(function (a, b) {
+      if (a === "/") return -1; if (b === "/") return 1; return a.localeCompare(b);
+    });
+    var html = '<div class="nb-tree-label">源码快照</div>';
+    for (var t = 0; t < tops.length; t++) {
+      var rows = dirs[tops[t]];
+      var open = activePath && rows.some(function (f) { return f.path === activePath; });
+      if (tops[t] === "/") {
+        html += rows.map(function (f) {
+          return '<a class="nb-tree-file' + (f.path === activePath ? " nb-tree-active" : "") + '" data-src-path="' + esc2(f.path) + '">' + esc2(f.path) + '</a>';
+        }).join("");
+      } else {
+        html += '<details class="nb-tree-dir"' + (open ? " open" : "") + '><summary>' + esc2(tops[t]) + '/</summary>' +
+          rows.map(function (f) {
+            return '<a class="nb-tree-file' + (f.path === activePath ? " nb-tree-active" : "") + '" data-src-path="' + esc2(f.path) + '">' + esc2(f.path.split("/").slice(1).join("/")) + '</a>';
+          }).join("") + '</details>';
+      }
+    }
+    sourceTree.innerHTML = html;
+  }
+
+  function chapterLabel(ch) {
+    var eye = ch.querySelector(".eyebrow");
+    var h2 = ch.querySelector("h2");
+    var t = (eye ? eye.textContent.trim() + " · " : "") + (h2 ? h2.textContent.trim() : "");
+    return t.trim() || ch.id;
+  }
+
+  // 反向锚定：源码文件 → 正文哪些章节引用了它（从已 linkify 的 .nb-srcref 收集）
+  var sourceBackRefs = {};
+  function buildSourceBackIndex() {
+    if (!main) return;
+    var links = main.querySelectorAll("a.nb-srcref");
+    if (!links.length) return;
+    var jobs = {};
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i];
+      var raw = a.getAttribute("data-src-ref");
+      var refLine = a.getAttribute("data-src-line");
+      var ch = a.closest(".chapter") || a.closest("section[id]");
+      if (!raw || !ch) continue;
+      (jobs[raw] = jobs[raw] || []).push({ id: ch.id, line: refLine && Number(refLine) > 0 ? refLine : "" });
+    }
+    loadBookFiles().then(function (files) {
+      Object.keys(jobs).forEach(function (raw) {
+        var path = matchSourcePath(raw, files);
+        if (!path) return;
+        var list = sourceBackRefs[path] = sourceBackRefs[path] || [];
+        jobs[raw].forEach(function (item) {
+          for (var k = 0; k < list.length; k++) {
+            if (list[k].id === item.id) {
+              // 同章多次引用只留最小行号（DOM 顺序即文档顺序，取首个更省事，但行号取最小更准）
+              if (item.line && (!list[k].line || Number(item.line) < Number(list[k].line))) list[k].line = item.line;
+              return;
+            }
+          }
+          list.push(item);
+        });
+      });
+    });
+  }
+
+  function renderSourceBack(path) {
+    if (!sourceBack) return;
+    var refs = sourceBackRefs[path] || [];
+    if (!refs.length) { sourceBack.hidden = true; sourceBack.innerHTML = ""; return; }
+    var chips = "";
+    var shown = 0;
+    for (var i = 0; i < refs.length && shown < 3; i++) {
+      var r = refs[i];
+      var el = r.id && document.getElementById(r.id);
+      if (!el) continue;
+      chips += '<button type="button" class="nb-back-chip" data-back-chapter="' + esc2(r.id) + '" title="跳到正文">' +
+        esc2(cut(chapterLabel(el), 18)) +
+        (r.line ? '<span class="nb-back-line">:' + esc2(r.line) + "</span>" : "") +
+        "</button>";
+      shown++;
+    }
+    if (!shown) { sourceBack.hidden = true; sourceBack.innerHTML = ""; return; }
+    if (refs.length > shown) chips += '<span class="nb-back-more">+' + (refs.length - shown) + "</span>";
+    sourceBack.hidden = false;
+    sourceBack.innerHTML = '<span class="nb-back-label">正文讲到此</span>' + chips;
+  }
+
+  async function showSourceFile(path, line) {
+    ensureSourceDrawer();
+    var loaded = await readFiles([path]);
+    var file = null;
+    for (var i = 0; i < loaded.length; i++) if (loaded[i].path === path) file = loaded[i];
+    if (!file) { toast("源码里没有这个文件：" + path); return; }
+    sourceActivePath = path;
+    sourceHead.textContent = path;
+    renderSourceBack(path);
+    renderSourceTree(path);
+    var lines = String(file.content || "").split("\n");
+    var html = "";
+    for (var n = 0; n < lines.length; n++) {
+      html += '<div class="nb-src-line' + (line && n + 1 === Number(line) ? " nb-src-line-active" : "") + '"><span class="nb-src-no">' + (n + 1) + '</span><span class="nb-src-text">' + highlightSourceLine(lines[n]) + '</span></div>';
+    }
+    sourceCode.innerHTML = '<code>' + html + '</code>';
+    var target = sourceCode.querySelector(".nb-src-line-active");
+    if (target) target.scrollIntoView({ block: "center" });
+    else sourceCode.scrollTop = 0;
+  }
+
+  function matchSourcePath(path, files) {
+    for (var i = 0; i < files.length; i++) if (files[i].path === path) return path;
+    var hits = [];
+    for (var j = 0; j < files.length; j++) {
+      if (files[j].path === path || files[j].path.endsWith("/" + path) || files[j].path.endsWith(path)) hits.push(files[j].path);
+    }
+    return hits.length === 1 ? hits[0] : null;
+  }
+
+  async function resolveSourceRef(path) {
+    var files = await loadBookFiles();
+    return matchSourcePath(path, files);
+  }
+
+  function linkifySourceRefs() {
+    if (!snapshotAvailable() || !main) return;
+    var walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, null);
+    var nodes = [], n;
+    while ((n = walker.nextNode())) {
+      if (!SRC_REF_RE.test(n.nodeValue)) continue;
+      SRC_REF_RE.lastIndex = 0;
+      if (n.parentElement.closest("a, .nb-bubble, .nb-pop, .nb-mini, .nb-promoted, .nb-files-list, mark")) continue;
+      nodes.push(n);
+    }
+    for (var i = 0; i < nodes.length; i++) splitSourceRefNode(nodes[i]);
+  }
+
+  function splitSourceRefNode(node) {
+    var text = node.nodeValue;
+    SRC_REF_RE.lastIndex = 0;
+    var match, last = 0, frag = document.createDocumentFragment(), made = false;
+    while ((match = SRC_REF_RE.exec(text))) {
+      made = true;
+      if (match.index > last) frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+      var a = document.createElement("a");
+      a.className = "nb-srcref";
+      a.setAttribute("data-src-ref", match[1]);
+      a.setAttribute("data-src-line", match[2]);
+      a.textContent = match[0];
+      a.title = "在源码抽屉中查看";
+      frag.appendChild(a);
+      last = match.index + match[0].length;
+    }
+    if (!made) return;
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  }
+
+  function setupSourceDrawer() {
+    if (!snapshotAvailable()) return;
+    var topbar = document.querySelector(".shelf-topbar");
+    var entry = document.createElement("button");
+    entry.type = "button";
+    entry.className = "nb-source-toggle";
+    entry.setAttribute("aria-label", "打开源码面板");
+    entry.textContent = "源码";
+    entry.addEventListener("click", function () { toggleSourceDrawer(); });
+    if (topbar) topbar.appendChild(entry);
+    else {
+      entry.classList.add("nb-source-fab");
+      document.body.appendChild(entry);
+    }
+    main.addEventListener("click", function (event) {
+      var ref = event.target.closest(".nb-srcref");
+      if (!ref) return;
+      event.preventDefault();
+      var raw = ref.getAttribute("data-src-ref");
+      var line = ref.getAttribute("data-src-line");
+      resolveSourceRef(raw).then(function (resolved) {
+        if (resolved) { toggleSourceDrawer(true, true); showSourceFile(resolved, line); }
+        else toast("快照里找不到 " + raw);
+      });
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !previewCard) hidePreview();
+      if (event.key !== "Escape" || !sourceDrawer || sourceDrawer.hidden) return;
+      toggleSourceDrawer(false);
+    });
+    loadBookFiles().then(function () {
+      linkifySourceRefs();
+      buildSourceBackIndex();
+    });
+    setupSourcePreview();
+  }
+
+  // ================= 引用速览：hover 文件:行号 浮出代码小卡（点击仍进抽屉） =================
+  var previewCard = null, previewAnchor = null, previewTimer = null, previewSeq = 0;
+  var previewCache = {};
+
+  function drawerOpen() {
+    return Boolean(sourceDrawer && !sourceDrawer.hidden);
+  }
+
+  function hidePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = null;
+    previewAnchor = null;
+    previewSeq++;
+    if (!previewCard) return;
+    var c = previewCard;
+    previewCard = null;
+    c.classList.remove("nb-show");
+    setTimeout(function () { c.remove(); }, 180);
+  }
+
+  function positionPreview() {
+    if (!previewCard || !previewAnchor) return;
+    var r = previewAnchor.getBoundingClientRect();
+    var w = previewCard.offsetWidth || 440;
+    var h = previewCard.offsetHeight || 200;
+    var left = Math.max(12, Math.min(r.left, window.innerWidth - w - 14));
+    var top = r.bottom + 8;
+    if (top + h > window.innerHeight - 12) top = Math.max(12, r.top - h - 8);
+    previewCard.style.left = left + "px";
+    previewCard.style.top = top + "px";
+  }
+
+  async function previewFileLines(path) {
+    if (previewCache[path]) return previewCache[path];
+    var loaded = await readFiles([path]);
+    var file = null;
+    for (var i = 0; i < loaded.length; i++) if (loaded[i].path === path) file = loaded[i];
+    if (!file) return null;
+    var lines = String(file.content || "").split("\n");
+    if (Object.keys(previewCache).length > 12) previewCache = {}; // 简单上限，防长会话内存膨胀
+    previewCache[path] = lines;
+    return lines;
+  }
+
+  async function openPreview(anchor) {
+    var seq = ++previewSeq;
+    var raw = anchor.getAttribute("data-src-ref");
+    var line = Number(anchor.getAttribute("data-src-line")) || 0;
+    var path = await resolveSourceRef(raw);
+    if (seq !== previewSeq || !path || previewAnchor !== anchor || drawerOpen()) return;
+    var lines = await previewFileLines(path);
+    if (seq !== previewSeq || !lines || previewAnchor !== anchor || drawerOpen()) return;
+    var card = document.createElement("div");
+    card.className = "nb-src-preview";
+    var start = Math.max(1, line - 6);
+    var end = Math.min(lines.length, line ? line + 8 : 24);
+    if (start > end) {
+      // 引用行号超出快照（压缩骨架文件比真实源码短），落到文件尾部
+      end = lines.length;
+      start = Math.max(1, end - 14);
+    }
+    var html = '<div class="nb-src-preview-head"><span>' + esc2(path) + (line ? ":" + line : "") + "</span></div><pre>";
+    for (var n = start; n <= end; n++) {
+      html += '<div class="nb-src-line' + (line && n === line ? " nb-src-line-active" : "") + '"><span class="nb-src-no">' + n + '</span><span class="nb-src-text">' + highlightSourceLine(lines[n - 1] || "") + "</span></div>";
+    }
+    html += "</pre>";
+    card.innerHTML = html;
+    document.body.appendChild(card);
+    previewCard = card;
+    positionPreview();
+    // 刚挂载时 offsetHeight 可能还是 0，钳位不生效——下一帧布局稳定后再校一次
+    requestAnimationFrame(positionPreview);
+    void card.offsetWidth;
+    card.classList.add("nb-show");
+  }
+
+  function setupSourcePreview() {
+    if (!snapshotAvailable() || !main) return;
+    main.addEventListener("mouseover", function (e) {
+      var a = e.target.closest("a.nb-srcref");
+      if (!a || a === previewAnchor || drawerOpen()) return;
+      hidePreview();
+      previewAnchor = a;
+      previewTimer = setTimeout(function () { openPreview(a); }, 380);
+    });
+    main.addEventListener("mouseout", function (e) {
+      var a = e.target.closest("a.nb-srcref");
+      if (!a || a !== previewAnchor) return;
+      if (e.relatedTarget && a.contains(e.relatedTarget)) return;
+      hidePreview();
+    });
+    // 点击进抽屉，速览即撤
+    main.addEventListener("click", function (e) {
+      if (e.target.closest("a.nb-srcref")) hidePreview();
+    });
+    window.addEventListener("scroll", function () {
+      if (!previewCard) return;
+      requestAnimationFrame(positionPreview);
+    }, { passive: true });
+  }
+
   // ================= 启动 =================
   setupSelection();
   setupClickOpen();
   setupDismiss();
   setupNav();
   buildBubble();
+  setupSourceDrawer();
   fetch(projectNotesPath())
     .then(function (r) { if (!r.ok) throw new Error("static"); return r.json(); })
     .then(function (list) { notes = list || []; refreshAll(); })
