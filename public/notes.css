@@ -270,6 +270,21 @@ html[data-theme="dark"] .shelf-theme-toggle:focus-visible {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  /* 移动端护栏：书皮皮肤窄屏转 column 后仍是 align-items:flex-start，
+     book-main 变内容自适应——宽表格/长代码行的 min-content 直接撑出视口。
+     钉回容器宽，滚动收进元素内部，不动书 DOM */
+  body[data-shelf-reader] .book-main {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  body[data-shelf-reader] .book-main pre { max-width: 100%; }
+  body[data-shelf-reader] .book-main table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
 }
 
 /* 知识书架 · 旁注层样式（叠加在原书 CSS 之上）
@@ -1599,6 +1614,28 @@ html[data-theme="dark"] .nb-shimmer-band {
   font-size: 11px;
 }
 .nb-source-back[hidden] { display: none; }
+/* 快照漂移提示：书写此书时的快照缺了被引用的文件。低调常驻、hover 才上色，不挡操作 */
+.nb-source-drift {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid rgba(21, 27, 30, .07);
+  font-size: 11px;
+  color: rgba(21, 27, 30, .45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nb-source-drift[hidden] { display: none; }
+.nb-source-drift:hover { color: rgba(153, 60, 29, .8); }
+.nb-drift-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(206, 123, 81, .55);
+}
 .nb-back-label {
   flex: none;
   color: rgba(21, 27, 30, .38);
@@ -1725,6 +1762,10 @@ html[data-theme="dark"] .nb-shimmer-band {
 }
 .nb-src-text { flex: 1; min-width: 0; padding-right: 18px; white-space: pre; }
 .nb-src-line-active { background: rgba(206, 123, 81, .13); box-shadow: inset 2px 0 0 rgba(206, 123, 81, .55); }
+/* 源码批注行：行号变粘土色 + 淡暖底；hover 提示可点（与正文划线同语言） */
+.nb-src-line.nb-src-noted { background: rgba(206, 123, 81, .06); cursor: pointer; }
+.nb-src-line.nb-src-noted .nb-src-no { color: rgba(153, 60, 29, .75); font-weight: 650; }
+.nb-src-line.nb-src-noted:hover { background: rgba(206, 123, 81, .11); }
 .nb-src-comment { color: rgba(21, 27, 30, .38); font-style: italic; }
 .nb-src-string { color: #56652f; }
 .nb-src-kw { color: #993c1d; font-weight: 650; }
@@ -1768,12 +1809,17 @@ html[data-theme="dark"] .nb-tree-file.nb-tree-active { background: rgba(226, 154
 html[data-theme="dark"] .nb-source-code { background: rgba(18, 16, 14, .6); }
 html[data-theme="dark"] .nb-src-no { color: rgba(238, 231, 221, .26); }
 html[data-theme="dark"] .nb-src-line-active { background: rgba(226, 154, 112, .13); box-shadow: inset 2px 0 0 rgba(226, 154, 112, .55); }
+html[data-theme="dark"] .nb-src-line.nb-src-noted { background: rgba(226, 154, 112, .08); }
+html[data-theme="dark"] .nb-src-line.nb-src-noted .nb-src-no { color: #ffc29e; }
+html[data-theme="dark"] .nb-src-line.nb-src-noted:hover { background: rgba(226, 154, 112, .14); }
 html[data-theme="dark"] .nb-src-comment { color: rgba(238, 231, 221, .38); }
 html[data-theme="dark"] .nb-src-string { color: #a8bd7e; }
 html[data-theme="dark"] .nb-src-kw { color: #ffc29e; }
 html[data-theme="dark"] .nb-srcref { color: #ffc29e; text-decoration-color: rgba(226, 154, 112, .45); }
 html[data-theme="dark"] .nb-srcref:hover { background: rgba(226, 154, 112, .12); }
 html[data-theme="dark"] .nb-source-back { border-bottom-color: rgba(238, 231, 221, .08); }
+html[data-theme="dark"] .nb-source-drift { border-bottom-color: rgba(238, 231, 221, .08); color: rgba(238, 231, 221, .45); }
+html[data-theme="dark"] .nb-source-drift:hover { color: #ffc29e; }
 html[data-theme="dark"] .nb-back-label { color: rgba(238, 231, 221, .42); }
 html[data-theme="dark"] .nb-back-chip { border-color: rgba(226, 154, 112, .30); background: rgba(226, 154, 112, .10); color: #ffc29e; }
 html[data-theme="dark"] .nb-back-chip:hover,
@@ -1789,5 +1835,12 @@ html[data-theme="dark"] .nb-src-preview-head { border-bottom-color: rgba(238, 23
 
 @media (max-width: 940px) {
   .nb-source-drawer { width: 100vw; }
-  .nb-source-tree { width: 168px; }
+  /* 窄屏上下堆叠：文件树在顶（可滚），代码占满剩余宽度——并排会把代码挤成一条 */
+  .nb-source-body { flex-direction: column; }
+  .nb-source-tree {
+    width: auto;
+    max-height: 34%;
+    border-right: none;
+    border-bottom: 1px solid rgba(21, 27, 30, .07);
+  }
 }

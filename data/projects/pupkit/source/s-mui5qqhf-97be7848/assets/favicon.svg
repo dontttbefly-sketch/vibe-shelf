@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="PUPKIT">
+  <rect width="64" height="64" fill="#fbf7ed"/>
+  <circle cx="32" cy="32" r="23" fill="#151b1e"/>
+  <path d="M25.5 10.5A23 23 0 1 0 49 45.5 21 21 0 1 1 25.5 10.5Z" fill="#f6cc3f"/>
+  <text x="32" y="42" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="29" font-weight="900" fill="#fbf7ed">P</text>
+</svg>

@@ -15,7 +15,8 @@
 | `public/index.html` / `public/shelf.js` / `public/shelf.css` | 项目书架首页：导入本地文件夹、展示项目小书、进入主书 | 不承担项目内页；项目点击后直接进主书 |
 | `lib/main-book-generation.mjs` / `lib/prompts.mjs` | 读取项目源码快照，生成项目主书 | 不凭空编造源码里不存在的结论 |
 | `lib/book-compiler.mjs` / `build.mjs` | 把书 HTML 编译成可阅读页面，注入 `SHELF_CONTEXT`、阅读器、探索入口和返回书架导航 | 不覆盖书架首页 |
-| `public/notes.js` / `public/notes.css` | 唯一阅读器主线：划词旁注、气泡内追问、晋升/恢复、全局问答、插卡动效、源码抽屉（快照文件树 + 行号定位 + `文件:行号` 引用跳转） | 不修改原书正文 DOM 结构；不污染原书样式 |
+| `public/notes.js` / `public/notes.css` | 唯一阅读器主线：划词旁注、气泡内追问、晋升/恢复、全局问答、插卡动效、源码抽屉（快照文件树 + 行号定位 + `文件:行号` 引用跳转 + 源码划词批注 + 快照漂移提示） | 不修改原书正文 DOM 结构；不污染原书样式 |
+| `public/reader-core.js` | 阅读器纯函数区（字词级 diff、文件文本匹配、选区截断）：UMD 双端，浏览器挂 `window.ShelfReaderCore`，Node 单测直接 require；book-compiler 必须在 notes.js **之前**注入 | 不碰 DOM；不加函数以外的东西 |
 | `public/explore.js` / `public/explore.css` | 书底探索会话；用户确认后生成探索小书 | 不把普通聊天自动塞进主书 |
 | `lib/app.mjs` / `server.mjs` | 本地服务：静态资源、项目 API、notes/explain/followup/search、探索、小书生成、AI 代理 | 不把 API Key 暴露到前端 |
 | `lib/project-service.mjs` / `lib/books.mjs` / `lib/explorations.mjs` | 项目、源码快照、书、探索记录的数据服务 | 不破坏已有项目快照的不可变性 |
@@ -67,6 +68,10 @@
   → 每次追问留一道问句痕（.nb-trail-item：↳ 你问：…，faint 小字一行一条）
       心智模型：正文 = 对话的最新一稿；问句列表 = 对话记录 = 版本历史（s.__versions，内存态随气泡会话消失）
       提问与改写不区分：读者在提问时，prompt 让模型把解答自然并入旁注、不要为回答写长（buildFollowupPrompt mode="free"）
+
+源码抽屉里划选代码 → 同一个"＋补注释"浮窗 → 提问框（自动勾选该文件）
+  → 批注锚定 快照文件 + 行号区间（note.source = {path, startLine, endLine}，不进 anchorMap、不标正文）
+  → 抽屉行号变粘土色 + 淡暖底（.nb-src-noted），点击行 = 回看/追问；重新打开抽屉或刷新后按文件恢复
 ```
 
 ### 隐形快捷键（无 UI 提示，纯快捷操作）
@@ -85,7 +90,7 @@
 
 ## 部署与运行模式
 
-- **本地完整版**：`node server.mjs`（.env 填 OpenAI 兼容接口）→ 项目导入、主书生成、旁注、探索和小书生成
+- **本地完整版**：`node server.mjs`（.env 填 OpenAI 兼容接口）→ 项目导入（本地文件夹 / GitHub 公开仓库 `POST /api/projects/import-github`，lib/github-import.mjs 拉文本文件、共用 IMPORT_LIMITS）、主书生成、旁注、探索和小书生成；配 `GITHUB_TOKEN` 可提高 API 限额
 - **静态演示版**（GitHub Pages）：阅读、划词、本地批注（localStorage）全部可用；AI 接口自动降级——toast 提示"clone 本地运行"。降级标记 `STATIC_MODE`，入口：启动 fetch 失败、explain/followup 拦截、persist/delete 落 localStorage
 - **Pages 部署**：`.github/workflows/pages.yml`，push main 自动部署 `public/` 到 Pages
 - **单独编译一本书**：`node build.mjs <书.html> --book <名字> --out public/books/<名字>/index.html`
@@ -118,6 +123,10 @@
 - **transform 会盖 inline 定位**：浮层跟随用 left/top 数值重算（positionAskPop/positionSubchip），不要用 transform 定位
 - **managed node 路径以当轮 binary_context 为准**（版本目录会变，如 22.22.2-3）
 - **gh api 偶发 EOF**（代理抖动）：脚本内带重试
+- **cleanupDiff 的顺序归一化必须放在合并循环之前**：LCS 回溯天然产出 add 在前，先归一化成"先删后增"再跑 del/add/same 模式匹配，否则后缀/前缀共字合并永远匹配不上（曾是「很危险→存在注入风险」碎块残留的根因）
+- **书皮窄屏 MQ 转 column 后若保留 `align-items: flex-start`**：.book-main 变内容自适应宽，宽表格/长代码行的 min-content 直接撑出视口 → 阅读器层在移动端 MQ 里钉 `width:100%` + 表格 `display:block; overflow-x:auto`，不动书 DOM
+- **编辑含 `\uXXXX` 转义序列的旧代码别用 Edit 工具硬贴**：JSON 参数会把 `\u0002` 解析成真实控制字符，永远匹配不上——按行号用脚本替换
+- **主书 token 契约**：生成书 `<style>` 的 `:root` 必须含 `--paper/--ink/--code-bg/--code-ink/--line`（夜间模式靠重映射它们），`lintSkinTokens` 只警告不失败，缺了会进 generation 状态的 `skinWarnings`
 
 ## 设计原则三句话（写代码犹豫时看这里）
 

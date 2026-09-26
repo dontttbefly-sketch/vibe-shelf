@@ -66,13 +66,38 @@
     });
 
     if (githubImport) {
-      githubImport.addEventListener("click", function () {
+      githubImport.addEventListener("click", async function () {
         githubImport.classList.remove("is-noticing");
         void githubImport.offsetWidth;
         githubImport.classList.add("is-noticing");
-        setStatus(form, "GitHub 项目导入正在准备中；当前可以先从本地文件夹开始。", "info");
+        githubImport.addEventListener("animationend", function () { githubImport.classList.remove("is-noticing"); }, { once: true });
+
+        var repo = window.prompt("GitHub 仓库（支持 owner/name 或完整仓库地址）", "");
+        if (!repo) return;
+        repo = repo.trim();
+        if (!repo) return;
+        githubImport.disabled = true;
+        setStatus(form, "正在从 GitHub 拉取仓库文件…", "loading");
+        try {
+          var data = await request("/api/projects/import-github", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ repo: repo }),
+          });
+          var project = data.project || {};
+          setStatus(form, "仓库「" + (project.name || repo) + "」已导入，开始生成主书…", "loading");
+          showGenerating(form, GENERATION_STAGE_COPY.reading);
+          startPolling(form, project.id);
+          // 项目卡片即时上书架，不用等生成
+          var list = document.querySelector("[data-project-list]");
+          if (list && list.firstElementChild && list.firstElementChild.classList.contains("shelf-empty")) list.replaceChildren();
+          if (list) list.prepend(makeBookCard(project));
+        } catch (error) {
+          setStatus(form, "GitHub 导入失败：" + (error.message || "未知原因"), "error");
+        } finally {
+          githubImport.disabled = false;
+        }
       });
-      githubImport.addEventListener("animationend", function () { githubImport.classList.remove("is-noticing"); });
     }
 
     refreshLauncherState(form);

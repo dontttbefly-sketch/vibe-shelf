@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PUPKIT 商店 | 小型犬玩具实验室</title>
+    <meta name="description" content="PUPKIT 小型犬玩具实验室的作品集商店页，展示可筛选商品货架、详情抽屉和玩具袋体验。">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <meta name="theme-color" content="#fbf7ed">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body data-page="shop">
+    <header class="site-header" data-header>
+      <a class="brand-mark" href="index.html" aria-label="PUPKIT 首页">
+        <span class="brand-glyph">P</span>
+        <span>
+          <strong>PUPKIT</strong>
+          <small>小型犬玩具实验室</small>
+        </span>
+      </a>
+      <button class="nav-toggle icon-button" type="button" aria-label="打开导航" data-nav-toggle>
+        <span></span>
+        <span></span>
+      </button>
+      <nav class="site-nav" aria-label="主导航" data-nav>
+        <a href="index.html">首页</a>
+        <a href="shop.html" aria-current="page">商店</a>
+        <a href="playbook.html">玩法指南</a>
+      </nav>
+      <button class="bag-button" type="button" data-cart-open>
+        <span class="bag-icon" aria-hidden="true"></span>
+        <span>袋</span>
+        <strong data-cart-count>0</strong>
+      </button>
+    </header>
+
+    <main>
+      <section class="shop-hero">
+        <div class="section-heading reveal">
+          <p class="eyebrow">玩具货架</p>
+          <h1>货架的秩序</h1>
+          <p>
+            少一点噪音，多一点命中。
+          </p>
+        </div>
+        <aside class="shop-snapshot reveal" aria-label="当前系列摘要">
+          <strong data-product-count>16</strong>
+          <span>件玩具原型</span>
+          <small>咬、闻、追、陪伴</small>
+        </aside>
+      </section>
+
+      <section class="shop-layout">
+        <aside class="filter-panel reveal" aria-label="商品过滤">
+          <div class="filter-head">
+            <span class="eyebrow">筛选节奏</span>
+            <button type="button" data-filter-reset>重置</button>
+          </div>
+          <div class="filter-group" data-filter-group>
+            <h2>玩法气质</h2>
+            <button type="button" class="filter-chip is-active" data-filter="all" data-filter-scope="play">全部</button>
+            <button type="button" class="filter-chip" data-filter="chew" data-filter-scope="play">耐咬</button>
+            <button type="button" class="filter-chip" data-filter="puzzle" data-filter-scope="play">益智</button>
+            <button type="button" class="filter-chip" data-filter="fetch" data-filter-scope="play">抛接</button>
+            <button type="button" class="filter-chip" data-filter="quiet" data-filter-scope="play">低噪</button>
+          </div>
+          <div class="filter-group" data-filter-group>
+            <h2>身体尺度</h2>
+            <button type="button" class="filter-chip" data-filter="under5" data-filter-scope="weight">5kg 以下</button>
+            <button type="button" class="filter-chip" data-filter="five12" data-filter-scope="weight">5-12kg</button>
+          </div>
+          <div class="filter-group" data-filter-group>
+            <h2>购买心情</h2>
+            <button type="button" class="filter-chip" data-filter="starter" data-filter-scope="intent">第一套</button>
+            <button type="button" class="filter-chip" data-filter="gift" data-filter-scope="intent">送礼</button>
+            <button type="button" class="filter-chip" data-filter="washable" data-filter-scope="intent">好清洁</button>
+          </div>
+        </aside>
+
+        <div class="shop-results">
+          <div class="result-toolbar reveal">
+            <p><strong data-product-count>16</strong> 件候选</p>
+            <div class="view-toggle" aria-label="视图密度">
+              <button type="button" class="is-active" data-density="comfort">舒展</button>
+              <button type="button" data-density="dense">紧凑</button>
+            </div>
+          </div>
+          <div class="product-grid" data-product-grid></div>
+        </div>
+      </section>
+    </main>
+
+    <div class="detail-overlay" data-detail-overlay></div>
+    <aside class="shop-detail-drawer" data-shop-detail-panel aria-live="polite" aria-hidden="true">
+      <button class="icon-button detail-close" type="button" data-detail-close aria-label="关闭详情">×</button>
+      <div class="shop-detail-visual">
+        <div class="scale-grid" aria-hidden="true"></div>
+        <div class="toy-render toy-loop hero-toy" data-shop-detail-visual style="--toy-a:#ff6348;--toy-b:#ffe16a" aria-hidden="true"></div>
+      </div>
+      <div class="shop-detail-copy">
+        <p class="eyebrow" data-shop-detail-badge>入门 / 2级</p>
+        <h2 data-shop-detail-name>Loop Squeak Mini</h2>
+        <p data-shop-detail-description>小环、低声、软韧。</p>
+        <div class="size-meter">
+          <div>
+            <span>尺度</span>
+            <strong data-shop-detail-fit>1-12kg</strong>
+          </div>
+          <div>
+            <span>清洁</span>
+            <strong data-shop-detail-clean>冲洗</strong>
+          </div>
+          <div>
+            <span>价格</span>
+            <strong data-shop-detail-price>$18</strong>
+          </div>
+        </div>
+        <div class="detail-principles" data-shop-detail-principles>
+          <span>客厅互动</span>
+          <span>低音反馈</span>
+          <span>轻量咬感</span>
+        </div>
+        <div class="buy-row">
+          <a class="button ghost wide" href="playbook.html">玩法镜头</a>
+          <button class="button primary wide" type="button" data-shop-detail-cart="loop" data-add-cart="loop">加入购物袋</button>
+        </div>
+      </div>
+    </aside>
+
+    <footer class="site-footer">
+      <div>
+        <strong>PUPKIT</strong>
+        <p>作品集概念站。品牌与商品均为虚构。</p>
+      </div>
+      <nav>
+        <a href="index.html">首页</a>
+        <a href="playbook.html">玩法指南</a>
+      </nav>
+    </footer>
+
+    <script src="assets/app.js" defer></script>
+  </body>
+</html>

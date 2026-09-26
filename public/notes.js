@@ -198,22 +198,7 @@
     }
     return [];
   }
-  // 文本匹配：选中/所在块文字里出现了文件名（如 index.html、styles.css）→ 视为要喂的文件
-  function matchFilesByText(text) {
-    if (!bookFiles || !bookFiles.length || !text) return { full: [], base: [] };
-    // full = 完整路径出现在文字里（确定）；base = 仅文件名命中（可能同名歧义，如每章的 code.py）
-    var full = [], base = [];
-    for (var i = 0; i < bookFiles.length; i++) {
-      var p = bookFiles[i].path;
-      var baseName = p.split("/").pop(); // assets/styles.css → styles.css
-      if (text.indexOf(p) >= 0) {
-        if (full.indexOf(p) < 0) full.push(p);
-      } else if (text.indexOf(baseName) >= 0) {
-        if (base.indexOf(p) < 0) base.push(p);
-      }
-    }
-    return { full: full, base: base };
-  }
+  // 文本匹配 matchFilesByText 已抽到 reader-core.js（见纯函数区，注入 bookFiles）
   async function loadBookFiles(force) {
     if (!force && bookFiles) return bookFiles;
     try {
@@ -400,6 +385,8 @@
   }
   function addNoteAnchor(note) {
     if (note.promoted) return;
+    // 源码批注没有正文块锚点（标记在抽屉行上，见 applySourceNoteMarkers）；空 blockText 也不许乱锚
+    if (note.source || !norm(note.blockText)) return;
     var block = findBlock(note);
     if (!block) return;
     block.classList.add("nb-block");
@@ -1282,102 +1269,17 @@
   // 目标：删掉的字被划掉、新增的字带底色，其余原文照旧排在那里——
   // 读者一眼看到"这段变成了什么"，而不是去对照两张卡。
 
-  // ---- 字词级 diff 单测区（纯函数，勿依赖 DOM） ----
-  var DIFF_TOKEN_LIMIT = 1200; // 超过这个长度降级为整块增删，避免 O(n·m) 回溯卡顿
-  // 成对标记：\u0002 del 起 / \u0003 del 止 / \u0004 add 起 / \u0005 add 止
-  var MK_D0 = "\u0002", MK_D1 = "\u0003", MK_A0 = "\u0004", MK_A1 = "\u0005";
-  // 分词：ASCII 词/数字成块，中文按字切；标点与空白各自成块，保证不会把词拆碎
-  function tokenize(str) {
-    var s = String(str || "");
-    var re = /[A-Za-z0-9_]+|\s+|[\u4e00-\u9fff]|[\s\S]/g;
-    return s.match(re) || [];
-  }
-  // LCS 字词级 diff：返回 [{ t:'same'|'add'|'del', text }]，顺序为阅读顺序
-  function tokenDiff(aStr, bStr) {
-    var a = tokenize(aStr), b = tokenize(bStr);
-    var m = a.length, n = b.length;
-    if (m > DIFF_TOKEN_LIMIT || n > DIFF_TOKEN_LIMIT) {
-      if (aStr === bStr) return aStr ? [{ t: "same", text: aStr }] : [];
-      var big = [];
-      if (aStr) big.push({ t: "del", text: aStr });
-      if (bStr) big.push({ t: "add", text: bStr });
-      return big;
-    }
-    var dp = [];
-    for (var i = 0; i <= m; i++) dp.push(new Uint32Array(n + 1));
-    for (var i = 1; i <= m; i++) {
-      for (var j = 1; j <= n; j++) {
-        dp[i][j] = a[i - 1] === b[j - 1]
-          ? dp[i - 1][j - 1] + 1
-          : Math.max(dp[i - 1][j], dp[i][j - 1]);
-      }
-    }
-    var rev = []; var i = m, j = n;
-    while (i > 0 && j > 0) {
-      if (a[i - 1] === b[j - 1]) { rev.push({ t: "same", text: b[j - 1] }); i--; j--; }
-      else if (dp[i - 1][j] >= dp[i][j - 1]) { rev.push({ t: "del", text: a[i - 1] }); i--; }
-      else { rev.push({ t: "add", text: b[j - 1] }); j--; }
-    }
-    while (i > 0) { rev.push({ t: "del", text: a[i - 1] }); i--; }
-    while (j > 0) { rev.push({ t: "add", text: b[j - 1] }); j--; }
-    rev.reverse();
-    return cleanupDiff(mergeAdjacent(rev));
-  }
-  // 合并同类相邻块，减少碎片
-  function mergeAdjacent(ops) {
-    var out = [];
-    ops.forEach(function (o) {
-      var last = out[out.length - 1];
-      if (last && last.t === o.t) last.text += o.text;
-      else out.push({ t: o.t, text: o.text });
-    });
-    return out;
-  }
-  // 语义清理：把夹在增删之间的一两个相同字并入增删块。
-  // 否则会出现「划掉『很危』/ 高亮『存在注入风』/ 留着『险』」这种碎块，读起来很糟。
-  function cleanupDiff(ops) {
-    var out = ops.slice();
-    var changed = true;
-    while (changed) {
-      changed = false;
-      for (var i = 0; i < out.length - 2; i++) {
-        var a = out[i], c = out[i + 1], b = out[i + 2];
-        if (a.t === "del" && c.t === "same" && b.t === "add" && c.text.length <= 2) {
-          out.splice(i, 3, { t: "del", text: a.text + c.text }, { t: "add", text: c.text + b.text });
-          changed = true;
-          break;
-        }
-      }
-    }
-    // 同一处增删统一成"先删后增"，读起来才是"原来 X 变成 Y"
-    for (var k = 0; k < out.length - 1; k++) {
-      if (out[k].t === "add" && out[k + 1].t === "del") {
-        var tmp = out[k]; out[k] = out[k + 1]; out[k + 1] = tmp;
-      }
-    }
-    return mergeAdjacent(out);
-  }
-  // 把 diff 结果标成带成对标记的纯文本，交给 markdown 渲染器统一处理
-  function markMd(ops) {
-    return ops.map(function (o) {
-      if (o.t === "same") return o.text;
-      if (o.t === "del") return MK_D0 + o.text + MK_D1;
-      return MK_A0 + o.text + MK_A1;
-    }).join("");
-  }
-  function countMarkOps(ops) {
-    var adds = 0, dels = 0;
-    ops.forEach(function (o) { if (o.t === "add") adds++; else if (o.t === "del") dels++; });
-    return { adds: adds, dels: dels };
-  }
-  // 选中内容的标签文案：只露前三个字 + 省略号，让用户一眼确认"我选中的是这段"。
-  // 不足三个字时不加省略号（不加就不会谎报"后面还有内容"）。
-  function clipSelection(text) {
-    var s = String(text == null ? "" : text).replace(/\s+/g, " ").trim();
-    if (!s) return "";
-    return s.length > 3 ? s.slice(0, 3) + "…" : s;
-  }
-  // ---- 字词级 diff 单测区结束 ----
+  // ---- 纯函数区（实现已抽到 reader-core.js，Node 单测直接 require） ----
+  var Core = window.ShelfReaderCore || {};
+  var tokenize = Core.tokenize;
+  var tokenDiff = Core.tokenDiff;
+  var markMd = Core.markMd;
+  var countMarkOps = Core.countMarkOps;
+  var clipSelection = Core.clipSelection;
+  if (!Core.tokenDiff) console.error("[shelf-reader] reader-core.js 未加载：diff/追问功能不可用（检查 script 加载顺序）");
+  // 文本匹配：文件清单是 notes.js 的运行时状态，在这里注入给纯函数
+  function matchFilesByText(text) { return Core.matchFilesByText(text, bookFiles); }
+  // ---- 纯函数区结束 ----
 
   // 标记文本 → 渲染后的 HTML：把成对标记换成 <del>/<ins>
   function markedToHtml(marked) {
@@ -1592,6 +1494,8 @@
         blockText: pending.blockText,
         quote: pending.quote || "",
         sectionTitle: pending.sectionTitle || "",
+        // 源码批注：锚定快照文件 + 行号区间（正文没有块锚点，标记打在抽屉行上）
+        source: pending.source || null,
         question: question,
         body: body,
         promoted: !!promote,
@@ -1602,6 +1506,7 @@
     persist(note).then(function () {
       var saved = notes.find(function (n) { return n.id === note.id; }) || note;
       applyNotePlacement(saved);
+      refreshSourceMarkers(); // 源码批注：落盘后立刻点亮抽屉里的行
       pending = null;
       if (opts.silent) { toast("已记下"); return; } // 自动保存也要给"已落盘"的确认感
       closeBubble();
@@ -1616,6 +1521,7 @@
       try { localStorage.setItem(localNotesKey(), JSON.stringify(notes)); } catch (e) {}
       clearMarkers(id);
       removeAnchor(id);
+      refreshSourceMarkers();
       updateNav();
       closeBubble();
       toast("已删除（本地）");
@@ -1625,6 +1531,7 @@
       notes = d.notes;
       clearMarkers(id);
       removeAnchor(id);
+      refreshSourceMarkers();
       updateNav();
       closeBubble();
       toast("已删除");
@@ -1711,6 +1618,35 @@
         if (!quote || quote.length > MAX_SELECTION_QUOTE_CHARS) return;
         var node = sel.anchorNode;
         var host = node && (node.nodeType === 3 ? node.parentElement : node);
+        // 源码抽屉里的选区 → 源码批注（锚定 path + 行号，不动原书正文）
+        var srcLine = host && host.closest ? host.closest(".nb-src-line") : null;
+        if (srcLine && sourceDrawer && sourceDrawer.contains(srcLine) && sourceActivePath) {
+          var range = sel.getRangeAt(0);
+          var endLineEl = range.endContainer && range.endContainer.parentElement
+            ? range.endContainer.parentElement.closest(".nb-src-line") : null;
+          var startNo = Number(srcLine.querySelector(".nb-src-no").textContent);
+          var endNo = endLineEl ? Number(endLineEl.querySelector(".nb-src-no").textContent) : startNo;
+          floatBtn = document.createElement("button");
+          floatBtn.className = "nb-float";
+          floatBtn.textContent = "＋ 补注释";
+          floatBtn.addEventListener("mousedown", function (e) { e.preventDefault(); });
+          floatBtn.addEventListener("click", function () {
+            hideFloat();
+            pending = {
+              quote: quote,
+              source: { path: sourceActivePath, startLine: Math.min(startNo, endNo), endLine: Math.max(startNo, endNo) },
+              sectionTitle: sourceActivePath + ":" + Math.min(startNo, endNo),
+              blockText: "",
+              files: [sourceActivePath],
+            };
+            viewAsk();
+          });
+          document.body.appendChild(floatBtn);
+          if (!positionFloat(sel)) return;
+          void floatBtn.offsetWidth;
+          floatBtn.classList.add("nb-show");
+          return;
+        }
         host = host && host.closest ? host.closest(BLOCK_SEL) : null;
         if (!host || !main.contains(host) || host.closest(".nb-promoted")) return;
         floatBtn = document.createElement("button");
@@ -1775,6 +1711,8 @@
       if (t.closest(".nb-nav") || t.closest(".nb-float") || t.closest(".nb-subchip")) return;
       if (t.closest(".nb-search-panel")) return;
       if (t.closest("mark.nb-quote")) return;
+      // 抽屉里的行点击由 sourceCode 自己的委托处理（开/关/换注释），这里只负责不误关
+      if (t.closest(".nb-source-drawer")) return;
       closeBubble({ x: e.clientX, y: e.clientY });
     });
   }
@@ -2112,7 +2050,7 @@
   }
 
   // ================= 源码抽屉（书绑定的本地快照浏览） =================
-  var sourceDrawer = null, sourceTree = null, sourceCode = null, sourceHead = null, sourceBack = null;
+  var sourceDrawer = null, sourceTree = null, sourceCode = null, sourceHead = null, sourceBack = null, sourceDriftEl = null;
   var sourceActivePath = null;
   var sourceCloseTimer = null;
   var SRC_REF_RE = /([A-Za-z0-9_\-.]+\.(?:py|js|ts|tsx|jsx|mjs|cjs|go|rs|java|rb|php|sh|css|scss|html|json|yml|yaml|toml|vue|svelte)):(\d+)/g;
@@ -2142,6 +2080,7 @@
         '<button type="button" class="nb-source-close" aria-label="关闭源码面板">×</button>' +
       '</div>' +
       '<div class="nb-source-back" hidden></div>' +
+      '<div class="nb-source-drift" hidden></div>' +
       '<div class="nb-source-body">' +
         '<nav class="nb-source-tree" aria-label="源码文件树"></nav>' +
         '<pre class="nb-source-code"><code></code></pre>' +
@@ -2151,6 +2090,7 @@
     sourceCode = sourceDrawer.querySelector(".nb-source-code");
     sourceHead = sourceDrawer.querySelector(".nb-source-path");
     sourceBack = sourceDrawer.querySelector(".nb-source-back");
+    sourceDriftEl = sourceDrawer.querySelector(".nb-source-drift");
     sourceBack.addEventListener("click", function (event) {
       var chip = event.target.closest("[data-back-chapter]");
       if (!chip) return;
@@ -2166,6 +2106,17 @@
     sourceTree.addEventListener("click", function (event) {
       var link = event.target.closest("[data-src-path]");
       if (link) showSourceFile(link.getAttribute("data-src-path"));
+    });
+    // 点击带批注的源码行 → 打开气泡（与正文点划线同交互）
+    sourceCode.addEventListener("click", function (event) {
+      var line = event.target.closest(".nb-src-line");
+      if (!line || !line.hasAttribute("data-note")) return;
+      var id = line.getAttribute("data-note");
+      if (activeId === id && bubble && bubble.classList.contains("nb-show")) {
+        closeBubble({ x: event.clientX, y: event.clientY });
+        return;
+      }
+      viewNote(id, line);
     });
     return sourceDrawer;
   }
@@ -2230,6 +2181,7 @@
 
   // 反向锚定：源码文件 → 正文哪些章节引用了它（从已 linkify 的 .nb-srcref 收集）
   var sourceBackRefs = {};
+  var sourceDrift = null; // 快照漂移：书里引用了、快照里却没有的文件（重新快照后自动消失）
   function buildSourceBackIndex() {
     if (!main) return;
     var links = main.querySelectorAll("a.nb-srcref");
@@ -2244,9 +2196,10 @@
       (jobs[raw] = jobs[raw] || []).push({ id: ch.id, line: refLine && Number(refLine) > 0 ? refLine : "" });
     }
     loadBookFiles().then(function (files) {
+      var missed = [];
       Object.keys(jobs).forEach(function (raw) {
         var path = matchSourcePath(raw, files);
-        if (!path) return;
+        if (!path) { missed.push(raw); return; }
         var list = sourceBackRefs[path] = sourceBackRefs[path] || [];
         jobs[raw].forEach(function (item) {
           for (var k = 0; k < list.length; k++) {
@@ -2259,7 +2212,19 @@
           list.push(item);
         });
       });
+      // 漂移检测：引用解析不出 = 书写于旧快照，提示但不打扰（点击正文引用会 toast 缺文件）
+      sourceDrift = missed.length ? { missing: missed, total: Object.keys(jobs).length } : null;
+      renderSourceDrift();
     });
+  }
+
+  function renderSourceDrift() {
+    if (!sourceDriftEl) return;
+    if (!sourceDrift) { sourceDriftEl.hidden = true; sourceDriftEl.innerHTML = ""; return; }
+    sourceDriftEl.hidden = false;
+    sourceDriftEl.innerHTML =
+      '<span class="nb-drift-dot"></span>快照缺 ' + sourceDrift.missing.length + " 个被引用文件（" +
+      esc2(cut(sourceDrift.missing.join("、"), 60)) + "）· 重新快照可修复";
   }
 
   function renderSourceBack(path) {
@@ -2300,6 +2265,7 @@
       html += '<div class="nb-src-line' + (line && n + 1 === Number(line) ? " nb-src-line-active" : "") + '"><span class="nb-src-no">' + (n + 1) + '</span><span class="nb-src-text">' + highlightSourceLine(lines[n]) + '</span></div>';
     }
     sourceCode.innerHTML = '<code>' + html + '</code>';
+    applySourceNoteMarkers(path);
     var target = sourceCode.querySelector(".nb-src-line-active");
     if (target) target.scrollIntoView({ block: "center" });
     else sourceCode.scrollTop = 0;
@@ -2312,6 +2278,31 @@
       if (files[j].path === path || files[j].path.endsWith("/" + path) || files[j].path.endsWith(path)) hits.push(files[j].path);
     }
     return hits.length === 1 ? hits[0] : null;
+  }
+
+  // 源码批注标记：把锚定在当前文件的 note 行区间点上泥点（点击行打开气泡，与正文划线同语言）
+  function applySourceNoteMarkers(path) {
+    if (!sourceCode) return;
+    var codeEl = sourceCode.querySelector("code");
+    if (!codeEl) return;
+    Array.prototype.forEach.call(codeEl.children, function (line) {
+      line.classList.remove("nb-src-noted");
+      line.removeAttribute("data-note");
+    });
+    notes.forEach(function (note) {
+      if (!note.source || note.promoted || note.source.path !== path) return;
+      var s = Math.max(1, Number(note.source.startLine) || 1);
+      var e = Math.min(codeEl.children.length, Number(note.source.endLine) || s);
+      for (var n = s; n <= e; n++) {
+        var line = codeEl.children[n - 1];
+        if (!line) continue;
+        line.classList.add("nb-src-noted");
+        line.setAttribute("data-note", note.id);
+      }
+    });
+  }
+  function refreshSourceMarkers() {
+    if (sourceActivePath) applySourceNoteMarkers(sourceActivePath);
   }
 
   async function resolveSourceRef(path) {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import Core from "../public/reader-core.js";
 
 test("reader supports a project/book context without removing legacy fallback", () => {
   const source = fs.readFileSync("public/notes.js", "utf8");
@@ -76,7 +77,10 @@ test("reader follow-up folds changes into the note body instead of a diff card",
   assert.doesNotMatch(styles, /\.nb-diff/);
 
   // 改动以字级标记直接落在原文里：划线=删去，底色高亮=新增
-  assert.match(source, /function tokenDiff/);
+  // diff 纯函数已抽到 reader-core.js（可被 Node 单测 require），notes.js 里是委托
+  const readerCore = fs.readFileSync("public/reader-core.js", "utf8");
+  assert.match(readerCore, /function tokenDiff/);
+  assert.match(source, /Core\.tokenDiff/);
   assert.match(source, /function markedToHtml/);
   assert.match(source, /function renderChangeHtml/);
   assert.match(source, /class="nb-w-del"/);
@@ -91,13 +95,8 @@ test("reader follow-up folds changes into the note body instead of a diff card",
 });
 
 test("reader token diff marks the exact words that changed", () => {
-  const source = fs.readFileSync("public/notes.js", "utf8");
-  const block = source.match(
-    /\/\/ ---- 字词级 diff 单测区（纯函数，勿依赖 DOM） ----([\s\S]*?)\/\/ ---- 字词级 diff 单测区结束 ----/,
-  );
-  assert.ok(block, "expected the pure token-diff block to exist");
-  const api = new Function(block[1] + "; return { tokenDiff, markMd, countMarkOps, DIFF_TOKEN_LIMIT };")();
-
+  // 实现已抽到 reader-core.js（UMD，Node 直接 require）
+  const api = Core;
   const shapes = (ops) => ops.map((o) => o.t + ":" + o.text);
 
   assert.deepEqual(shapes(api.tokenDiff("小猫在窗台上睡觉", "小猫在阳台上睡觉")), [
@@ -119,12 +118,10 @@ test("reader token diff marks the exact words that changed", () => {
   // 增删相邻时保持"先删后增"的阅读顺序
   assert.deepEqual(shapes(api.tokenDiff("旧的写法", "新的写法")), ["del:旧", "add:新", "same:的写法"]);
 
-  // 夹在增删之间的零星同字要并进增删块，不能留下"划掉 X / 高亮 Y / 留着 Z"的碎片
+  // 贴着增删块的零星同字（中夹/后缀/前缀）要并进增删块，不能留下"划掉 X / 高亮 Y / 留着 Z"的碎片
   assert.deepEqual(shapes(api.tokenDiff("所以很危险。", "所以存在注入风险。")), [
-    "same:所以",
-    "del:很危",
-    "add:存在注入风",
-    "same:险。",
+    "del:所以很危险。",
+    "add:所以存在注入风险。",
   ]);
 
   // 标记成对出现，渲染后可直接替换成 <del>/<ins>
@@ -172,11 +169,9 @@ test("reader follow-up composer and inline change marks have the requested visua
 test("reader follow-up composer badges the selected text with a clipped label", () => {
   const source = fs.readFileSync("public/notes.js", "utf8");
   const styles = fs.readFileSync("public/notes.css", "utf8");
-  const block = source.match(
-    /\/\/ ---- 字词级 diff 单测区（纯函数，勿依赖 DOM） ----([\s\S]*?)\/\/ ---- 字词级 diff 单测区结束 ----/,
-  );
-  assert.ok(block, "expected the pure token-diff block to exist");
-  const api = new Function(block[1] + "; return { clipSelection };")();
+  // clipSelection 已抽到 reader-core.js，notes.js 里是委托
+  const api = Core;
+  assert.match(source, /Core\.clipSelection/);
 
   // 只露前三个字，其余用省略号收掉——用户一眼确认"我选中的是这段"
   assert.equal(api.clipSelection("小猫在窗台上睡觉"), "小猫在…");

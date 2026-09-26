@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { makeTempDir } from "./helpers.mjs";
-import { buildMainBookPrompt, extractStyleFingerprint } from "../lib/prompts.mjs";
+import { buildMainBookPrompt, extractStyleFingerprint, lintSkinTokens } from "../lib/prompts.mjs";
 import { createBookStore } from "../lib/books.mjs";
 
 test("extractStyleFingerprint collects colors and fonts from the style block", () => {
@@ -79,4 +79,17 @@ test("main book prompt requires verifiable file:line citations", () => {
   assert.match(prompt, /文件路径:行号/);
   assert.match(prompt, /agents\/s01_agent_loop\.py:42/);
   assert.match(prompt, /行号必须与源码一致/);
+});
+
+test("lintSkinTokens warns when the skin misses semantic tokens", () => {
+  const good = `<style>:root { --paper: #fffdf7; --ink: #151b1e; --code-bg: #f5f1ea; --code-ink: #333; --line: #e5ddd0; }</style>`;
+  assert.deepEqual(lintSkinTokens(good), { ok: true, missing: [] });
+
+  // 缺 --line：夜间模式分隔线会被宿主样式渗色
+  const noLine = `<style>:root { --paper: #fff; --ink: #111; --code-bg: #f5; --code-ink: #222; }</style>`;
+  assert.deepEqual(lintSkinTokens(noLine), { ok: false, missing: ["--line"] });
+
+  // 没有 style 块 / 没有 :root → 全缺
+  assert.equal(lintSkinTokens("no style").ok, false);
+  assert.equal(lintSkinTokens("<style>body{}</style>").ok, false);
 });
