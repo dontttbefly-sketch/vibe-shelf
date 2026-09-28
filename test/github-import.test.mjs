@@ -12,8 +12,10 @@ test("parseGithubRepo accepts owner/name and full urls", () => {
   assert.throws(() => parseGithubRepo(""));
 });
 
-function fakeGithubFetch(tree, blobs) {
+// 文件正文走 raw.githubusercontent.com（不占 API 限额），树走 api.github.com
+function fakeGithubFetch(tree, rawFiles, calls = []) {
   return async (url) => {
+    calls.push(url);
     if (url.includes("/git/trees/")) {
       return {
         ok: true,
@@ -22,13 +24,12 @@ function fakeGithubFetch(tree, blobs) {
         json: async () => ({ tree }),
       };
     }
-    const sha = url.split("/").pop();
-    return {
-      ok: true,
-      status: 200,
-      headers: new Map(),
-      json: async () => ({ content: Buffer.from(blobs[sha]).toString("base64") }),
-    };
+    const marker = "/HEAD/";
+    const path = decodeURIComponent(url.slice(url.indexOf(marker) + marker.length));
+    if (!(path in rawFiles)) {
+      return { ok: false, status: 404, headers: new Map(), text: async () => "404: Not Found" };
+    }
+    return { ok: true, status: 200, headers: new Map(), text: async () => rawFiles[path] };
   };
 }
 
@@ -42,17 +43,29 @@ test("fetchGithubRepoFiles keeps text files and skips binaries and big files", a
     { type: "blob", path: "huge.py", sha: "a5", size: bigContent.length },
     { type: "tree", path: "src", sha: "t1", size: 0 },
   ];
-  const blobs = {
-    a1: "<!doctype html><h1>hello</h1>",
-    a2: "console.log(1)",
-    a5: bigContent,
+  const rawFiles = {
+    "index.html": "<!doctype html><h1>hello</h1>",
+    "assets/app.js": "console.log(1)",
   };
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = fakeGithubFetch(tree, blobs);
+  globalThis.fetch = fakeGithubFetch(tree, rawFiles);
   try {
     const { repo, files } = await fetchGithubRepoFiles("octocat/hello-world");
     assert.equal(repo, "octocat/hello-world");
     assert.deepEqual(files.map((f) => f.path), ["assets/app.js", "index.html"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("a 404 file is not retried (retrying only burns the api quota)", async () => {
+  const tree = [{ type: "blob", path: "gone.js", sha: "a1", size: 10 }];
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fakeGithubFetch(tree, {}, calls);
+  try {
+    await assert.rejects(() => fetchGithubRepoFiles("octocat/hello-world"), /404/);
+    assert.equal(calls.filter((url) => url.includes("/HEAD/")).length, 1);
   } finally {
     globalThis.fetch = originalFetch;
   }

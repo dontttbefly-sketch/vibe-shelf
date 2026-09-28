@@ -820,6 +820,18 @@ input:focus-visible {
 }
 .shelf-book-retry:hover { background: #a04535; color: #fffdf9; }
 
+/* 源码没全参与生成：要说得出口，但不必像失败那样刺眼 */
+.shelf-book-note {
+  align-self: flex-start;
+  width: fit-content;
+  border-radius: var(--radius-pill);
+  background: rgba(206, 123, 81, .14);
+  color: #993c1d;
+  font-size: 11.5px;
+  font-weight: 640;
+  padding: 3px 10px;
+}
+
 /* ---- 滚动入场：data-reveal 元素依次浮现 ---- */
 [data-reveal] {
   opacity: 0;

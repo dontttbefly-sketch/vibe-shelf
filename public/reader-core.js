@@ -121,6 +121,68 @@
     return s.length > 3 ? s.slice(0, 3) + "…" : s;
   }
 
+  // ---- 源码引用：识别与解析（双端共享：阅读器 linkify + 服务端编译期锚定/消歧）----
+  var SRC_REF_EXTENSIONS = "py|js|mjs|cjs|ts|tsx|jsx|go|rs|java|kt|swift|c|h|cpp|hpp|cs|rb|php|sh|sql|css|scss|less|html|htm|vue|svelte|json|ya?ml|toml|md|txt|xml|ini|conf|cfg|env";
+
+  // 路径[:行号]。带行号时允许裸文件名（如 code.py:42）；不带行号时必须含 "/"——
+  // 裸 code.py 这类名字项目里常有多份，链谁都可能是错的，交给调用方按此过滤。
+  // 尾部 lookahead 防截断：没有它 "app.tsx" 会匹配成 "app.ts" 再漏出一个 "x"。
+  // 全局正则带 lastIndex 状态，每次调用返回新实例，避免调用方互相踩。
+  function makeSrcRefRe() {
+    return new RegExp(
+      "([A-Za-z0-9_\\-]+(?:\\/[A-Za-z0-9_\\-.]+)*\\.(?:" + SRC_REF_EXTENSIONS + "))(?::(\\d+))?(?![A-Za-z0-9_])",
+      "g",
+    );
+  }
+
+  // 编号段：s09_cron_scheduler / 09_cron / v2_hooks → { head, digits, tail }。
+  // 目录编号会整批错位（书里写 s09_、快照里是 s12_），识别出"同头同尾、只有数字不同"才算近邻。
+  function numberedSegment(segment) {
+    var m = /^(.*?)(\d+)_(.+)$/.exec(segment);
+    return m ? { head: m[1], digits: m[2], tail: m[3] } : null;
+  }
+
+  // 解析链：精确 → 唯一后缀 → 唯一「编号近邻」（s09_cron_scheduler/code.py →
+  // s12_cron_scheduler/code.py：逐段相等，或同头同尾、仅数字不同）。
+  // 一律要求唯一命中，否则返回 null——宁可不链，不可链错。
+  function resolveSourcePath(token, files) {
+    var t = String(token || "");
+    if (!t || !files || !files.length) return null;
+    var paths = [];
+    for (var i = 0; i < files.length; i++) {
+      var p = typeof files[i] === "string" ? files[i] : files[i] && files[i].path;
+      if (p) paths.push(String(p));
+    }
+    for (var e = 0; e < paths.length; e++) if (paths[e] === t) return paths[e];
+
+    var suffix = [];
+    for (var s = 0; s < paths.length; s++) {
+      if (paths[s].length > t.length && paths[s].slice(-t.length - 1) === "/" + t) suffix.push(paths[s]);
+    }
+    if (suffix.length) return suffix.length === 1 ? suffix[0] : null;
+
+    var tSegments = t.split("/");
+    var fuzzy = [];
+    for (var f = 0; f < paths.length; f++) {
+      var segments = paths[f].split("/");
+      if (segments.length !== tSegments.length) continue;
+      var usedNumbered = false, ok = true;
+      for (var j = 0; j < segments.length; j++) {
+        if (segments[j] === tSegments[j]) continue;
+        var tokenSeg = numberedSegment(tSegments[j]);
+        var fileSeg = numberedSegment(segments[j]);
+        if (tokenSeg && fileSeg && tokenSeg.head === fileSeg.head && tokenSeg.tail === fileSeg.tail) {
+          usedNumbered = true;
+          continue;
+        }
+        ok = false;
+        break;
+      }
+      if (ok && usedNumbered) fuzzy.push(paths[f]);
+    }
+    return fuzzy.length === 1 ? fuzzy[0] : null;
+  }
+
   // 文本匹配：选中/所在块文字里出现了文件路径或文件名 → 视为要喂的文件。
   // full = 完整路径出现在文字里（确定）；base = 仅文件名命中（可能同名歧义，如每章的 code.py）。
   // files 形如 [{ path }]，由调用方传入（notes.js 传快照文件清单），本函数不做任何 IO。
@@ -148,6 +210,8 @@
     markMd: markMd,
     countMarkOps: countMarkOps,
     clipSelection: clipSelection,
+    makeSrcRefRe: makeSrcRefRe,
+    resolveSourcePath: resolveSourcePath,
     matchFilesByText: matchFilesByText,
   };
 

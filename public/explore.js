@@ -89,7 +89,14 @@
     role.textContent = message.role === "user" ? "你的问题" : "探索回答";
     var content = document.createElement("div");
     content.className = "shelf-explore-message-content";
-    content.textContent = message.content || (message.status === "pending" ? "正在查阅项目源码…" : "暂时没有内容");
+    var text = message.content || (message.status === "pending" ? "正在查阅项目源码…" : "暂时没有内容");
+    // 回答本身是 Markdown（标题/列表/代码块），当纯文本读会满屏 ### 和 **；
+    // 用户自己写的问题则原样显示，免得问句里的星号被当成语法
+    if (message.role === "assistant" && message.content && window.ShelfMarkdown) {
+      content.innerHTML = window.ShelfMarkdown.render(message.content);
+    } else {
+      content.textContent = text;
+    }
     item.appendChild(role);
     item.appendChild(content);
 
@@ -134,6 +141,7 @@
     if (status) status.textContent = message || "";
   }
 
+  // 只在"根本没有本地服务"时用：表单永久禁用是对的，因为重试也不会成功
   function showLocalOnly(root, error) {
     var form = formRoot(root);
     if (form) {
@@ -145,6 +153,15 @@
       status.className = "shelf-explore-status is-local-only";
       status.textContent = "需要本地运行后才能探索项目。" + (error && error.message ? "（" + error.message + "）" : "");
     }
+  }
+
+  // 一次请求失败（模型超时、5xx）不该把整个会话锁死：提示原因，表单保持可用
+  function showError(root, error) {
+    setBusy(root, false, "");
+    var status = statusRoot(root);
+    if (!status) return;
+    status.className = "shelf-explore-status is-error";
+    status.textContent = (error && error.message ? error.message : "这次没有成功") + " · 可以再试一次";
   }
 
   function mount(options) {
@@ -203,7 +220,7 @@
         setBusy(root, false, result.assistantMessage.status === "failed" ? "这次回答失败了，可以重试。" : "");
       } catch (error) {
         if (pending.parentNode) pending.remove();
-        showLocalOnly(root, error);
+        showError(root, error);
       }
     }
 
@@ -219,7 +236,7 @@
         renderSession(root, session.session, handlers());
         setBusy(root, false, result.assistantMessage.status === "failed" ? "仍未成功，可以稍后再试。" : "");
       } catch (error) {
-        showLocalOnly(root, error);
+        showError(root, error);
       }
     }
 
@@ -236,7 +253,7 @@
         );
         window.location.assign(url);
       } catch (error) {
-        showLocalOnly(root, error);
+        showError(root, error);
       }
     }
 
@@ -248,8 +265,10 @@
 
     if (sessionId) {
       resumeSession().catch(function (error) {
+        // 会话过期/被删是常态，丢掉这个 id 让下一次提问新建会话即可，别锁死表单
+        sessionId = null;
         sessionStorage.removeItem(storageKey(context));
-        showLocalOnly(root, error);
+        showError(root, error);
       });
     }
     return { sendMessage: sendMessage, growIntoBook: growIntoBook, retryMessage: retryMessage };

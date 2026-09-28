@@ -88,6 +88,15 @@
 - 放大按钮、铅笔（SVG，右上擦头左下笔尖）、关闭 ×：三个按钮同语言——透明底 + `--faint`，hover 才上色；标题与按钮 `user-select: none`（双击不选中）
 - 放大 = 宽度过渡到 `calc(50vw - 40px)`（右缘锚定）。**CSS 不能在 `auto` 与数值之间过渡**——定位属性参与动画时必须两侧都是数值
 
+## 源码联动契约（生成期）
+
+一句话：**行号的唯一可信来源是快照，不是模型的自述**。模型负责指认（写路径、摘代码），服务端负责锚定（内容确定性匹配），阅读器负责兜底（解析唯一才链）。
+
+- **正文引用**：prompt 只要求模型写完整相对路径（给出文件清单、明确不用写行号——dump 不带行号，模型数不出来）。阅读器 linkify 走 reader-core.js 的 `makeSrcRefRe()` + `resolveSourcePath()`（精确 → 唯一后缀 → 唯一"编号近邻"：`s09_cron_scheduler/code.py` → `s12_cron_scheduler/code.py`，同头同尾、只有数字不同），**一律唯一命中才链**；无行号时路径必须含 `/`（裸 `code.py` 歧义太大，不链）。解析不出的引用保持纯文本（只链不改）；hover 预览头显示"书中写作 X"，让读者看见书里写的和解析到的不一致。
+- **代码块锚定**：编译期（book-compiler → lib/source-link.mjs）把 `<pre><code>` 内容对快照做逐行窗口匹配（`MIN_RUN=5` 连续行），命中才注入 `data-file`/`data-line`（行号 = 命中文件行 − 块内偏移）。歧义（样板代码在多个章节逐字重复）先按"代码文件 > 中文文档 > 无语言 > 英文 > 其他语言"定序，再按块前最近的引用消歧，消不掉就放弃——跳错行比不跳更伤信任。
+- **存量书复活**：`node scripts/relink-main-book.mjs <projectId> [--dry-run]` 按当前规则重新编译发布主书（不动 source.html、不调模型）。
+- **生成选材顺序**（lib/main-book-generation.mjs `promptPriority`）：根 README → 清单文件 → 代码 → 文档 → 语言变体（`.ja.md`、`docs/ja/` 这类）；预算不够时先砍语言变体。预算由 `SHELF_PROMPT_BUDGET_BYTES` 覆盖（默认 2.5MB ≈ 1M 上下文）。
+
 ## 部署与运行模式
 
 - **本地完整版**：`node server.mjs`（.env 填 OpenAI 兼容接口）→ 项目导入（本地文件夹 / GitHub 公开仓库 `POST /api/projects/import-github`，lib/github-import.mjs 拉文本文件、共用 IMPORT_LIMITS）、主书生成、旁注、探索和小书生成；配 `GITHUB_TOKEN` 可提高 API 限额
@@ -127,6 +136,9 @@
 - **书皮窄屏 MQ 转 column 后若保留 `align-items: flex-start`**：.book-main 变内容自适应宽，宽表格/长代码行的 min-content 直接撑出视口 → 阅读器层在移动端 MQ 里钉 `width:100%` + 表格 `display:block; overflow-x:auto`，不动书 DOM
 - **编辑含 `\uXXXX` 转义序列的旧代码别用 Edit 工具硬贴**：JSON 参数会把 `\u0002` 解析成真实控制字符，永远匹配不上——按行号用脚本替换
 - **主书 token 契约**：生成书 `<style>` 的 `:root` 必须含 `--paper/--ink/--code-bg/--code-ink/--line`（夜间模式靠重映射它们），`lintSkinTokens` 只警告不失败，缺了会进 generation 状态的 `skinWarnings`
+- **别让模型报行号**：dump 给模型的文件不带行号，它数不出来——实测一本 21 个代码块的书 0 个行号引用（索性全不写），旧 prompt 的"标注文件:行号"契约等于没写。行号必须由服务端按内容锚定
+- **编号近邻正则会漏 `s` 前缀**：`s09_cron_scheduler` 这类目录是"字母+数字+下划线"，`/^(\d+)_/` 永远匹配不上，编号纠偏整条失效——`numberedSegment` 用 `/^(.*?)(\d+)_(.+)$/` 取"同头同尾"
+- **引用正则要防截断**：没有尾部 lookahead `(?![A-Za-z0-9_])` 时 `app.tsx` 会被匹配成 `app.ts`，漏出的 `x` 被当成正文（扩展名交替顺序救不了，必须回溯 + 边界）
 
 ## 设计原则三句话（写代码犹豫时看这里）
 

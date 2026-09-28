@@ -1683,11 +1683,21 @@ html[data-theme="dark"] .nb-shimmer-band {
 .nb-src-preview.nb-show { opacity: 1; transform: none; }
 .nb-src-preview-head {
   display: flex;
+  align-items: baseline;
+  gap: 8px;
   padding: 7px 12px;
   border-bottom: 1px solid rgba(21, 27, 30, .07);
   color: rgba(21, 27, 30, .56);
   font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
   font-size: 11px;
+}
+/* 书里写错的路径照原样留在正文，但让读者看见解析到了哪 */
+.nb-src-preview-alias {
+  margin-left: auto;
+  color: rgba(21, 27, 30, .38);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .nb-src-preview pre {
   margin: 0;
@@ -1832,6 +1842,7 @@ html[data-theme="dark"] .nb-src-preview {
   box-shadow: 0 14px 40px rgba(0, 0, 0, .4);
 }
 html[data-theme="dark"] .nb-src-preview-head { border-bottom-color: rgba(238, 231, 221, .08); color: rgba(238, 231, 221, .52); }
+html[data-theme="dark"] .nb-src-preview-alias { color: rgba(238, 231, 221, .34); }
 
 @media (max-width: 940px) {
   .nb-source-drawer { width: 100vw; }

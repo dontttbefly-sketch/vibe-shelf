@@ -119,6 +119,22 @@
     return project.generationStatus || "ready";
   }
 
+  // 主书只喂给模型一部分源码：丢了多少必须说出来，否则书缺了半本而界面一片正常
+  function skippedSourceCount(coverage) {
+    if (!coverage) return 0;
+    return Number(coverage.skippedTooLarge || 0)
+      + Number(coverage.skippedOverBudget || 0)
+      + Number(coverage.skippedUnreadable || 0);
+  }
+
+  function skippedSourceDetail(coverage) {
+    var parts = [];
+    if (Number(coverage.skippedTooLarge || 0)) parts.push(Number(coverage.skippedTooLarge) + " 个超出单文件上限");
+    if (Number(coverage.skippedOverBudget || 0)) parts.push(Number(coverage.skippedOverBudget) + " 个超出总量预算");
+    if (Number(coverage.skippedUnreadable || 0)) parts.push(Number(coverage.skippedUnreadable) + " 个读取失败");
+    return parts.join("，");
+  }
+
   function mainBookUrl(projectOrId) {
     var projectId = typeof projectOrId === "string" ? projectOrId : projectOrId.id;
     var bookId = typeof projectOrId === "string" ? "main" : (projectOrId.mainBookId || "main");
@@ -147,6 +163,34 @@
     link.addEventListener("click", function (event) { event.preventDefault(); });
   }
 
+  // 生成中的项目卡片：在导入表单里轮询是不够的——刷新页面后表单没了，
+  // 卡片就永远停在"主书生成中…"且点不动，只能靠用户自己再刷一次。
+  var pollingCards = {};
+  function pollGeneratingCard(link, projectId) {
+    if (pollingCards[projectId]) return;
+    pollingCards[projectId] = true;
+    var attempts = 0;
+    var timer = setInterval(async function () {
+      attempts += 1;
+      if (attempts > 200) { clearInterval(timer); delete pollingCards[projectId]; return; }
+      try {
+        var data = await request("/api/projects/" + encodeURIComponent(projectId) + "/generation");
+        var generation = data.generation || {};
+        if (generation.status === "ready" || generation.status === "failed") {
+          clearInterval(timer);
+          delete pollingCards[projectId];
+          loadProjects();
+          return;
+        }
+        var detail = link.querySelector("small");
+        if (detail) detail.textContent = GENERATION_STAGE_COPY[generation.stage] || "主书生成中…";
+      } catch (error) {
+        clearInterval(timer);
+        delete pollingCards[projectId];
+      }
+    }, 1500);
+  }
+
   function makeBookCard(project) {
     var state = projectState(project);
     var link = document.createElement("a");
@@ -166,6 +210,7 @@
       detail.textContent = "主书生成中…";
       link.classList.add("is-generating");
       disableBookLink(link);
+      pollGeneratingCard(link, project.id);
     } else if (state === "failed") {
       detail.textContent = "主书生成失败";
       link.classList.add("is-failed");
@@ -199,6 +244,14 @@
     content.appendChild(title);
     content.appendChild(detail);
     if (stateBadge) content.appendChild(stateBadge);
+    var skippedSources = skippedSourceCount(project.sourceCoverage);
+    if (state !== "generating" && state !== "failed" && skippedSources > 0) {
+      var sourceNote = document.createElement("small");
+      sourceNote.className = "shelf-book-note";
+      sourceNote.textContent = "另有 " + skippedSources + " 个源码文件未参与生成";
+      sourceNote.title = skippedSourceDetail(project.sourceCoverage);
+      content.appendChild(sourceNote);
+    }
     link.appendChild(spine);
     link.appendChild(content);
     return link;
@@ -242,7 +295,10 @@
         var generation = data.generation || {};
         if (generation.status === "ready") {
           clearInterval(timer);
-          setStatus(form, "主书生成完成，正在打开…", "loading");
+          var skipped = skippedSourceCount(generation.sourceCoverage);
+          setStatus(form, skipped
+            ? "主书生成完成（另有 " + skipped + " 个源码文件未参与），正在打开…"
+            : "主书生成完成，正在打开…", "loading");
           playBookOpenTransition(form, mainBookUrl(projectId));
           return;
         }
@@ -307,8 +363,12 @@
       setStatus(form, "正在读取源码文件…", "loading");
       try {
         var files = await window.ShelfImport.readDirectoryTextFiles(folder);
-        if (!files.length) throw new Error("所选文件夹中没有可导入的文本源码文件");
-        setStatus(form, "正在创建项目…", "loading");
+        if (!files.length) {
+          throw new Error(files.skipped
+            ? "所选文件夹里没有可导入的文本源码（跳过了 " + files.skipped + " 个依赖目录/二进制/超大文件）"
+            : "所选文件夹中没有可导入的文本源码文件");
+        }
+        setStatus(form, "正在创建项目…" + (files.truncated ? "（文件较多，只导入前 " + files.length + " 个）" : ""), "loading");
         var projectId = makeProjectId();
         form.dataset.projectId = projectId;
         var result = await request("/api/projects/import", {

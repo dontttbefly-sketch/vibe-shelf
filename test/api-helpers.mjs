@@ -14,12 +14,13 @@ export function fakeModel(results = ["answer"]) {
   };
 }
 
-export async function startTestServer(t, { modelClient = fakeModel() } = {}) {
+export async function startTestServer(t, { modelClient = fakeModel(), environment } = {}) {
   const root = makeTempDir(t);
   const server = createShelfServer({
     dataDir: `${root}/data`,
     publicDir: `${root}/public`,
     modelClient,
+    environment,
   });
   await new Promise((resolve) => server.listen(0, resolve));
   t.after(() => server.close());

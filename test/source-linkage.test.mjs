@@ -43,3 +43,18 @@ test("hover preview of source refs is a passive card", () => {
   // 速览复用抽屉的行渲染（行号 + 目标行高亮）
   assert.match(js, /nb-src-line-active/);
 });
+
+test("reader resolves source refs through the shared core rules", () => {
+  const js = fs.readFileSync("public/notes.js", "utf8");
+  const core = fs.readFileSync("public/reader-core.js", "utf8");
+  // 识别与解析共用 reader-core 的实现，服务端锚定走同一条规则
+  assert.match(js, /Core\.makeSrcRefRe/);
+  assert.match(js, /Core\.resolveSourcePath/);
+  assert.match(core, /function makeSrcRefRe/);
+  assert.match(core, /function resolveSourcePath/);
+  // 无行号的裸文件名不链（歧义太大）；解析唯一才链（只链不改）
+  assert.match(js, /raw\.indexOf\("\/"\) < 0/);
+  // hover 预览里让读者看见"书里写的"与"解析到的"不一致
+  assert.match(js, /书中写作/);
+  assert.match(fs.readFileSync("public/notes.css", "utf8"), /\.nb-src-preview-alias/);
+});

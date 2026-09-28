@@ -6,6 +6,13 @@
     return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  // 与服务端 lib/imports.mjs 的 IMPORT_LIMITS 保持一致：
+  // 不在这里先截住的话，选错文件夹（比如带 node_modules）会先读满整个目录，
+  // 再被服务端一句英文的 "request body too large" 拒掉。
+  var MAX_FILES = 300;
+  var MAX_FILE_BYTES = 100 * 1024;
+  var MAX_TOTAL_BYTES = 8 * 1024 * 1024;
+
   async function readDirectoryTextFiles(fileList) {
     var selected = Array.prototype.slice.call(fileList || []);
     var root = selected[0] && selected[0].webkitRelativePath
@@ -15,23 +22,31 @@
     var ignored = /(^|\/)\.git\/|(^|\/)(node_modules|dist|build|\.next)(\/|$)/;
     var records = [];
     var skipped = 0;
+    var totalBytes = 0;
+    var truncated = false;
 
     for (var index = 0; index < selected.length; index += 1) {
       var file = selected[index];
       var relative = (file.webkitRelativePath || file.name || "").replace(rootPattern || /^$/, "");
-      if (!relative || ignored.test(relative) || file.size > 100 * 1024) {
+      if (!relative || ignored.test(relative) || file.size > MAX_FILE_BYTES) {
         skipped += 1;
         continue;
+      }
+      if (records.length >= MAX_FILES || totalBytes + file.size > MAX_TOTAL_BYTES) {
+        truncated = true;
+        break;
       }
       var content = await file.text();
       if (content.includes("\u0000")) {
         skipped += 1;
         continue;
       }
+      totalBytes += content.length;
       records.push({ path: relative, content: content });
     }
 
     records.skipped = skipped;
+    records.truncated = truncated;
     return records;
   }
 

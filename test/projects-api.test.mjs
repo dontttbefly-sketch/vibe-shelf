@@ -35,6 +35,13 @@ test("import creates a project, a main book, and isolated note endpoints", async
   );
   assert.equal(invalidFile.status, 404);
 
+  // 文件清单必须带真实体积：主书生成的体积预算和阅读器的文件勾选都靠它
+  const listed = await requestJson(
+    base,
+    `/api/projects/demo/snapshots/${imported.body.project.currentSnapshotId}/files`,
+  );
+  assert.deepEqual(listed.body.files, [{ path: "src/app.mjs", size: 25 }]);
+
   const createdNote = await requestJson(base, "/api/projects/demo/books/main/notes", "POST", {
     note: { id: "n-1", body: "项目主书旁注" },
   });

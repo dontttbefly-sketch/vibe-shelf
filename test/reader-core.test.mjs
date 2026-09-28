@@ -66,3 +66,48 @@ test("matchFilesByText distinguishes full-path hits from ambiguous basenames", (
   assert.deepEqual(Core.matchFilesByText("", files), { full: [], base: [] });
   assert.deepEqual(Core.matchFilesByText("x", []), { full: [], base: [] });
 });
+
+test("makeSrcRefRe matches paths with or without line numbers", () => {
+  const re = Core.makeSrcRefRe();
+  // 带行号：裸文件名也认（旧契约行为不变）
+  let match = re.exec("见 code.py:42 的实现");
+  assert.equal(match[1], "code.py");
+  assert.equal(match[2], "42");
+  // 无行号：完整路径照收
+  re.lastIndex = 0;
+  match = re.exec("打开 s01_agent_loop/code.py 看看");
+  assert.equal(match[1], "s01_agent_loop/code.py");
+  assert.equal(match[2], undefined);
+  // tsx 不能被截成 ts
+  re.lastIndex = 0;
+  match = re.exec("组件 src/app.tsx 里");
+  assert.equal(match[1], "src/app.tsx");
+  // 每次调用都是新实例，lastIndex 不互相踩
+  const a = Core.makeSrcRefRe();
+  const b = Core.makeSrcRefRe();
+  a.exec("x/y.py");
+  assert.equal(b.lastIndex, 0);
+});
+
+test("resolveSourcePath only resolves unique hits", () => {
+  const files = [
+    { path: "s01_agent_loop/code.py" },
+    { path: "s12_cron_scheduler/code.py" },
+    { path: "agents/s01_agent_loop.py" },
+    { path: "docs/zh/guide.md" },
+  ];
+  // 精确
+  assert.equal(Core.resolveSourcePath("s12_cron_scheduler/code.py", files), "s12_cron_scheduler/code.py");
+  // 唯一后缀
+  assert.equal(Core.resolveSourcePath("guide.md", files), "docs/zh/guide.md");
+  // 编号近邻：书里目录编号整批错位时纠回来（同头同尾、只有数字不同）
+  assert.equal(Core.resolveSourcePath("s09_cron_scheduler/code.py", files), "s12_cron_scheduler/code.py");
+  // 歧义（多份同名 basename）→ 不解析
+  assert.equal(Core.resolveSourcePath("code.py", files), null);
+  // 不存在 → null
+  assert.equal(Core.resolveSourcePath("nope/missing.py", files), null);
+  assert.equal(Core.resolveSourcePath("", files), null);
+  // 编号近邻也不唯一 → null
+  const twins = [{ path: "s02_thing/a.py" }, { path: "s05_thing/a.py" }];
+  assert.equal(Core.resolveSourcePath("s09_thing/a.py", twins), null);
+});

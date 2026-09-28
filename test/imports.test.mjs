@@ -34,7 +34,7 @@ test("duplicate source paths are rejected before a project is written", (t) => {
         { path: "src/app.mjs", content: "two" },
       ],
     }),
-    /duplicate/,
+    /重复路径/,
   );
   assert.equal(fs.existsSync(path.join(root, "projects", "demo")), false);
 });

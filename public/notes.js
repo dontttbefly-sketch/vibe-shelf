@@ -27,6 +27,44 @@
     return CONTEXT.projectId ? "shelf-notes-" + CONTEXT.projectId + "-" + CONTEXT.bookId : "shelf-notes-" + BOOK;
   }
   var STATIC_MODE = false; // GitHub Pages 等纯静态部署：阅读+本地批注可用，AI 生成不可用
+
+  // ---- 待同步笔记队列 ----
+  // 服务端没确认收下的笔记（网络抖动 / 5xx）先落这里，下次启动自动补交。
+  // 不这么做的话：用户看到"已记下"，但笔记只躺在 localStorage 里，
+  // 下次打开用服务端数据整体覆盖内存，那条笔记就凭空消失了。
+  function pendingNotesKey() { return localNotesKey() + "-pending"; }
+  function readPendingNotes() {
+    try {
+      var list = JSON.parse(localStorage.getItem(pendingNotesKey()) || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  }
+  function writePendingNotes(list) {
+    try {
+      if (list.length) localStorage.setItem(pendingNotesKey(), JSON.stringify(list));
+      else localStorage.removeItem(pendingNotesKey());
+    } catch (e) {}
+  }
+  function markPending(note) {
+    var list = readPendingNotes().filter(function (n) { return n.id !== note.id; });
+    list.push(note);
+    writePendingNotes(list);
+  }
+  function clearPending(id) {
+    var list = readPendingNotes();
+    var next = list.filter(function (n) { return n.id !== id; });
+    if (next.length !== list.length) writePendingNotes(next);
+  }
+  // 服务端返回的列表 + 还没补交成功的本地笔记 = 内存里的完整视图
+  function mergePending(list) {
+    var pending = readPendingNotes();
+    if (!pending.length) return list;
+    var seen = {};
+    list.forEach(function (n) { seen[n.id] = true; });
+    pending.forEach(function (n) { if (!seen[n.id]) list.push(n); });
+    return list;
+  }
+
   var notes = [];
   var blocks = [];
   var anchorMap = [];
@@ -140,6 +178,8 @@
     }
     return out.join("\n");
   }
+  // 探索会话复用同一套渲染器（book-compiler 保证 explore.js 在 notes.js 之后加载）
+  window.ShelfMarkdown = { render: renderMarkdown };
 
   // ================= 工具 =================
   function norm(s) { return (s || "").replace(/\s+/g, " ").trim(); }
@@ -368,10 +408,10 @@
         var n = notes.find(function (x) { return x.id === id; });
         if (!n) return;
         n.promoted = false;
-        persist(n).then(function () {
+        persist(n).then(function (outcome) {
           var restored = notes.find(function (x) { return x.id === id; }) || n;
           applyNotePlacement(restored, { animate: "restore" });
-          toast("已返回回注释");
+          toast(savedToast(outcome, "已返回回注释"));
         });
       }, 360);
     });
@@ -497,10 +537,6 @@
     document.addEventListener("mousedown", function (e) {
       if (subchip && !subchip.contains(e.target)) hideSubchip();
     });
-    // 正文页面滚动时，"＋补注释"浮窗跟随选段文字
-    window.addEventListener("scroll", function () {
-      if (floatBtn) positionFloat(window.getSelection());
-    }, { passive: true });
     // 隐形快捷键：划词后按 Enter 直接唤出聊天框（无 UI 提示）
     // 气泡内划词 → 追问小气泡；正文划词 → 补注释提问框
     document.addEventListener("keydown", function (e) {
@@ -1503,14 +1539,14 @@
       };
       notes.push(note);
     }
-    persist(note).then(function () {
+    persist(note).then(function (outcome) {
       var saved = notes.find(function (n) { return n.id === note.id; }) || note;
       applyNotePlacement(saved);
       refreshSourceMarkers(); // 源码批注：落盘后立刻点亮抽屉里的行
       pending = null;
-      if (opts.silent) { toast("已记下"); return; } // 自动保存也要给"已落盘"的确认感
+      if (opts.silent) { toast(savedToast(outcome, "已记下")); return; } // 自动保存也要给"已落盘"的确认感
       closeBubble();
-      toast(saved.promoted ? "已晋升为正文" : "已记下");
+      toast(savedToast(outcome, saved.promoted ? "已晋升为正文" : "已记下"));
     });
     return note;
   }
@@ -1527,15 +1563,23 @@
       toast("已删除（本地）");
       return;
     }
-    fetch(projectNotesPath() + (CONTEXT.projectId ? "?id=" : "&id=") + encodeURIComponent(id), { method: "DELETE" }).then(function (r) { return r.json(); }).then(function (d) {
-      notes = d.notes;
-      clearMarkers(id);
-      removeAnchor(id);
-      refreshSourceMarkers();
-      updateNav();
-      closeBubble();
-      toast("已删除");
-    });
+    fetch(projectNotesPath() + (CONTEXT.projectId ? "?id=" : "&id=") + encodeURIComponent(id), { method: "DELETE" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("删除失败");
+        return r.json();
+      })
+      .then(function (d) {
+        if (!Array.isArray(d.notes)) throw new Error("删除响应异常");
+        clearPending(id);
+        notes = mergePending(d.notes);
+        clearMarkers(id);
+        removeAnchor(id);
+        refreshSourceMarkers();
+        updateNav();
+        closeBubble();
+        toast("已删除");
+      })
+      .catch(function () { toast("删除没成功，笔记还在，稍后再试"); });
   }
   function persistLocal(note) {
     var idx = notes.findIndex(function (n) { return n.id === note.id; });
@@ -1549,8 +1593,24 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ book: BOOK, note: note }),
-    }).then(function (r) { return r.json(); }).then(function (d) { notes = d.notes; })
-      .catch(function () { return persistLocal(note); });
+    }).then(function (r) {
+      // 服务端出错时返回的也是 JSON（{error:{...}}），不看 r.ok 就会把 notes 写成 undefined
+      if (!r.ok) throw new Error("笔记保存失败");
+      return r.json();
+    }).then(function (d) {
+      if (!Array.isArray(d.notes)) throw new Error("笔记保存响应异常");
+      clearPending(note.id);
+      notes = mergePending(d.notes);
+      return "synced";
+    }).catch(function () {
+      markPending(note);
+      notes = mergePending(notes.slice());
+      return "local";
+    });
+  }
+  // 保存结果决定提示文案：只落本地时必须说清楚，否则用户以为已经存进项目里了
+  function savedToast(outcome, onlineText) {
+    return outcome === "local" ? "网络不稳，已存在本地，下次打开自动补交" : onlineText;
   }
 
   function viewNote(id, fromEl) {
@@ -2002,13 +2062,13 @@
       createdAt: today(),
     };
     notes.push(note);
-    persist(note).then(function () {
+    persist(note).then(function (outcome) {
       var saved = notes.find(function (n) { return n.id === note.id; }) || note;
       applyNotePlacement(saved, { animate: "insert" });
       var card = main.querySelector('.nb-promoted[data-note="' + saved.id + '"]');
       if (card) card.scrollIntoView({ block: "center", behavior: "smooth" });
       setTimeout(closeGlobalSearch, 180);
-      toast("已插成补充卡");
+      toast(savedToast(outcome, "已插成补充卡"));
     });
   }
   function jumpToSearchMatch(index) {
@@ -2053,7 +2113,9 @@
   var sourceDrawer = null, sourceTree = null, sourceCode = null, sourceHead = null, sourceBack = null, sourceDriftEl = null;
   var sourceActivePath = null;
   var sourceCloseTimer = null;
-  var SRC_REF_RE = /([A-Za-z0-9_\-.]+\.(?:py|js|ts|tsx|jsx|mjs|cjs|go|rs|java|rb|php|sh|css|scss|html|json|yml|yaml|toml|vue|svelte)):(\d+)/g;
+  // 引用识别与解析走 reader-core 共享实现（与服务端编译期锚定同一条规则）。
+  // 无行号时路径必须含 "/"：裸 code.py 这类名字项目里常有多份，链谁都可能是错的
+  var SRC_REF_RE = typeof Core.makeSrcRefRe === "function" ? Core.makeSrcRefRe() : null;
   var SRC_TOKEN = /(#.*$|\/\/.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(def|class|return|if|elif|else|for|while|import|from|as|with|try|except|finally|raise|lambda|yield|async|await|function|const|let|var|new|extends|export|import|switch|case|break|continue|not|and|or|is|in|None|True|False|null|undefined|true|false|self|this|fn|impl|pub|struct|enum|match|type|interface)\b/g;
 
   function snapshotAvailable() {
@@ -2271,13 +2333,9 @@
     else sourceCode.scrollTop = 0;
   }
 
+  // 解析链（精确 → 唯一后缀 → 唯一编号近邻）与阅读器 linkify、服务端锚定共用一份实现
   function matchSourcePath(path, files) {
-    for (var i = 0; i < files.length; i++) if (files[i].path === path) return path;
-    var hits = [];
-    for (var j = 0; j < files.length; j++) {
-      if (files[j].path === path || files[j].path.endsWith("/" + path) || files[j].path.endsWith(path)) hits.push(files[j].path);
-    }
-    return hits.length === 1 ? hits[0] : null;
+    return Core.resolveSourcePath(path, files);
   }
 
   // 源码批注标记：把锚定在当前文件的 note 行区间点上泥点（点击行打开气泡，与正文划线同语言）
@@ -2311,7 +2369,7 @@
   }
 
   function linkifySourceRefs() {
-    if (!snapshotAvailable() || !main) return;
+    if (!snapshotAvailable() || !main || !SRC_REF_RE) return;
     var walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, null);
     var nodes = [], n;
     while ((n = walker.nextNode())) {
@@ -2328,14 +2386,29 @@
     SRC_REF_RE.lastIndex = 0;
     var match, last = 0, frag = document.createDocumentFragment(), made = false;
     while ((match = SRC_REF_RE.exec(text))) {
+      var raw = match[1], line = match[2];
+      // 无行号的引用必须含 "/"：裸文件名歧义太大，不链
+      if (!line && raw.indexOf("/") < 0) continue;
+      // 文件清单在手时"解析唯一才链"（只链不改：解析不出的引用保持纯文本）；
+      // 清单没拿到（接口挂了/静态部署）时对带行号引用保持旧的乐观链接
+      var resolved = null;
+      if (bookFiles && bookFiles.length) {
+        resolved = Core.resolveSourcePath(raw, bookFiles);
+        if (!resolved) continue;
+      } else if (!line) {
+        continue;
+      }
       made = true;
       if (match.index > last) frag.appendChild(document.createTextNode(text.slice(last, match.index)));
       var a = document.createElement("a");
       a.className = "nb-srcref";
-      a.setAttribute("data-src-ref", match[1]);
-      a.setAttribute("data-src-line", match[2]);
+      a.setAttribute("data-src-ref", resolved || raw);
+      if (resolved && resolved !== raw) a.setAttribute("data-src-raw", raw); // 保留原文给"书中写作"提示
+      a.setAttribute("data-src-line", line || "");
       a.textContent = match[0];
-      a.title = "在源码抽屉中查看";
+      a.title = resolved && resolved !== raw
+        ? "在源码抽屉中查看（已解析为 " + resolved + "）"
+        : "在源码抽屉中查看";
       frag.appendChild(a);
       last = match.index + match[0].length;
     }
@@ -2427,9 +2500,10 @@
 
   async function openPreview(anchor) {
     var seq = ++previewSeq;
-    var raw = anchor.getAttribute("data-src-ref");
+    var ref = anchor.getAttribute("data-src-ref");
+    var raw = anchor.getAttribute("data-src-raw") || ref; // 书里写的原文（纠偏过的引用两者不同）
     var line = Number(anchor.getAttribute("data-src-line")) || 0;
-    var path = await resolveSourceRef(raw);
+    var path = await resolveSourceRef(ref);
     if (seq !== previewSeq || !path || previewAnchor !== anchor || drawerOpen()) return;
     var lines = await previewFileLines(path);
     if (seq !== previewSeq || !lines || previewAnchor !== anchor || drawerOpen()) return;
@@ -2442,7 +2516,10 @@
       end = lines.length;
       start = Math.max(1, end - 14);
     }
-    var html = '<div class="nb-src-preview-head"><span>' + esc2(path) + (line ? ":" + line : "") + "</span></div><pre>";
+    var html = '<div class="nb-src-preview-head"><span>' + esc2(path) + (line ? ":" + line : "") + "</span>";
+    // 只链不改：书里写错的路径照原样留在正文里，但 hover 时让读者看见解析到了哪
+    if (path !== raw) html += '<span class="nb-src-preview-alias">书中写作 ' + esc2(raw) + "</span>";
+    html += "</div><pre>";
     for (var n = start; n <= end; n++) {
       html += '<div class="nb-src-line' + (line && n === line ? " nb-src-line-active" : "") + '"><span class="nb-src-no">' + n + '</span><span class="nb-src-text">' + highlightSourceLine(lines[n - 1] || "") + "</span></div>";
     }
@@ -2489,23 +2566,55 @@
   setupNav();
   buildBubble();
   setupSourceDrawer();
-  fetch(projectNotesPath())
-    .then(function (r) { if (!r.ok) throw new Error("static"); return r.json(); })
-    .then(function (list) { notes = list || []; refreshAll(); })
-    .catch(function () {
-      STATIC_MODE = true;
-      var loadFromLocalStorage = function () {
-        try { notes = JSON.parse(localStorage.getItem(localNotesKey()) || "[]"); } catch (e) { notes = []; }
-        refreshAll();
-        toast("静态演示：阅读与本地批注可用 · AI 生成请本地运行");
-      };
-      var saved = null;
-      try { saved = localStorage.getItem(localNotesKey()); } catch (e) {}
-      if (saved) { try { notes = JSON.parse(saved); } catch (e) { notes = []; } refreshAll(); return; }
-      // 首次访问：读随书附带的示例注释
-      fetch(CONTEXT.staticNotesUrl || ("data/" + BOOK + ".json"))
-        .then(function (r) { if (!r.ok) throw new Error("none"); return r.json(); })
-        .then(function (list) { notes = list || []; refreshAll(); })
-        .catch(loadFromLocalStorage);
+  function loadServerNotes() {
+    return fetch(projectNotesPath()).then(function (r) {
+      // 404 = 静态托管上根本没有这套接口（GitHub Pages）；其余非 2xx 是服务端自己出了状况，
+      // 不能混为一谈——一次瞬时 500 就把整个应用永久切成静态模式，用户再也存不进服务端。
+      if (r.status === 404) throw new Error("static");
+      if (!r.ok) throw new Error("unavailable");
+      return r.json();
+    });
+  }
+  function applyServerNotes(list) {
+    notes = mergePending(Array.isArray(list) ? list : []);
+    refreshAll();
+    flushPendingNotes();
+  }
+  // 补交上次没送到服务端的笔记
+  function flushPendingNotes() {
+    if (STATIC_MODE) return;
+    var pending = readPendingNotes();
+    if (!pending.length) return;
+    pending.reduce(function (chain, note) {
+      return chain.then(function () { return persist(note); });
+    }, Promise.resolve()).then(function () {
+      if (!readPendingNotes().length) toast("已补交 " + pending.length + " 条离线笔记");
+    });
+  }
+  function enterStaticMode() {
+    STATIC_MODE = true;
+    var loadFromLocalStorage = function () {
+      try { notes = JSON.parse(localStorage.getItem(localNotesKey()) || "[]"); } catch (e) { notes = []; }
+      refreshAll();
+      toast("静态演示：阅读与本地批注可用 · AI 生成请本地运行");
+    };
+    var saved = null;
+    try { saved = localStorage.getItem(localNotesKey()); } catch (e) {}
+    if (saved) { try { notes = JSON.parse(saved); } catch (e) { notes = []; } refreshAll(); return; }
+    // 首次访问：读随书附带的示例注释
+    fetch(CONTEXT.staticNotesUrl || ("data/" + BOOK + ".json"))
+      .then(function (r) { if (!r.ok) throw new Error("none"); return r.json(); })
+      .then(function (list) { notes = list || []; refreshAll(); })
+      .catch(loadFromLocalStorage);
+  }
+  loadServerNotes()
+    .then(applyServerNotes)
+    .catch(function (error) {
+      if (error && error.message === "unavailable") {
+        // 服务端在，只是这次没读出来：重试一次再决定，别把整个应用永久切成静态模式
+        setTimeout(function () { loadServerNotes().then(applyServerNotes).catch(enterStaticMode); }, 2000);
+        return;
+      }
+      enterStaticMode();
     });
 })();

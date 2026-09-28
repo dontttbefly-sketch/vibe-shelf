@@ -22,7 +22,35 @@ html[data-theme="dark"] {
 .shelf-explore-message { padding: 14px 0; border-top: 1px solid rgba(21, 27, 30, .1); }
 .shelf-explore-message--user { padding-left: 18px; border-left: 2px solid var(--mist, #e8f0ed); }
 .shelf-explore-message-role { margin: 0 0 6px; color: var(--faint, #8b9694); font-size: 12px; }
-.shelf-explore-message-content { white-space: pre-wrap; line-height: 1.75; }
+.shelf-explore-message-content { line-height: 1.75; }
+.shelf-explore-message--user .shelf-explore-message-content { white-space: pre-wrap; }
+/* 回答正文是 Markdown 渲染结果。宿主书的样式（代码块左条、行内 code 底色和字色）会渗进来，
+   背景 / 边框 / color 三个都要显式覆盖——只改背景会漏字色。 */
+.shelf-explore-message-content > :first-child { margin-top: 0; }
+.shelf-explore-message-content > :last-child { margin-bottom: 0; }
+.shelf-explore-message-content p { margin: 0 0 12px; }
+.shelf-explore-message-content h3 { margin: 18px 0 10px; font-size: 17px; line-height: 1.35; }
+.shelf-explore-message-content h4 { margin: 14px 0 8px; font-size: 15px; }
+.shelf-explore-message-content ul,
+.shelf-explore-message-content ol { margin: 0 0 12px; padding-left: 20px; }
+.shelf-explore-message-content li { margin-bottom: 6px; }
+.shelf-explore-message-content code {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12.5px; padding: 1px 5px; border: 0; border-radius: 4px;
+  background: var(--mist, #e8f0ed); color: var(--ink, #151b1e);
+}
+.shelf-explore-message-content pre {
+  margin: 0 0 14px; padding: 12px 14px; overflow-x: auto; border-radius: 8px;
+  border: 1px solid rgba(21, 27, 30, .12); border-left: 3px solid var(--clay, #ce7b51);
+  background: var(--paper-strong, #fffdf7); color: var(--ink, #151b1e);
+}
+.shelf-explore-message-content pre code { background: none; border: 0; padding: 0; font-size: 12px; line-height: 1.7; color: inherit; }
+.shelf-explore-message-content table { width: 100%; margin: 0 0 14px; border-collapse: collapse; font-size: 13px; }
+.shelf-explore-message-content th,
+.shelf-explore-message-content td { padding: 6px 9px; border: 1px solid rgba(21, 27, 30, .14); text-align: left; vertical-align: top; }
+.shelf-explore-message-content th { background: var(--mist, #e8f0ed); font-weight: 500; }
+.shelf-explore-message-content blockquote { margin: 0 0 12px; padding-left: 12px; border-left: 2px solid rgba(21, 27, 30, .18); color: var(--muted, #63706e); }
+.shelf-explore-message-content a { color: #993c1d; }
 .shelf-explore-sources { margin-top: 12px; color: var(--faint, #8b9694); font-size: 12px; }
 .shelf-explore-sources summary { cursor: pointer; }
 .shelf-explore-sources ul { margin: 7px 0 0; padding-left: 18px; }
@@ -41,7 +69,8 @@ html[data-theme="dark"] {
 .shelf-explore-input textarea { flex: 1; min-height: 54px; resize: vertical; border: 1px solid rgba(21, 27, 30, .24); border-radius: 8px; padding: 10px 12px; background: var(--paper-strong, #fffdf7); color: inherit; font: inherit; line-height: 1.55; }
 .shelf-explore-input textarea:focus { outline: 2px solid rgba(206, 123, 81, .28); border-color: var(--clay, #ce7b51); }
 .shelf-explore-status { min-height: 1.4em; margin: 9px 0 0; color: var(--muted, #63706e); font-size: 13px; }
-.shelf-explore-status.is-local-only { color: #993c1d; }
+.shelf-explore-status.is-local-only,
+.shelf-explore-status.is-error { color: #993c1d; }
 .shelf-explore-pending { margin: 0; color: var(--muted, #63706e); font-size: 13px; }
 html[data-theme="dark"] .shelf-explore { border-top-color: rgba(238, 231, 221, .14); }
 html[data-theme="dark"] .shelf-explore-message { border-top-color: rgba(238, 231, 221, .10); }
@@ -54,6 +83,17 @@ html[data-theme="dark"] .shelf-explore-message-actions .shelf-explore-grow:hover
 html[data-theme="dark"] .shelf-explore-input button:hover { background: #ffc29e; border-color: #ffc29e; color: #17110d; }
 html[data-theme="dark"] .shelf-explore-form { border-top-color: rgba(238, 231, 221, .10); }
 html[data-theme="dark"] .shelf-explore-input textarea { border-color: rgba(238, 231, 221, .18); background: var(--paper-strong, #1c1815); color: var(--ink, #eee7dd); }
-html[data-theme="dark"] .shelf-explore-status.is-local-only { color: #ffc29e; }
+html[data-theme="dark"] .shelf-explore-status.is-local-only,
+html[data-theme="dark"] .shelf-explore-status.is-error { color: #ffc29e; }
+html[data-theme="dark"] .shelf-explore-message-content code { background: rgba(238, 231, 221, .10); color: var(--ink, #eee7dd); }
+html[data-theme="dark"] .shelf-explore-message-content pre {
+  border-color: rgba(238, 231, 221, .14); border-left-color: var(--clay, #e29a70);
+  background: rgba(238, 231, 221, .05); color: var(--ink, #eee7dd);
+}
+html[data-theme="dark"] .shelf-explore-message-content th,
+html[data-theme="dark"] .shelf-explore-message-content td { border-color: rgba(238, 231, 221, .16); }
+html[data-theme="dark"] .shelf-explore-message-content th { background: rgba(238, 231, 221, .08); }
+html[data-theme="dark"] .shelf-explore-message-content blockquote { border-left-color: rgba(238, 231, 221, .24); }
+html[data-theme="dark"] .shelf-explore-message-content a { color: #ffc29e; }
 @media (max-width: 620px) { .shelf-explore-input { align-items: stretch; flex-direction: column; } .shelf-explore-input button { align-self: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .shelf-explore * { scroll-behavior: auto; transition: none !important; } }

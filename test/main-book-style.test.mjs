@@ -71,14 +71,17 @@ test("registerMainBook persists the style fingerprint into book.json", (t) => {
   assert.equal(withoutFingerprint.styleFingerprint, null);
 });
 
-test("main book prompt requires verifiable file:line citations", () => {
+test("main book prompt asks for path-only citations against a file list", () => {
   const prompt = buildMainBookPrompt({
     name: "Demo",
     files: [{ path: "agents/s01_agent_loop.py", content: "while True:\n    pass\n" }],
   });
-  assert.match(prompt, /文件路径:行号/);
-  assert.match(prompt, /agents\/s01_agent_loop\.py:42/);
-  assert.match(prompt, /行号必须与源码一致/);
+  // 行号不可信（模型数不出来），契约改为：只写路径，锚定由服务端按内容做
+  assert.match(prompt, /不需要写行号/);
+  assert.match(prompt, /本次可用的项目文件清单/);
+  assert.match(prompt, /- agents\/s01_agent_loop\.py/);
+  assert.match(prompt, /清单外的文件不要讲/);
+  assert.match(prompt, /逐字摘取/);
 });
 
 test("lintSkinTokens warns when the skin misses semantic tokens", () => {
