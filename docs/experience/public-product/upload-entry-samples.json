@@ -1,0 +1,37 @@
+[
+  {
+    "at": 1055.9000000953674,
+    "phase": "enter",
+    "animations": [
+      {
+        "time": 599.9929999921098,
+        "pending": false
+      }
+    ],
+    "paper": "matrix(1, 0, 0, 1, 0, 0)"
+  },
+  {
+    "at": 1586.2000000476837,
+    "phase": null,
+    "animations": [],
+    "paper": null
+  },
+  {
+    "at": 2124.8000000715256,
+    "phase": null,
+    "animations": [],
+    "paper": null
+  },
+  {
+    "at": 2844.600000023842,
+    "phase": null,
+    "animations": [],
+    "paper": null
+  },
+  {
+    "at": 3340.5,
+    "phase": null,
+    "animations": [],
+    "paper": null
+  }
+]

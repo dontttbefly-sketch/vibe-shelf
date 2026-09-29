@@ -1,0 +1,142 @@
+{
+  "date": "2026-09-28",
+  "environment": {
+    "taskSpace": 3,
+    "browserPages": [
+      "p1",
+      "p2"
+    ],
+    "viewport": "1280x860",
+    "realProjectId": "real-experience-qa",
+    "controlledLatencyMs": 12000
+  },
+  "note": {
+    "url": "http://127.0.0.1:8908/projects/real-experience-qa/books/main/#ch3",
+    "y": 2681,
+    "title": "“const message = title …”",
+    "body": "直接答你的问题：如果传进去的 name 是 'Ada'，这一行算出来的 message 就是字符串 'HelloAda'，因为 title 的值是 'Hello'（末尾没有任何空格），而 JS 里两个字符串用 + 拼在一起，就是把它们首尾相接粘起来——它只管\"接\"，不管你空不空格，所以 Hello 和 Ada 直接贴成了 HelloAda，中间没东西。\n\n顺便提醒一句：很多人第一次看到这行，会下意识以为结果是 'Hello Ada'（带个空格），结果一跑被现实教训了一下。这正是 JS 里 + 的脾气——只要两边有一个是字符串，它就当成拼接符；要拼出空格，得自己写出来，比如 title + ' ' + name。这本书后面的章节应该就会处理这个问题，留意一下就行。\n\n顺手再举个例子：把 name 换成 '小明'，其他一行都不动，这一行算出的 message 就是 'Hello小明'。道理还是一样——title 还是 'Hello'，+ 只管把两边字符串首尾相接，中文字符串也一样直接被粘上去，中间照样没空格。",
+    "trail": "↳ 你问：把刚才的 Ada 换成“小明”，其他保持不变，这一行得到什么？把准确…",
+    "adds": 0,
+    "deletions": 0,
+    "bubbles": 1,
+    "initialQuestion": "结合这个项目的真实源码，如果 name 是 Ada，这一行算出的 message 是什么？请用两句话解释，不要修改源码。",
+    "followup": "把刚才的 Ada 换成“小明”，其他保持不变，这一行得到什么？把准确结果补进当前旁注，保留原例子，不要猜测后面的章节。",
+    "persisted": {
+      "id": "nmula68pxxso0x",
+      "section": "ch3",
+      "blockText": "const message = title + name;",
+      "quote": "const message = title + name;",
+      "sectionTitle": "greet 函数的源码逐行",
+      "source": null,
+      "question": "结合这个项目的真实源码，如果 name 是 Ada，这一行算出的 message 是什么？请用两句话解释，不要修改源码。",
+      "body": "直接答你的问题：如果传进去的 `name` 是 `'Ada'`，这一行算出来的 `message` 就是字符串 `'HelloAda'`，因为 `title` 的值是 `'Hello'`（末尾没有任何空格），而 JS 里两个字符串用 `+` 拼在一起，就是把它们首尾相接粘起来——它只管\"接\"，不管你空不空格，所以 `Hello` 和 `Ada` 直接贴成了 `HelloAda`，中间没东西。\n\n顺便提醒一句：很多人第一次看到这行，会下意识以为结果是 `'Hello Ada'`（带个空格），结果一跑被现实教训了一下。这正是 JS 里 `+` 的脾气——只要两边有一个是字符串，它就当成拼接符；要拼出空格，得自己写出来，比如 `title + ' ' + name`。这本书后面的章节应该就会处理这个问题，留意一下就行。\n\n顺手再举个例子：把 `name` 换成 `'小明'`，其他一行都不动，这一行算出的 `message` 就是 `'Hello小明'`。道理还是一样——`title` 还是 `'Hello'`，`+` 只管把两边字符串首尾相接，中文字符串也一样直接被粘上去，中间照样没空格。",
+      "promoted": false,
+      "createdAt": 1790601957,
+      "revision": 2
+    },
+    "limitations": "结果和上下文正确；回答偏长，保留了原回答中推测后续章节的句子，不能据此证明内容足够简练。新增为整块标记，ins/del为0不表示无标记。"
+  },
+  "reading": {
+    "opened": {
+      "y": 2681,
+      "chapterY": -314.375,
+      "path": "src/main.js",
+      "code": "1\nexport function greet(name) {\n2\n  const title = 'Hello';\n3\n  const message = title + name;\n4\n  return message;\n5\n}\n6"
+    },
+    "closed": {
+      "y": 2681,
+      "chapterY": -342.8515625
+    },
+    "reopened": {
+      "y": 2681,
+      "chapterY": -342.8515625,
+      "text": "直接答你的问题：如果传进去的 name 是 'Ada'，这一行算出来的 message 就是字符串 'HelloAda'，因为 title 的值是 'Hello'（末尾没有任何空格），而 JS 里两个字符串用 + 拼在一起，就是把它们首尾相接粘起来——它只管\"接\"，不管你空不空格，所以 Hello 和 Ada 直接贴成了 HelloAda，中间没东西。\n\n顺便提醒一句：很多人第一次看到这行，会下意识以为结果是 'Hello Ada'（带个空格），结果一跑被现实教训了一下。这正是 JS 里 + 的脾气——只要两边有一个是字符串，它就当成拼接符；要拼出空格，得自己写出来，比如 title + ' ' + name。这本书后面的章节应该就会处理这个问题，留意一下就行。\n\n顺手再举个例子：把 name 换成 '小明'，其他一行都不动，这一行算出的 message 就是 'Hello小明'。道理还是一样——title 还是 'Hello'，+ 只管把两边字符串首尾相接，中文字符串也一样直接被粘上去，中间照样没空格。"
+    }
+  },
+  "background": {
+    "projectId": "p-1eae3c6de1804e37",
+    "reading": {
+      "url": "/projects/p-18df6ec88dee43bb/books/main/",
+      "title": "交互验收示例"
+    },
+    "whileReading": {
+      "generation": {
+        "status": "generating",
+        "stage": "writing",
+        "error": null,
+        "bookId": null,
+        "sourceCoverage": null,
+        "startedAt": 1790602235801,
+        "updatedAt": 1790602235801,
+        "skinWarnings": null
+      }
+    },
+    "afterReturn": {
+      "generation": {
+        "status": "generating",
+        "stage": "writing",
+        "error": null,
+        "bookId": null,
+        "sourceCoverage": null,
+        "startedAt": 1790602235801,
+        "updatedAt": 1790602235801,
+        "skinWarnings": null
+      }
+    },
+    "ready": {
+      "generation": {
+        "status": "ready",
+        "stage": null,
+        "error": null,
+        "bookId": "main",
+        "sourceCoverage": {
+          "included": 1,
+          "includedBytes": 50,
+          "skippedTooLarge": 0,
+          "skippedOverBudget": 0,
+          "skippedUnreadable": 0
+        },
+        "startedAt": 1790602235801,
+        "updatedAt": 1790602247831,
+        "skinWarnings": null
+      }
+    },
+    "completedBook": {
+      "url": "/projects/p-1eae3c6de1804e37/books/main/",
+      "title": "交互验收示例"
+    }
+  },
+  "importRecovery": {
+    "failed": {
+      "name": "断连保留验收",
+      "files": 1,
+      "status": "验收：导入前断连",
+      "disabled": false
+    },
+    "recovered": {
+      "status": "正在为项目写主书…",
+      "attempts": 2,
+      "flow": {
+        "projectId": "p-b08061862ff940e1",
+        "name": "断连保留验收",
+        "source": "local",
+        "repo": "",
+        "status": "generating"
+      }
+    },
+    "matches": [
+      {
+        "id": "p-b08061862ff940e1",
+        "status": "ready",
+        "bookCount": 1
+      }
+    ]
+  },
+  "boundaries": [
+    "真实模型只用于旁注两问；生成等待和断连使用可控模型。",
+    "目录样例通过File/DataTransfer提供，不是真机文件夹选择器验收。",
+    "源码抽屉打开时页面有过渡位移；关闭后同一锚点和scrollY恢复。",
+    "部分自动操作曾因选择器歧义或节点更新中断；成功记录来自后续明确目标的完整路径。",
+    "没有新增代码或改变模型配置；正常受控服务已恢复1000ms延迟。"
+  ]
+}

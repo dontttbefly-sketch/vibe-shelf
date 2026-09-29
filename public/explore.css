@@ -13,7 +13,7 @@ html[data-theme="dark"] {
 }
 
 [data-shelf-explore] { max-width: 860px; margin: 64px auto 96px; padding: 0 24px; }
-.shelf-explore { border-top: 1px solid rgba(21, 27, 30, .16); padding-top: 34px; color: var(--ink, #151b1e); }
+.shelf-explore { border-top: 1px solid rgba(21, 27, 30, .16); padding-top: 34px; color: var(--ink, #151b1e); font-family: system-ui, sans-serif; }
 .shelf-explore-head { max-width: 640px; }
 .shelf-explore-kicker { margin: 0 0 6px; color: var(--clay, #ce7b51); font-size: 12px; font-weight: 700; letter-spacing: .12em; }
 .shelf-explore h2 { margin: 0; font-size: clamp(22px, 3vw, 31px); line-height: 1.25; }
@@ -55,12 +55,16 @@ html[data-theme="dark"] {
 .shelf-explore-sources summary { cursor: pointer; }
 .shelf-explore-sources ul { margin: 7px 0 0; padding-left: 18px; }
 .shelf-explore-sources code { color: var(--muted, #63706e); }
+.shelf-explore-sources .shelf-explore-source { appearance: none; padding: 2px 0; border: 0; background: transparent; color: var(--clay, #993c1d); font: inherit; font-family: var(--mono, ui-monospace, monospace); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.shelf-explore-sources .shelf-explore-source:hover { text-decoration: underline; }
 .shelf-explore-message-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .shelf-explore-message-actions button,
 .shelf-explore-input button { appearance: none; border: 1px solid rgba(21, 27, 30, .18); border-radius: 999px; padding: 8px 13px; background: transparent; color: var(--ink, #151b1e); cursor: pointer; font: inherit; font-size: 13px; }
 .shelf-explore-message-actions button:hover { border-color: var(--clay, #ce7b51); color: #993c1d; }
 .shelf-explore-message-actions .shelf-explore-grow,
 .shelf-explore-input button { border-color: var(--clay, #ce7b51); background: var(--clay, #ce7b51); color: #fffdf7; }
+/* 公共发送动作不借用书皮强调色，浅色书皮下也保持文字对比。 */
+.shelf-explore-input button { border-color: #993c1d; background: #993c1d; }
 .shelf-explore-message-actions .shelf-explore-grow:hover,
 .shelf-explore-input button:hover { background: #993c1d; border-color: #993c1d; }
 .shelf-explore-form { margin-top: 24px; padding: 18px 0 0; border-top: 1px solid rgba(21, 27, 30, .1); }
@@ -97,3 +101,22 @@ html[data-theme="dark"] .shelf-explore-message-content blockquote { border-left-
 html[data-theme="dark"] .shelf-explore-message-content a { color: #ffc29e; }
 @media (max-width: 620px) { .shelf-explore-input { align-items: stretch; flex-direction: column; } .shelf-explore-input button { align-self: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .shelf-explore * { scroll-behavior: auto; transition: none !important; } }
+
+/* 历史只在需要时展开，正文与问答仍保持平铺。 */
+.shelf-explore [hidden] { display: none !important; }
+.shelf-explore-toolbar { display: flex; align-items: center; gap: 12px; margin: 22px 0 0; padding: 12px 0; border-block: 1px solid var(--line, #e8e1d7); font-size: 12px; }
+.shelf-explore-toolbar [data-explore-title] { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted, #706861); }
+.shelf-explore-toolbar button { flex-shrink: 0; appearance: none; padding: 5px 0; border: 0; background: transparent; color: var(--clay, #ce7b51); font: inherit; cursor: pointer; }
+.shelf-explore-toolbar button:disabled { opacity: .5; cursor: wait; }
+.shelf-explore-sessions { padding: 8px 0; max-height: 240px; overflow-y: auto; border-bottom: 1px solid var(--line, #e8e1d7); }
+.shelf-explore-sessions button { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-radius: 6px; background: transparent; color: var(--ink, #151b1e); font: inherit; font-size: 13px; cursor: pointer; }
+.shelf-explore-sessions button:hover, .shelf-explore-sessions button[aria-current] { background: rgba(206,123,81,.10); }
+.shelf-explore-sessions p { color: var(--muted, #706861); font-size: 13px; }
+.shelf-explore-message-error { color: var(--clay, #993c1d); font-size: 13px; }
+.shelf-explore-message-actions .shelf-explore-grow, html[data-theme="dark"] .shelf-explore-message-actions .shelf-explore-grow { background: transparent; color: var(--clay, #ce7b51); border: 0; padding: 6px 0; border-radius: 4px; }
+.shelf-explore-message-actions .shelf-explore-grow:hover, html[data-theme="dark"] .shelf-explore-message-actions .shelf-explore-grow:hover { background: transparent; color: var(--ink, #151b1e); }
+.shelf-explore button:focus-visible { outline: 2px solid var(--clay, #ce7b51); outline-offset: 3px; }
+.shelf-explore-input button { border-radius: 8px; white-space: nowrap; }
+.shelf-explore-message-content { overflow-wrap: anywhere; }
+.shelf-explore-message-content table { display: block; overflow-x: auto; }
+@media(max-width:620px) { .shelf-explore-toolbar { gap: 10px; } }

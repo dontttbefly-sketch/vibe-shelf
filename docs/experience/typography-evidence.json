@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-28",
+  "before": {
+    "serif": {
+      "book": "真实模型验收 · 问候函数 · 项目主书",
+      "body": "\"Source Han Serif SC\", \"Noto Serif SC\", \"Songti SC\", STSong, SimSun, serif",
+      "topbar": "\"Source Han Serif SC\", \"Noto Serif SC\", \"Songti SC\", STSong, SimSun, serif",
+      "bubble": "\"Source Han Serif SC\", \"Noto Serif SC\", \"Songti SC\", STSong, SimSun, serif",
+      "noteCode": "\"Source Han Serif SC\", \"Noto Serif SC\", \"Songti SC\", STSong, SimSun, serif",
+      "explore": "\"Source Han Serif SC\", \"Noto Serif SC\", \"Songti SC\", STSong, SimSun, serif"
+    },
+    "sans": {
+      "book": "PUPKIT 前端代码解剖课",
+      "body": "Inter, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "topbar": "Inter, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "bubble": "Inter, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "explore": "Inter, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif"
+    }
+  },
+  "after": {
+    "serif": {
+      "book": "真实模型验收 · 问候函数 · 项目主书",
+      "body": "\"Source Han Serif SC\", \"Noto Serif SC\", \"Songti SC\", STSong, SimSun, serif",
+      "topbar": "system-ui, sans-serif",
+      "bubble": "system-ui, sans-serif",
+      "noteCode": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace",
+      "explore": "system-ui, sans-serif"
+    },
+    "sans": {
+      "book": "PUPKIT 前端代码解剖课",
+      "body": "Inter, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "topbar": "system-ui, sans-serif",
+      "bubble": "system-ui, sans-serif",
+      "explore": "system-ui, sans-serif"
+    },
+    "source": {
+      "drawer": "system-ui, sans-serif",
+      "path": "\"JetBrains Mono\", \"SF Mono\", Consolas, monospace",
+      "code": "monospace"
+    }
+  }
+}

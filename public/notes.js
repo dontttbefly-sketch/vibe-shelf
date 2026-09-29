@@ -4,6 +4,22 @@
   var main = document.querySelector(".book-main");
   if (!main) return;
 
+  // 从 notes.js 自身的位置找资源，不依赖已生成书的相对目录深度。
+  (function loadReaderSession() {
+    if (document.querySelector("script[data-shelf-reader-session]")) return;
+    var owner = document.currentScript;
+    if (!owner || !owner.src) return;
+    var link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = new URL("reader-session.css", owner.src).href;
+    document.head.appendChild(link);
+    var script = document.createElement("script");
+    script.src = new URL("reader-session.js", owner.src).href;
+    script.setAttribute("data-shelf-reader-session", "");
+    script.async = true;
+    document.head.appendChild(script);
+  }());
+
   var BOOK = window.SHELF_BOOK || "default"; // 由 build.mjs 注入；书名决定注释存到 data/<书名>.json
   // 新书页带有项目上下文；旧书页继续走原来的单书接口与本地存储键。
   var CONTEXT = window.SHELF_CONTEXT || {
@@ -32,37 +48,148 @@
   // 服务端没确认收下的笔记（网络抖动 / 5xx）先落这里，下次启动自动补交。
   // 不这么做的话：用户看到"已记下"，但笔记只躺在 localStorage 里，
   // 下次打开用服务端数据整体覆盖内存，那条笔记就凭空消失了。
+  var pendingMemory = null;
+  var persistChains = Object.create(null);
+  var revisionAdvances = Object.create(null);
+  var noteDraftOwner = "w" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   function pendingNotesKey() { return localNotesKey() + "-pending"; }
+  function samePendingDraft(left, right) {
+    function normalized(note) {
+      var copy = JSON.parse(JSON.stringify(note));
+      copy.id = copy._conflictOriginalId || copy.id;
+      delete copy._conflictOriginalId;
+      delete copy._saveConflict;
+      delete copy._recoveryId;
+      delete copy._draftOwner;
+      return JSON.stringify(copy);
+    }
+    return normalized(left) === normalized(right);
+  }
   function readPendingNotes() {
+    // 内存副本只在浏览器存储不可写时兜底；绝不能声称已落盘。
+    var list = pendingMemory ? pendingMemory.slice() : [];
     try {
-      var list = JSON.parse(localStorage.getItem(pendingNotesKey()) || "[]");
-      return Array.isArray(list) ? list : [];
-    } catch (e) { return []; }
+      if (!pendingMemory) list = JSON.parse(localStorage.getItem(pendingNotesKey()) || "[]");
+      if (!Array.isArray(list)) list = [];
+      // 每个窗口独立留底，避免两个离线窗口修改同 id 时共用队列互相替换。
+      // 额外稿只进入待处理列表，不自动覆盖项目或另一窗口。
+      var prefix = pendingNotesKey() + "-copy-";
+      if (typeof localStorage.key === "function") for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (!key || key.indexOf(prefix) !== 0) continue;
+        var saved = JSON.parse(localStorage.getItem(key) || "null");
+        if (!saved || !saved.id || !saved._draftOwner) continue;
+        if (list.some(function (note) { return samePendingDraft(note, saved); })) continue;
+        var copy = JSON.parse(JSON.stringify(saved));
+        copy._conflictOriginalId = saved.id;
+        copy.id = saved.id + "-draft-" + saved._draftOwner;
+        copy._saveConflict = true;
+        list.push(copy);
+      }
+    } catch (e) {}
+    return list;
   }
   function writePendingNotes(list) {
+    pendingMemory = list.slice();
     try {
       if (list.length) localStorage.setItem(pendingNotesKey(), JSON.stringify(list));
       else localStorage.removeItem(pendingNotesKey());
-    } catch (e) {}
+      pendingMemory = null;
+      return true;
+    } catch (e) { return false; }
   }
   function markPending(note) {
+    var backupSaved = false;
+    if (note._draftOwner && !note._conflictOriginalId) {
+      try {
+        localStorage.setItem(pendingNotesKey() + "-copy-" + note._draftOwner + "-" + note.id, JSON.stringify(note));
+        backupSaved = true;
+      } catch (e) {}
+    }
     var list = readPendingNotes().filter(function (n) { return n.id !== note.id; });
-    list.push(note);
-    writePendingNotes(list);
+    // readPendingNotes 在主队列写入前可能把本次留底视为额外稿。
+    list = list.filter(function (n) { return !samePendingDraft(n, note); });
+    list.push(JSON.parse(JSON.stringify(note)));
+    return writePendingNotes(list) || backupSaved;
   }
-  function clearPending(id) {
+  function clearPending(id, acknowledged) {
     var list = readPendingNotes();
-    var next = list.filter(function (n) { return n.id !== id; });
+    var next = list.filter(function (n) {
+      if (acknowledged) return !samePendingDraft(n, acknowledged);
+      return n.id !== id;
+    });
+    if (acknowledged) {
+      try {
+        var prefix = pendingNotesKey() + "-copy-";
+        if (typeof localStorage.key === "function") {
+          var removeKeys = [];
+          for (var i = 0; i < localStorage.length; i++) {
+            var key = localStorage.key(i);
+            if (!key || key.indexOf(prefix) !== 0) continue;
+            var saved = JSON.parse(localStorage.getItem(key) || "null");
+            if (saved && samePendingDraft(saved, acknowledged)) removeKeys.push(key);
+          }
+          removeKeys.forEach(function (key) { localStorage.removeItem(key); });
+        } else if (acknowledged._draftOwner) {
+          localStorage.removeItem(prefix + acknowledged._draftOwner + "-" + (acknowledged._conflictOriginalId || acknowledged.id));
+        }
+      } catch (e) {}
+    }
     if (next.length !== list.length) writePendingNotes(next);
   }
-  // 服务端返回的列表 + 还没补交成功的本地笔记 = 内存里的完整视图
   function mergePending(list) {
-    var pending = readPendingNotes();
-    if (!pending.length) return list;
-    var seen = {};
-    list.forEach(function (n) { seen[n.id] = true; });
-    pending.forEach(function (n) { if (!seen[n.id]) list.push(n); });
-    return list;
+    var merged = list.slice();
+    readPendingNotes().forEach(function (note) {
+      var index = merged.findIndex(function (n) { return n.id === note.id; });
+      if (index < 0) merged.push(note);
+      else merged[index] = note;
+    });
+    return merged;
+  }
+  function isComposingKey(event) {
+    return !!(event.isComposing || event.keyCode === 229);
+  }
+
+  var noteDrafts = Object.create(null);
+  var draftStorageWarning = false;
+  function draftKey(kind, identity) {
+    return localNotesKey() + "-draft-" + kind + "-" + identity;
+  }
+  function readDraft(key) {
+    if (Object.prototype.hasOwnProperty.call(noteDrafts, key)) return noteDrafts[key];
+    try { return localStorage.getItem(key) || ""; } catch (e) { return ""; }
+  }
+  function writeDraft(key, value) {
+    noteDrafts[key] = value;
+    try {
+      if (value) localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    } catch (e) {
+      if (!draftStorageWarning && value) {
+        draftStorageWarning = true;
+        toast("草稿暂留此页；浏览器无法保存，请勿关闭或先复制保留");
+      }
+    }
+  }
+  function bindNoteDraft(input, key) {
+    input.__draftKey = key;
+    input.value = readDraft(key);
+    input.addEventListener("input", function () { writeDraft(key, input.value); });
+  }
+  function saveInlineDraft() {
+    var box = inlineAskEl();
+    var input = box && box.querySelector(".nb-inline-textarea");
+    if (input && input.__draftKey) writeDraft(input.__draftKey, input.value);
+  }
+  function clearInlineDraft(s) {
+    if (s && s.existingId) writeDraft(draftKey("followup", s.existingId), "");
+  }
+  function rememberBubbleDraft() {
+    saveInlineDraft();
+    if (resultState && resultState.editing) {
+      currentBody();
+      if (resultState.existingId) updateExisting();
+    }
   }
 
   var notes = [];
@@ -106,78 +233,8 @@
 
   // ================= Markdown 渲染器（旁注专用，精简） =================
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
-  function mdInline(s) {
-    var keep = [], P = "\u0001";
-    function mark(t, v) { keep.push({ t: t, v: v }); return P + (keep.length - 1) + P; }
-    s = s.replace(/``\s?([\s\S]*?)\s?``|`([^`]*)`/g, function (m, a, b) { return mark("code", a !== undefined ? a : b); });
-    s = esc(s);
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
-    s = s.replace(/\*\*([\s\S]+?)\*\*/g, "<strong>$1</strong>");
-    s = s.replace(/\*\*/g, ""); // 容错：清掉 AI 偶发的不成对双星号（如“**网页的导演。”）
-    s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
-    s = s.replace(new RegExp(P + "(\\d+)" + P, "g"), function (m, i) { var k = keep[+i]; return "<code>" + esc(k.v) + "</code>"; });
-    return s;
-  }
-  function splitRow(line) {
-    var inner = line.trim();
-    if (inner.charAt(0) === "|") inner = inner.slice(1);
-    if (inner.charAt(inner.length - 1) === "|") inner = inner.slice(0, -1);
-    var cells = [], cur = "", i = 0;
-    while (i < inner.length) {
-      var ch = inner.charAt(i);
-      if (ch === "\\" && inner.charAt(i + 1) === "|") { cur += "|"; i += 2; continue; }
-      if (ch === "|") { cells.push(cur.trim()); cur = ""; i++; continue; }
-      cur += ch; i++;
-    }
-    cells.push(cur.trim());
-    return cells;
-  }
-  function renderMarkdown(md) {
-    var lines = md.replace(/\r/g, "").split("\n");
-    var out = [], i = 0;
-    while (i < lines.length) {
-      var line = lines[i];
-      if (/^```/.test(line)) {
-        var lang = line.slice(3).trim();
-        var buf = []; i++;
-        while (i < lines.length && !/^```/.test(lines[i])) { buf.push(lines[i]); i++; }
-        i++;
-        out.push('<pre><code class="lang-' + lang + '">' + esc(buf.join("\n")) + "</code></pre>");
-        continue;
-      }
-      if (/^####\s/.test(line)) { out.push("<h4>" + mdInline(line.slice(5)) + "</h4>"); i++; continue; }
-      if (/^###\s/.test(line)) { out.push("<h3>" + mdInline(line.slice(4)) + "</h3>"); i++; continue; }
-      if (/^##\s/.test(line)) { out.push("<h3>" + mdInline(line.slice(3)) + "</h3>"); i++; continue; }
-      if (/^>\s?/.test(line)) { out.push("<blockquote>" + mdInline(line.replace(/^>\s?/, "")) + "</blockquote>"); i++; continue; }
-      if (/^\|/.test(line)) {
-        var rows = [];
-        while (i < lines.length && /^\|/.test(lines[i])) { rows.push(lines[i]); i++; }
-        var head = splitRow(rows[0]);
-        var body = rows.slice(2).map(splitRow);
-        out.push("<table><thead><tr>" + head.map(function (h) { return "<th>" + mdInline(h) + "</th>"; }).join("") +
-          "</tr></thead><tbody>" + body.map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + mdInline(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>");
-        continue;
-      }
-      if (/^[-*]\s/.test(line)) {
-        var items = [];
-        while (i < lines.length && /^[-*]\s/.test(lines[i])) { items.push(lines[i].replace(/^[-*]\s/, "")); i++; }
-        out.push("<ul>" + items.map(function (x) { return "<li>" + mdInline(x) + "</li>"; }).join("") + "</ul>");
-        continue;
-      }
-      if (/^\d+\.\s/.test(line)) {
-        var oi = [];
-        while (i < lines.length && /^\d+\.\s/.test(lines[i])) { oi.push(lines[i].replace(/^\d+\.\s/, "")); i++; }
-        out.push("<ol>" + oi.map(function (x) { return "<li>" + mdInline(x) + "</li>"; }).join("") + "</ol>");
-        continue;
-      }
-      if (line.trim() === "") { i++; continue; }
-      var para = [];
-      while (i < lines.length && lines[i].trim() !== "" && !/^(#{2,4}\s|```|\||[-*]\s|\d+\.\s|>) /.test(lines[i])) { para.push(lines[i]); i++; }
-      if (para.length) out.push("<p>" + mdInline(para.join(" ")) + "</p>");
-      else i++;
-    }
-    return out.join("\n");
-  }
+  function mdInline(s) { return window.ShelfReaderCore.markdownInline(s); }
+  function renderMarkdown(md) { return window.ShelfReaderCore.renderMarkdown(md); }
   // 探索会话复用同一套渲染器（book-compiler 保证 explore.js 在 notes.js 之后加载）
   window.ShelfMarkdown = { render: renderMarkdown };
 
@@ -243,9 +300,11 @@
     if (!force && bookFiles) return bookFiles;
     try {
       var r = await fetch(CONTEXT.projectId ? projectSnapshotPath("files") : "/api/files?book=" + encodeURIComponent(BOOK));
+      if (!r.ok) throw new Error("源码文件列表暂时不可用");
       var d = await r.json();
-      bookFiles = d.files || [];
-    } catch (e) { bookFiles = []; }
+      if (!Array.isArray(d.files)) throw new Error("源码文件列表响应异常");
+      bookFiles = d.files;
+    } catch (e) { return bookFiles || []; }
     return bookFiles;
   }
   async function readFiles(paths) {
@@ -517,7 +576,7 @@
     bubble.innerHTML =
       '<div class="nb-bubble-head"><p class="nb-bubble-title" id="nbTitle"></p>' +
       '<button class="nb-expand" id="nbExpand" title="放大查看" aria-label="放大">' + EXPAND_SVG + "</button>" +
-      '<button class="nb-close" id="nbClose">×</button></div>' +
+      '<button class="nb-close" id="nbClose" aria-label="关闭旁注">×</button></div>' +
       '<div class="nb-bubble-body" id="nbBody"></div>';
     document.body.appendChild(bubble);
     bubbleBody = bubble.querySelector("#nbBody");
@@ -540,7 +599,7 @@
     // 隐形快捷键：划词后按 Enter 直接唤出聊天框（无 UI 提示）
     // 气泡内划词 → 追问小气泡；正文划词 → 补注释提问框
     document.addEventListener("keydown", function (e) {
-      if (e.key !== "Enter") return;
+      if (e.key !== "Enter" || isComposingKey(e)) return;
       var t = e.target;
       if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.isContentEditable)) return;
       if (isInlineAskOpen()) return;
@@ -588,6 +647,10 @@
     if (btn) { btn.innerHTML = EXPAND_SVG; btn.setAttribute("title", "放大查看"); }
   }
   function openBubble(titleHtml, fromEl) {
+    rememberBubbleDraft();
+    cancelFollowup();
+    explainSeq++;
+    if (explainCtrl) { explainCtrl.abort(); explainCtrl = null; }
     if (!bubble) buildBubble();
     clearTimeout(closeTimer); closeTimer = null;
     resetExpandedState(); // 防御：快速关-开路径会打断关闭动画里的清理，这里兜底
@@ -659,6 +722,8 @@
   }
   function isExpanded() { return bubble && bubble.classList.contains("nb-bubble--expanded"); }
   function closeBubble(point) {
+    rememberBubbleDraft();
+    cancelFollowup();
     if (!bubble) { resetBubbleState(); return; }
     exitMini(); // 清迷你卡（滚动定时器/class/内联高度），防下次打开残留
     viewToken++;
@@ -674,6 +739,7 @@
     explainSeq++;
     if (explainCtrl) { try { explainCtrl.abort(); } catch (e) {} explainCtrl = null; }
     resetBubbleState();
+    resultState = null;
     if (!bubble.classList.contains("nb-show")) return;
     var target = bubble.getBoundingClientRect();
     var dx = 0, dy = 18, s = 0.9;
@@ -841,10 +907,11 @@
     bindFilesList();
     var ta = bubbleBody.querySelector("#nbQ");
     var btn = bubbleBody.querySelector("#nbGo");
+    bindNoteDraft(ta, draftKey("question", JSON.stringify([pending.source || pending.section, pending.quote, pending.blockText])));
     ta.focus();
     // 隐形快捷键：焦点在文件勾选框等非输入区时按回车 = 直接发送（用默认问题）
     bubbleBody.querySelector(".nb-ask").addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && e.target !== ta) { e.preventDefault(); submit(); }
+      if (e.key === "Enter" && !isComposingKey(e) && e.target !== ta) { e.preventDefault(); submit(); }
     });
     function refreshEnter() {
       if (ta.value.trim()) btn.classList.add("is-enter");
@@ -858,7 +925,7 @@
     ta.addEventListener("input", refreshEnter);
     refreshEnter();
     ta.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      if (e.key === "Enter" && !isComposingKey(e) && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         submit();
       }
@@ -879,6 +946,8 @@
     }, 170);
   }
   async function doExplain(question) {
+    var questionInput = bubbleBody && bubbleBody.querySelector("#nbQ");
+    var questionDraftKey = questionInput && questionInput.__draftKey;
     if (STATIC_MODE) { toast("静态演示不支持 AI 生成 · clone 仓库本地运行即可体验"); return; }
     viewLoading();
     setProcessing(true);
@@ -914,6 +983,7 @@
       stopThink();
       setProcessing(false);
       exitMini(); // 迷你卡飞回展开
+      if (questionDraftKey) writeDraft(questionDraftKey, "");
       viewResult(data.content, question, null);
       // 生成即保存：不再等"滑到底/关闭气泡"，落地为已有注释（编辑/晋升/删除随即全部可用）
       var saved = saveNote(null, question, data.content, false, { silent: true });
@@ -933,6 +1003,7 @@
     }
   }
   function viewResult(body, question, existingId) {
+    cancelFollowup();
     var tok = ++viewToken;
     var note = existingId ? notes.find(function (n) { return n.id === existingId; }) : null;
     resultState = {
@@ -952,6 +1023,7 @@
       if (tok !== viewToken) return;
       bubbleBody.classList.remove("nb-body-exit");
       paintResult();
+      if (resultState && resultState.existingId && readDraft(draftKey("followup", resultState.existingId))) openInlineAsk("free", "", null, { silent: true });
       if (resultState && resultState.fresh) revealSweep(); // 打开旧注释不播，只有刚生成的才播
     }, 170);
   }
@@ -1064,6 +1136,7 @@
         '<div class="nb-inline-think" hidden></div>' +
       "</div>";
 
+    bubbleBody.querySelectorAll("button[data-tip]").forEach(function (button) { button.setAttribute("aria-label", button.getAttribute("data-tip")); });
     bubbleBody.querySelector("#nbEditBtn").addEventListener("click", function () { toggleEdit(); });
     bubbleBody.querySelector("#nbPromote").addEventListener("click", function () {
       if (isNew) saveNote(null, s.question, currentBody(), true);
@@ -1080,9 +1153,11 @@
         }
         delBtn.classList.add("confirming");
         delBtn.setAttribute("data-tip", "再点一次确认删除");
+        delBtn.setAttribute("aria-label", "再点一次确认删除");
         delBtn.__revertTimer = setTimeout(function () {
           delBtn.classList.remove("confirming");
           delBtn.setAttribute("data-tip", "删除");
+          delBtn.setAttribute("aria-label", "删除");
         }, 3000);
       });
     }
@@ -1113,7 +1188,8 @@
     var note = notes.find(function (n) { return n.id === s.existingId; });
     if (!note) return;
     note.body = s.body;
-    persist(note).then(function () {
+    persist(note).then(function (outcome) {
+      if (outcome !== "synced") toast(savedToast(outcome, "已保存"));
       clearMarkers(note.id);
       var block = findBlock(note);
       if (block) {
@@ -1128,6 +1204,13 @@
 
   // ================= 追问：只在这一个气泡里进行（不再另开气泡） =================
   // 追问一律收束到当前注释气泡底部的输入框：气泡一多，上下文就散了。
+  var followupSeq = 0;
+  var followupCtrl = null;
+  function cancelFollowup() {
+    followupSeq++;
+    if (followupCtrl) { followupCtrl.abort(); followupCtrl = null; }
+    stopInlineThink();
+  }
   var inlineAskCtx = null;   // 注释卡底部追问 { mode, selection }
   var inlineRollerStop = null;
   var inlineShimmerStop = null;
@@ -1184,11 +1267,12 @@
     stopInlineThink();
     ta.disabled = false;
     go.disabled = false;
-    ta.value = prefill || "";
+    if (s.existingId) bindNoteDraft(ta, draftKey("followup", s.existingId));
+    if (prefill) ta.value = prefill;
     function refreshEnter() { ta.value.trim() ? go.classList.add("has-text") : go.classList.remove("has-text"); }
     ta.oninput = refreshEnter;
     ta.onkeydown = function (e) {
-      if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); submitInlineAsk(); }
+      if (e.key === "Enter" && !isComposingKey(e) && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); submitInlineAsk(); }
     };
     go.onclick = submitInlineAsk;
     // silent（写回后重开）：只亮出来，不抢焦点不滚动——视线应该先落在正文的改动上
@@ -1201,6 +1285,8 @@
     refreshEnter();
   }
   function closeInlineAsk() {
+    saveInlineDraft();
+    cancelFollowup();
     var box = inlineAskEl();
     stopInlineThink();
     inlineAskCtx = null;
@@ -1222,8 +1308,13 @@
   }
   async function askFollowup(mode, selection, instruction) {
     var s = resultState;
-    if (!s) return;
+    if (!s || followupCtrl) return;
     if (STATIC_MODE) { closeInlineAsk(); toast("静态演示不支持 AI 生成 · clone 仓库本地运行即可体验"); return; }
+    saveInlineDraft();
+    var seq = ++followupSeq;
+    var ctrl = new AbortController();
+    followupCtrl = ctrl;
+    var timer = setTimeout(function () { ctrl.abort(); }, 120000);
     var box = inlineAskEl();
     var ta = box ? box.querySelector(".nb-inline-textarea") : null;
     var go = box ? box.querySelector(".nb-inline-go") : null;
@@ -1247,15 +1338,22 @@
           context: s.body, quote: s.quote, sectionTitle: s.sectionTitle, question: s.question,
           files: [],
         }),
+        signal: ctrl.signal,
       });
       var data = await res.json();
+      if (seq !== followupSeq || resultState !== s || ctrl.signal.aborted) return;
       if (!res.ok) throw new Error(data.error && data.error.message ? data.error.message : "修改失败");
+      if (typeof data.content !== "string" || !data.content.trim()) throw new Error("没有收到完整回答，请重试");
+      followupCtrl = null;
+      clearInlineDraft(s);
       var modified = data.content;
       var original = s.body;
       // 版本栈：每次追问把上一稿连同问句一起留痕（内存态，随气泡会话消失）
       (s.__versions = s.__versions || []).push({ instruction: instruction, body: original });
       applyFollowupInline(original, modified, mode, selection, instruction);
     } catch (err) {
+      if (seq !== followupSeq || resultState !== s) return;
+      followupCtrl = null;
       if (box) {
         box.classList.remove("nb-thinking");
         box.querySelector(".nb-inline-wrap").hidden = false;
@@ -1265,7 +1363,10 @@
       }
       if (go) go.disabled = false;
       if (ta) { ta.disabled = false; ta.focus(); }
-      toast(err.message);
+      toast(err.name === "AbortError" ? "这次等待超时，问题已保留，可以重试" : err.message);
+    } finally {
+      clearTimeout(timer);
+      if (followupCtrl === ctrl) followupCtrl = null;
     }
   }
 
@@ -1525,7 +1626,7 @@
       if (promote !== undefined) note.promoted = promote;
     } else {
       note = {
-        id: "n" + Date.now().toString(36),
+        id: "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
         section: pending.section,
         blockText: pending.blockText,
         quote: pending.quote || "",
@@ -1539,22 +1640,27 @@
       };
       notes.push(note);
     }
+    var saveViewToken = viewToken;
+    var savedPending = pending;
     persist(note).then(function (outcome) {
       var saved = notes.find(function (n) { return n.id === note.id; }) || note;
       applyNotePlacement(saved);
       refreshSourceMarkers(); // 源码批注：落盘后立刻点亮抽屉里的行
-      pending = null;
+      if (pending === savedPending) pending = null;
       if (opts.silent) { toast(savedToast(outcome, "已记下")); return; } // 自动保存也要给"已落盘"的确认感
-      closeBubble();
+      if (saveViewToken === viewToken && outcome !== "memory") closeBubble();
       toast(savedToast(outcome, saved.promoted ? "已晋升为正文" : "已记下"));
     });
     return note;
   }
   function deleteNote(id) {
-    resultState = null;
+    var deleteViewToken = viewToken;
+    var deletingNote = notes.find(function (note) { return note.id === id; });
+    if (deletingNote && deletingNote._saveConflict) { showNoteConflicts(); toast("请先处理本地稿与其他窗口的更新，再删除"); return; }
     if (STATIC_MODE) {
-      notes = notes.filter(function (n) { return n.id !== id; });
-      try { localStorage.setItem(localNotesKey(), JSON.stringify(notes)); } catch (e) {}
+      var kept = notes.filter(function (n) { return n.id !== id; });
+      try { localStorage.setItem(localNotesKey(), JSON.stringify(kept)); } catch (e) { toast("删除未能保存，笔记仍保留，请稍后重试"); return; }
+      notes = kept;
       clearMarkers(id);
       removeAnchor(id);
       refreshSourceMarkers();
@@ -1563,9 +1669,11 @@
       toast("已删除（本地）");
       return;
     }
-    fetch(projectNotesPath() + (CONTEXT.projectId ? "?id=" : "&id=") + encodeURIComponent(id), { method: "DELETE" })
+    (persistChains.__book || Promise.resolve()).then(function () {
+      return fetch(projectNotesPath() + (CONTEXT.projectId ? "?id=" : "&id=") + encodeURIComponent(id) + (CONTEXT.projectId ? "&revision=" + (deletingNote && deletingNote.revision || 0) : ""), { method: "DELETE" });
+    })
       .then(function (r) {
-        if (!r.ok) throw new Error("删除失败");
+        if (!r.ok) { var error = new Error("删除失败"); error.status = r.status; throw error; }
         return r.json();
       })
       .then(function (d) {
@@ -1576,41 +1684,195 @@
         removeAnchor(id);
         refreshSourceMarkers();
         updateNav();
-        closeBubble();
+        if (deleteViewToken === viewToken) { resultState = null; closeBubble(); }
         toast("已删除");
       })
-      .catch(function () { toast("删除没成功，笔记还在，稍后再试"); });
+      .catch(function (error) {
+        if (error.status === 409 && deletingNote) {
+          deletingNote._saveConflict = true;
+          markPending(deletingNote);
+          showNoteConflicts();
+          toast("其他窗口已更新，未删除；本地稿已保留，请查看最新版本");
+        } else toast("删除没成功，笔记还在，稍后再试");
+      });
   }
   function persistLocal(note) {
     var idx = notes.findIndex(function (n) { return n.id === note.id; });
     if (idx >= 0) notes[idx] = note; else notes.push(note);
-    try { localStorage.setItem(localNotesKey(), JSON.stringify(notes)); } catch (e) {}
-    return Promise.resolve();
+    try {
+      localStorage.setItem(localNotesKey(), JSON.stringify(notes));
+      return Promise.resolve("local-only");
+    } catch (e) { return Promise.resolve("memory"); }
   }
   function persist(note) {
     if (STATIC_MODE) return persistLocal(note);
-    return fetch(projectNotesPath(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ book: BOOK, note: note }),
-    }).then(function (r) {
-      // 服务端出错时返回的也是 JSON（{error:{...}}），不看 r.ok 就会把 notes 写成 undefined
-      if (!r.ok) throw new Error("笔记保存失败");
-      return r.json();
-    }).then(function (d) {
-      if (!Array.isArray(d.notes)) throw new Error("笔记保存响应异常");
-      clearPending(note.id);
-      notes = mergePending(d.notes);
-      return "synced";
-    }).catch(function () {
-      markPending(note);
-      notes = mergePending(notes.slice());
-      return "local";
+    if (note._saveConflict) { markPending(note); showNoteConflicts(); return Promise.resolve("conflict"); }
+    // 请求使用不可变副本；先存草稿，再串行提交同条笔记，旧响应不能清掉新稿。
+    var snapshot = JSON.parse(JSON.stringify(note));
+    snapshot._draftOwner = noteDraftOwner;
+    var durable = markPending(snapshot);
+    showNoteConflicts();
+    notes = mergePending(notes);
+    var prior = persistChains.__book || Promise.resolve();
+    var task = prior.then(function () {
+      // 只沿本页已经确认的版本链前进；其他窗口的版本绝不自动采用。
+      var sent = JSON.parse(JSON.stringify(snapshot));
+      var advances = revisionAdvances[snapshot.id] || {};
+      var revision = Number.isInteger(sent.revision) ? sent.revision : 0;
+      while (advances[revision] > revision) revision = advances[revision];
+      if (CONTEXT.projectId) sent.revision = revision;
+      delete sent._saveConflict;
+      delete sent._recoveryId;
+      delete sent._draftOwner;
+      delete sent._conflictOriginalId;
+      return fetch(projectNotesPath(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ book: BOOK, note: sent }),
+      }).then(function (r) {
+        if (!r.ok) { var error = new Error("笔记保存失败"); error.status = r.status; throw error; }
+        return r.json();
+      }).then(function (d) {
+        if (!Array.isArray(d.notes)) throw new Error("笔记保存响应异常");
+        var accepted = d.notes.find(function (n) { return n.id === snapshot.id; });
+        if (accepted && Number.isInteger(accepted.revision) && accepted.revision > revision) {
+          (revisionAdvances[snapshot.id] = revisionAdvances[snapshot.id] || {})[revision] = accepted.revision;
+        }
+        clearPending(snapshot.id, snapshot);
+        notes = mergePending(d.notes);
+        return "synced";
+      }).catch(function (error) {
+        if (error.status === 409) {
+          var local = readPendingNotes().find(function (n) { return (n._conflictOriginalId || n.id) === snapshot.id && n._draftOwner === snapshot._draftOwner; }) || snapshot;
+          local._saveConflict = true;
+          markPending(local);
+          notes = mergePending(notes);
+          showNoteConflicts();
+          return "conflict";
+        }
+        notes = mergePending(notes);
+        return durable ? "local" : "memory";
+      });
+    });
+    persistChains.__book = task;
+    persistChains[note.id] = task;
+    task.then(function () {
+      if (persistChains[note.id] === task) delete persistChains[note.id];
+      if (persistChains.__book === task) delete persistChains.__book;
+    });
+    return task;
+  }
+  var conflictTrigger = null;
+  var conflictDialog = null;
+  function showNoteConflicts() {
+    var conflicts = readPendingNotes().filter(function (note) { return note._saveConflict; });
+    if (!conflictTrigger && conflicts.length) {
+      conflictTrigger = document.createElement("button");
+      conflictTrigger.type = "button";
+      conflictTrigger.className = "nb-conflict-trigger";
+      conflictTrigger.setAttribute("aria-haspopup", "dialog");
+      conflictTrigger.addEventListener("click", openNoteConflicts);
+      var bar = document.querySelector("[data-shelf-reader-topbar]");
+      (bar || document.body).appendChild(conflictTrigger);
+    }
+    if (conflictTrigger) {
+      conflictTrigger.hidden = !conflicts.length;
+      conflictTrigger.textContent = "待处理旁注（" + conflicts.length + "）";
+    }
+  }
+  function openNoteConflicts() {
+    if (!conflictDialog) {
+      conflictDialog = document.createElement("dialog");
+      conflictDialog.className = "nb-conflict-dialog";
+      conflictDialog.setAttribute("aria-label", "处理旁注的不同版本");
+      document.body.appendChild(conflictDialog);
+      conflictDialog.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeNoteConflicts(); }
+      });
+      conflictDialog.addEventListener("cancel", function (event) { event.preventDefault(); closeNoteConflicts(); });
+    }
+    renderNoteConflicts();
+    if (!conflictDialog.open) conflictDialog.showModal();
+  }
+  function closeNoteConflicts() {
+    if (conflictDialog) conflictDialog.close();
+    if (conflictTrigger && !conflictTrigger.hidden) conflictTrigger.focus();
+  }
+  function renderNoteConflicts() {
+    var dialog = conflictDialog;
+    dialog.replaceChildren();
+    function node(tag, text) { var el = document.createElement(tag); if (text) el.textContent = text; return el; }
+    var heading = node("h2", "本地稿已保留");
+    var intro = node("p", "其他窗口更新了同一条旁注。可以查看最新版本，并把此页的修改另存一条；不会覆盖其他窗口的内容。");
+    var close = node("button", "关闭");
+    close.type = "button";
+    close.addEventListener("click", closeNoteConflicts);
+    dialog.append(heading, intro, close);
+    readPendingNotes().filter(function (note) { return note._saveConflict; }).forEach(function (draft) {
+      var section = node("section");
+      section.appendChild(node("h3", draft.question || draft.sectionTitle || "未同步的旁注"));
+      var local = node("textarea");
+      local.value = draft.body || "";
+      local.readOnly = true;
+      local.setAttribute("aria-label", "已保留的本地稿，可选中复制");
+      var actions = node("div");
+      actions.className = "nb-conflict-actions";
+      var inspect = node("button", "查看最新版本");
+      var copy = node("button", "另存为新旁注");
+      inspect.type = copy.type = "button";
+      var status = node("p");
+      status.setAttribute("role", "status");
+      var remote = node("textarea");
+      remote.readOnly = true;
+      remote.hidden = true;
+      remote.setAttribute("aria-label", "其他窗口已保存的最新版本");
+      inspect.addEventListener("click", function () {
+        inspect.disabled = true;
+        status.textContent = "正在读取最新版本…";
+        loadServerNotes().then(function (list) {
+          var latest = list.find(function (note) { return note.id === (draft._conflictOriginalId || draft.id); });
+          remote.hidden = !latest;
+          remote.value = latest ? latest.body || "" : "";
+          status.textContent = latest ? "下方是其他窗口保存的版本；上方本地稿仍保留。" : "这条旁注已在其他窗口删除；本地稿仍可另存。";
+        }).catch(function () { status.textContent = "暂时无法读取，请确认本地服务已启动。"; }).finally(function () { inspect.disabled = false; });
+      });
+      copy.addEventListener("click", function () {
+        copy.disabled = true;
+        status.textContent = "正在另存本地稿…";
+        var current = readPendingNotes().find(function (note) { return note.id === draft.id; }) || draft;
+        if (!current._recoveryId) {
+          current._recoveryId = "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+          markPending(current);
+        }
+        var duplicate = JSON.parse(JSON.stringify(current));
+        duplicate.id = current._recoveryId;
+        duplicate.revision = 0;
+        delete duplicate._saveConflict;
+        delete duplicate._recoveryId;
+        delete duplicate._conflictOriginalId;
+        delete duplicate._draftOwner;
+        persist(duplicate).then(function (outcome) {
+          if (outcome !== "synced") { status.textContent = savedToast(outcome, "已另存"); copy.disabled = false; return; }
+          clearPending(current.id, current);
+          showNoteConflicts();
+          loadServerNotes().then(applyServerNotes).catch(function () {});
+          applyNotePlacement(notes.find(function (note) { return note.id === duplicate.id; }) || duplicate);
+          renderNoteConflicts();
+          toast("已另存为新旁注，其他窗口的版本也保留");
+          if (!readPendingNotes().some(function (note) { return note._saveConflict; })) closeNoteConflicts();
+        });
+      });
+      actions.append(inspect, copy);
+      section.append(local, actions, status, remote);
+      dialog.appendChild(section);
     });
   }
-  // 保存结果决定提示文案：只落本地时必须说清楚，否则用户以为已经存进项目里了
   function savedToast(outcome, onlineText) {
-    return outcome === "local" ? "网络不稳，已存在本地，下次打开自动补交" : onlineText;
+    if (outcome === "conflict") return "其他窗口已更新这条旁注；本地稿已保留，请在“待处理旁注”中查看或另存";
+    if (outcome === "memory") return "未能保存，内容暂留此页；请勿关闭，稍后重试或复制保留";
+    if (outcome === "local") return "已暂存此设备，连接恢复后自动同步";
+    if (outcome === "local-only") return onlineText + "（此设备）";
+    return onlineText;
   }
 
   function viewNote(id, fromEl) {
@@ -1630,6 +1892,8 @@
           '</p><p class="s">' + esc2(x.note.sectionTitle || x.note.section) + (x.note.promoted ? " · 已晋升" : "") + "</p></div>";
       }).join("");
     bubbleBody.querySelectorAll(".nb-list-item").forEach(function (it) {
+      it.tabIndex = 0; it.setAttribute("role", "button");
+      it.addEventListener("keydown", function (event) { if (!isComposingKey(event) && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); viewNote(it.getAttribute("data-id"), it); } });
       it.addEventListener("click", function () { viewNote(it.getAttribute("data-id"), it); });
     });
   }
@@ -2050,7 +2314,7 @@
     playSearchInsertMotion(btn, block);
     var sec = block.closest(".chapter");
     var note = {
-      id: "n" + Date.now().toString(36),
+      id: "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       section: sec ? sec.id : "",
       blockText: norm(block.textContent),
       quote: "",
@@ -2088,11 +2352,11 @@
     nav.id = "nbNav";
     nav.hidden = true;
     nav.innerHTML =
-      '<button id="nbPrev" title="上一处">‹</button>' +
+      '<button id="nbPrev" title="上一处" aria-label="上一处旁注">‹</button>' +
       '<span class="nb-count" id="nbCount">0 / 0</span>' +
-      '<button id="nbNext" title="下一处">›</button>' +
+      '<button id="nbNext" title="下一处" aria-label="下一处旁注">›</button>' +
       '<span class="nb-divider"></span>' +
-      '<button id="nbListBtn" title="全部注释">☰</button>' +
+      '<button id="nbListBtn" title="全部注释" aria-label="全部旁注">☰</button>' +
       '<span class="nb-divider"></span>' +
       '<button id="nbSearchBtn" title="问这本书" aria-label="问这本书">' + SEARCH_SVG + "</button>";
     document.body.appendChild(nav);
@@ -2198,6 +2462,8 @@
       void drawer.offsetWidth; // 强制 reflow，确保过渡从初始态开始
       drawer.classList.add("nb-show");
     } else {
+      sourceOpenSeq++;
+      sourceFileSeq++;
       drawer.classList.remove("nb-show");
       // 等退场动画走完再摘 display，期间再打开由 clearTimeout 兜住
       sourceCloseTimer = setTimeout(function () { drawer.hidden = true; }, 240);
@@ -2311,9 +2577,13 @@
     sourceBack.innerHTML = '<span class="nb-back-label">正文讲到此</span>' + chips;
   }
 
-  async function showSourceFile(path, line) {
+  var sourceFileSeq = 0;
+  var sourceOpenSeq = 0;
+  async function showSourceFile(path, line, endLine) {
+    var seq = ++sourceFileSeq;
     ensureSourceDrawer();
     var loaded = await readFiles([path]);
+    if (seq !== sourceFileSeq) return false;
     var file = null;
     for (var i = 0; i < loaded.length; i++) if (loaded[i].path === path) file = loaded[i];
     if (!file) { toast("源码里没有这个文件：" + path); return; }
@@ -2324,13 +2594,14 @@
     var lines = String(file.content || "").split("\n");
     var html = "";
     for (var n = 0; n < lines.length; n++) {
-      html += '<div class="nb-src-line' + (line && n + 1 === Number(line) ? " nb-src-line-active" : "") + '"><span class="nb-src-no">' + (n + 1) + '</span><span class="nb-src-text">' + highlightSourceLine(lines[n]) + '</span></div>';
+      html += '<div class="nb-src-line' + (line && n + 1 >= Number(line) && n + 1 <= Number(endLine || line) ? " nb-src-line-active" : "") + '"><span class="nb-src-no">' + (n + 1) + '</span><span class="nb-src-text">' + highlightSourceLine(lines[n]) + '</span></div>';
     }
     sourceCode.innerHTML = '<code>' + html + '</code>';
     applySourceNoteMarkers(path);
     var target = sourceCode.querySelector(".nb-src-line-active");
     if (target) target.scrollIntoView({ block: "center" });
     else sourceCode.scrollTop = 0;
+    return true;
   }
 
   // 解析链（精确 → 唯一后缀 → 唯一编号近邻）与阅读器 linkify、服务端锚定共用一份实现
@@ -2367,6 +2638,39 @@
     var files = await loadBookFiles();
     return matchSourcePath(path, files);
   }
+
+  async function openReferencedSource(reference) {
+    var seq = ++sourceOpenSeq;
+    if (!reference || !snapshotAvailable() || reference.sourceSnapshotId !== CONTEXT.sourceSnapshotId) {
+      toast("这条引用属于不同的源码版本，请从它的来源书中查看");
+      return false;
+    }
+    var start = Number(reference.startLine);
+    var end = reference.endLine === undefined ? start : Number(reference.endLine);
+    var raw = reference.path;
+    if (typeof raw !== "string" || raw.charAt(0) === "/" || raw.split("/").indexOf("..") >= 0 ||
+      !Number.isInteger(start) || start < 1 || !Number.isInteger(end) || end < start) {
+      toast("这条源码引用的位置不完整，暂时无法定位");
+      return false;
+    }
+    try {
+      var path = await resolveSourceRef(raw);
+      if (!path || seq !== sourceOpenSeq) { if (!path) toast("源码中无法唯一定位这个文件：" + raw); return false; }
+      var files = await readFiles([path]);
+      var file = files.find(function (candidate) { return candidate.path === path; });
+      if (seq !== sourceOpenSeq) return false;
+      if (!file || file.tooLarge || end > String(file.content || "").split("\n").length) {
+        toast("这条引用的行号不在当前源码文件中，未跳转");
+        return false;
+      }
+      toggleSourceDrawer(true, true);
+      return await showSourceFile(path, start, end);
+    } catch (error) {
+      if (seq === sourceOpenSeq) toast("暂时无法读取源码，请确认本地服务可用");
+      return false;
+    }
+  }
+  window.ShelfSource = { open: openReferencedSource };
 
   function linkifySourceRefs() {
     if (!snapshotAvailable() || !main || !SRC_REF_RE) return;
@@ -2567,7 +2871,7 @@
   buildBubble();
   setupSourceDrawer();
   function loadServerNotes() {
-    return fetch(projectNotesPath()).then(function (r) {
+    return fetch(projectNotesPath() + (CONTEXT.projectId ? "?revisions=1" : "")).then(function (r) {
       // 404 = 静态托管上根本没有这套接口（GitHub Pages）；其余非 2xx 是服务端自己出了状况，
       // 不能混为一谈——一次瞬时 500 就把整个应用永久切成静态模式，用户再也存不进服务端。
       if (r.status === 404) throw new Error("static");
@@ -2578,15 +2882,19 @@
   function applyServerNotes(list) {
     notes = mergePending(Array.isArray(list) ? list : []);
     refreshAll();
+    showNoteConflicts();
     flushPendingNotes();
   }
   // 补交上次没送到服务端的笔记
   function flushPendingNotes() {
     if (STATIC_MODE) return;
-    var pending = readPendingNotes();
+    var pending = readPendingNotes().filter(function (note) { return !note._saveConflict; });
     if (!pending.length) return;
     pending.reduce(function (chain, note) {
-      return chain.then(function () { return persist(note); });
+      return chain.then(function () {
+        var latest = readPendingNotes().find(function (n) { return n.id === note.id; });
+        return latest ? persist(latest) : null;
+      });
     }, Promise.resolve()).then(function () {
       if (!readPendingNotes().length) toast("已补交 " + pending.length + " 条离线笔记");
     });
@@ -2607,14 +2915,27 @@
       .then(function (list) { notes = list || []; refreshAll(); })
       .catch(loadFromLocalStorage);
   }
+  function keepOfflineNotes() {
+    // 瞬时网络或服务器错误不是静态站点：保留待同步稿，并继续允许重连。
+    var cached = [];
+    try { cached = JSON.parse(localStorage.getItem(localNotesKey()) || "[]"); } catch (e) {}
+    notes = mergePending(Array.isArray(cached) ? cached : []);
+    refreshAll();
+    showNoteConflicts();
+    toast("暂时连不上本地服务；已恢复此设备的草稿，服务恢复后会继续同步");
+  }
+  window.addEventListener("online", function () {
+    if (!STATIC_MODE) loadServerNotes().then(applyServerNotes).catch(function () {});
+  });
+  // 本地服务重启不一定触发 online；返回标签页时也重试。
+  window.addEventListener("focus", function () {
+    if (!STATIC_MODE && readPendingNotes().length) loadServerNotes().then(applyServerNotes).catch(function () {});
+  });
   loadServerNotes()
     .then(applyServerNotes)
     .catch(function (error) {
-      if (error && error.message === "unavailable") {
-        // 服务端在，只是这次没读出来：重试一次再决定，别把整个应用永久切成静态模式
-        setTimeout(function () { loadServerNotes().then(applyServerNotes).catch(enterStaticMode); }, 2000);
-        return;
-      }
-      enterStaticMode();
+      if (error && error.message === "static") { enterStaticMode(); return; }
+      keepOfflineNotes();
+      setTimeout(function () { loadServerNotes().then(applyServerNotes).catch(function () {}); }, 2000);
     });
 })();

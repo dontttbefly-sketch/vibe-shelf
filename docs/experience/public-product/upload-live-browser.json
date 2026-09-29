@@ -1,0 +1,26 @@
+{
+  "access": {
+    "view": "upload",
+    "authenticated": "true",
+    "dialog": 0,
+    "storage": "资料保存在本机 · 生成将调用已配置的模型服务",
+    "motion": null
+  },
+  "library": {
+    "view": "library",
+    "books": [
+      {
+        "title": "大模型进化馆，打开项目主书",
+        "url": "/projects/llm-evolution-course/books/main/"
+      },
+      {
+        "title": "Claude Code 实现课，打开项目主书",
+        "url": "/projects/learn-claude-code/books/main/"
+      },
+      {
+        "title": "PUPKIT，打开项目主书",
+        "url": "/projects/pupkit/books/main/"
+      }
+    ]
+  }
+}

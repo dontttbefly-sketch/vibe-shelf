@@ -1,0 +1,60 @@
+✖ search distinguishes pending projects from readable books and still reaches child book titles (4.430375ms)
+✖ unchanged background polls keep existing book nodes, and real changes update the shelf (2.2815ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42.772833
+
+✖ failing tests:
+
+test at ../../../../../private/tmp/shelf-catalog-fault-check/test/shelf-import-feedback.test.mjs:234:1
+✖ search distinguishes pending projects from readable books and still reaches child book titles (4.430375ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /1 个待完成项目/. Input:
+  
+  '找到 1 本书'
+  
+      at TestContext.<anonymous> (file:///private/tmp/shelf-catalog-fault-check/test/shelf-import-feedback.test.mjs:241:10)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '找到 1 本书',
+    expected: /1 个待完成项目/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at ../../../../../private/tmp/shelf-catalog-fault-check/test/shelf-import-feedback.test.mjs:270:1
+✖ unchanged background polls keep existing book nodes, and real changes update the shelf (2.2815ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be reference-equal to "expected":
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      addEventListener: [Function: addEventListener],
+      appendChild: [Function: appendChild],
+      children: [
+        {
+  ...
+      style: {
+  +     animation: 'none',
+        setProperty: [Function: setProperty]
+      },
+      tag: 'article',
+      textContent: '',
+      value: ''
+  
+      at TestContext.<anonymous> (file:///private/tmp/shelf-catalog-fault-check/test/shelf-import-feedback.test.mjs:276:10)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [Object],
+    expected: [Object],
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

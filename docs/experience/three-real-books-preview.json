@@ -1,0 +1,31 @@
+{
+  "root": "/tmp/shelf-three-real-books-ke03I0",
+  "books": [
+    {
+      "id": "pupkit",
+      "title": "PUPKIT 前端代码解剖课",
+      "sha256": "1fbfcd715200d4fc1d24be101e27aef8d3d6d299e2f291ed7fb4017b6c578c90"
+    },
+    {
+      "id": "learn-claude-code",
+      "title": "Claude Code 实现课 · 项目主书",
+      "sha256": "cae30dc811e974786101e669497739e634d74115c20bbb1d76ad9d84c7ca85bb"
+    },
+    {
+      "id": "llm-evolution-course",
+      "title": "大模型进化馆 · 写给 AI 产品经理的架构课",
+      "sha256": "677f9fa8455bcf8dd4af2a64b767803a2da0375d05eb73f8cbe48b7346ed5c54"
+    }
+  ],
+  "source": "Existing three real books; copied unchanged; no model calls",
+  "oldPreview": "/var/folders/h1/ll0nfxf90454y2s5vvb7xw780000gn/T/shelf-experience-QfOMUc",
+  "oldFixtures": "retained outside the review URL for evidence only",
+  "verification": {
+    "shelfProjectCount": 3,
+    "shelfBookCount": 3,
+    "allMainBookRoutes": 200,
+    "browser": "Ego TaskSpace 3 p2; visible three real books",
+    "modelCalls": 0,
+    "publicDeployment": false
+  }
+}

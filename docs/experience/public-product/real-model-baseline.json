@@ -1,0 +1,201 @@
+{
+  "date": "2026-09-28T15:27:09.954Z",
+  "kind": "public-mode-real-model",
+  "root": "/var/folders/h1/ll0nfxf90454y2s5vvb7xw780000gn/T/shelf-public-real-jKYNtF",
+  "model": "MiniMax-M3",
+  "oauth": "controlled-provider",
+  "source": [
+    {
+      "path": "README.md",
+      "content": "# Pocket Queue\n这是一个纯内存 FIFO 队列。入口 src/queue.js，无网络、数据库或后台任务。空队列 dequeue 返回 null。\n"
+    },
+    {
+      "path": "src/queue.js",
+      "content": "export function createQueue() {\n  const items = [];\n  return {\n    enqueue(value) {\n      items.push(value);\n      return items.length;\n    },\n    dequeue() {\n      if (items.length === 0) return null;\n      return items.shift();\n    },\n    size() {\n      return items.length;\n    }\n  };\n}\n"
+    }
+  ],
+  "calls": [
+    {
+      "url": "/api/projects/import",
+      "status": 201,
+      "milliseconds": 37
+    },
+    {
+      "url": "/projects/real-public-queue/books/main/",
+      "status": 200,
+      "milliseconds": 9
+    },
+    {
+      "url": "/api/projects/real-public-queue/preview",
+      "status": 200,
+      "milliseconds": 5
+    },
+    {
+      "url": "/api/projects/real-public-queue/books/main/explain",
+      "status": 200,
+      "milliseconds": 2955
+    },
+    {
+      "url": "/api/projects/real-public-queue/books/main/notes",
+      "status": 200,
+      "milliseconds": 5
+    },
+    {
+      "url": "/api/projects/real-public-queue/books/main/notes",
+      "status": 200,
+      "milliseconds": 5
+    },
+    {
+      "url": "/api/account",
+      "status": 200,
+      "milliseconds": 1
+    }
+  ],
+  "observedStages": [
+    {
+      "state": "generating:writing",
+      "elapsedMs": 38
+    },
+    {
+      "state": "ready:",
+      "elapsedMs": 111308
+    }
+  ],
+  "status": "passed",
+  "snapshotId": "s-mulei4ds-4b07866e",
+  "generation": {
+    "generationId": "107f51f0-9ea7-4e4d-9e67-8a96a75eb1f8",
+    "status": "ready",
+    "stage": null,
+    "error": null,
+    "bookId": "main",
+    "sourceCoverage": {
+      "included": 2,
+      "includedBytes": 435,
+      "skippedTooLarge": 0,
+      "skippedOverBudget": 0,
+      "skippedUnreadable": 0
+    },
+    "startedAt": 1790609230002,
+    "readingIntent": "handoff",
+    "updatedAt": 1790609340594,
+    "skinWarnings": null
+  },
+  "generationMs": 111308,
+  "book": {
+    "status": 200,
+    "bytes": 29880,
+    "sha256": "e99e88f41a58b6a7601fd24d92e9813cfeced59134f865e487d711c54d9b3c10",
+    "csp": "default-src 'none'; script-src 'nonce-[redacted]' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://avatars.githubusercontent.com; font-src 'self'; connect-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'self'",
+    "sourceLinks": 1
+  },
+  "preview": {
+    "projectId": "real-public-queue",
+    "title": "Pocket Queue · 真实公共流程验收 · 项目主书",
+    "readingUrl": "/projects/real-public-queue/books/main/",
+    "ready": true,
+    "status": "ready",
+    "generationStatus": "ready",
+    "updatedAt": 1790609340594,
+    "bookCount": 1,
+    "styleFingerprint": {
+      "colors": [
+        "#f5ecd9",
+        "#ece1c5",
+        "#e3d5b2",
+        "#2a2418",
+        "#5e523f",
+        "#8a7c63",
+        "#efe4c8",
+        "#c6b48a",
+        "#d9c89e",
+        "#a8461e",
+        "#d4845a",
+        "#6e2f0e",
+        "#f0e3c4",
+        "rgba(168,70,30,0.04)"
+      ],
+      "fonts": [
+        "\"Georgia\", \"Songti SC\", \"STSong\", \"Source Han Serif SC\", serif",
+        "\"Songti SC\", \"STSong\", \"Source Han Serif SC\", serif",
+        "\"Courier New\", \"Courier\", monospace",
+        "\"Courier New\", monospace"
+      ]
+    },
+    "books": [],
+    "booksTruncated": false,
+    "summary": "一个文件、一个工厂、四个方法——读懂 src/queue.js 的全部秘密",
+    "chapters": [
+      {
+        "id": "ch1",
+        "title": "项目速览：一只装在口袋里的队列",
+        "href": "/projects/real-public-queue/books/main/#ch1"
+      },
+      {
+        "id": "ch2",
+        "title": "对外接口：四个方法的契约",
+        "href": "/projects/real-public-queue/books/main/#ch2"
+      },
+      {
+        "id": "ch3",
+        "title": "内部机制：闭包里的数组",
+        "href": "/projects/real-public-queue/books/main/#ch3"
+      },
+      {
+        "id": "ch4",
+        "title": "改动地图：哪里加、哪里改、哪里测",
+        "href": "/projects/real-public-queue/books/main/#ch4"
+      },
+      {
+        "id": "ch5",
+        "title": "风险清单：动手前要知道的边界",
+        "href": "/projects/real-public-queue/books/main/#ch5"
+      }
+    ],
+    "chaptersTruncated": false,
+    "previewStatus": "ready"
+  },
+  "annotation": {
+    "content": "第一次返回 `'A'`，第二次返回 `'B'`，第三次因为 `items.length === 0` 触发 `if` 分支，返回 `null`。\n\n依据：`dequeue` 用的是 `Array.prototype.shift`，它总是移除并返回数组的第一个元素；前两次调用依次移走队首的 `'A'` 和 `'B'`，第三次时数组已空，于是走 `return null` 分支。",
+    "sourceRefs": [
+      {
+        "path": "src/queue.js",
+        "startLine": 1,
+        "endLine": 17
+      },
+      {
+        "path": "README.md",
+        "startLine": 1,
+        "endLine": 3
+      }
+    ]
+  },
+  "noteReadback": {
+    "count": 1,
+    "matches": true
+  },
+  "accountUsage": {
+    "period": "2026-09",
+    "generation": {
+      "limit": 3,
+      "used": 1,
+      "reserved": 0,
+      "remaining": 2
+    },
+    "model": {
+      "period": "2026-09-28",
+      "limit": 100,
+      "used": 2,
+      "remaining": 98
+    }
+  },
+  "contentReview": {
+    "coreBehavior": "FIFO A then B then null is correct; saved explanation matches.",
+    "limitations": [
+      "Factory and instance method counts mixed in titles.",
+      "Unmeasured queue-size thresholds, blanket success claims and closure performance rankings.",
+      "Claims all repository files are covered despite selected-source prompt contract."
+    ],
+    "conclusion": "Transport, persistence and usage passed; content quality needs prompt revision."
+  }
+}

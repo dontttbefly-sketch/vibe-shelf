@@ -201,6 +201,88 @@
     return { full: full, base: base };
   }
 
+  // 同一段回答在旁注、探索和小书里共用结构；原始 HTML 始终当文字处理。
+  function markdownEscape(value) {
+    return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function markdownInline(value) {
+    var saved = [], marker = "\u0001";
+    function hold(html) { saved.push(html); return marker + (saved.length - 1) + marker; }
+    var text = String(value).replace(/\u0001/g, "");
+    text = text.replace(/``([^]*?)``|`([^`\n]+)`/g, function (_, a, b) { return hold("<code>" + markdownEscape(a === undefined ? b : a) + "</code>"); });
+    text = text.replace(/\[([^\]\n]+)\]\(([^\s)]+)\)/g, function (_, label, url) {
+      if (/^[a-z][a-z0-9+.-]*:/i.test(url) && !/^(https?:\/\/|mailto:)/i.test(url) || /^[\\/]{2}|[\u0000-\u0020\\]/.test(url)) return label;
+      var safeUrl = markdownEscape(url).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      return hold('<a href="' + safeUrl + '" target="_blank" rel="noreferrer noopener">' + markdownEscape(label).replace(/\u0001(\d+)\u0001/g, function (_, index) { return saved[Number(index)] || ""; }) + "</a>");
+    });
+    text = markdownEscape(text).replace(/\*\*([^]*?)\*\*/g, "<strong>$1</strong>").replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+    return text.replace(/\u0001(\d+)\u0001/g, function (_, index) { return saved[Number(index)] || ""; });
+  }
+  function markdownCells(line) {
+    var text = line.trim().replace(/^\|/, "").replace(/\|$/, ""), cells = [], cell = "", code = false;
+    for (var i = 0; i < text.length; i++) {
+      if (text[i] === "\\" && text[i + 1] === "|") { cell += "|"; i++; }
+      else if (text[i] === "`") { code = !code; cell += text[i]; }
+      else if (text[i] === "|" && !code) { cells.push(cell.trim()); cell = ""; }
+      else cell += text[i];
+    }
+    cells.push(cell.trim()); return cells;
+  }
+  function renderMarkdown(value, depth) {
+    depth = depth || 0;
+    if (depth > 12) return "<p>" + markdownEscape(value) + "</p>";
+    var lines = String(value || "").replace(/\r\n?/g, "\n").split("\n"), out = [], i = 0;
+    function fence(line) { return /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line); }
+    function listItem(line) { return /^( {0,3})([-+*]|\d+[.)])( +)(.*)$/.exec(line); }
+    function tableStart(index) {
+      return index + 1 < lines.length && lines[index].includes("|") && markdownCells(lines[index + 1]).every(function (cell) { return /^:?-{3,}:?$/.test(cell); });
+    }
+    function blockStart(index) { return fence(lines[index]) || listItem(lines[index]) || /^ {0,3}(#{1,6}\s|>\s?|(?:-{3,}|\*{3,}|_{3,})\s*$)/.test(lines[index]) || tableStart(index); }
+    while (i < lines.length) {
+      var line = lines[i], opening = fence(line), heading = /^ {0,3}(#{1,6})\s+(.+)$/.exec(line), item = listItem(line);
+      if (!line.trim()) { i++; continue; }
+      if (opening) {
+        var language = (opening[3].trim().match(/^[a-zA-Z0-9_+-]{1,32}/) || [""])[0], code = [];
+        var closing = new RegExp("^ {0,3}" + opening[2][0] + "{" + opening[2].length + ",}\\s*$"); i++;
+        while (i < lines.length && !closing.test(lines[i])) { code.push(lines[i].replace(new RegExp("^ {0," + opening[1].length + "}"), "")); i++; }
+        if (i < lines.length) i++;
+        out.push("<pre><code" + (language ? ' class="lang-' + language + '"' : "") + ">" + markdownEscape(code.join("\n")) + "</code></pre>"); continue;
+      }
+      if (heading) { var level = Math.min(6, heading[1].length + 1); out.push("<h" + level + ">" + markdownInline(heading[2]) + "</h" + level + ">"); i++; continue; }
+      if (/^ {0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { out.push("<hr>"); i++; continue; }
+      if (/^ {0,3}>/.test(line)) {
+        var quote = []; while (i < lines.length && /^ {0,3}>/.test(lines[i])) { quote.push(lines[i].replace(/^ {0,3}> ?/, "")); i++; }
+        out.push("<blockquote>" + renderMarkdown(quote.join("\n"), depth + 1) + "</blockquote>"); continue;
+      }
+      if (tableStart(i)) {
+        var header = markdownCells(line), rows = []; i += 2;
+        while (i < lines.length && lines[i].trim() && lines[i].includes("|")) { rows.push(markdownCells(lines[i])); i++; }
+        out.push("<table><thead><tr>" + header.map(function (cell) { return "<th>" + markdownInline(cell) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.map(function (row) { return "<tr>" + row.map(function (cell) { return "<td>" + markdownInline(cell) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>"); continue;
+      }
+      if (item) {
+        var ordered = /^\d/.test(item[2]), tag = ordered ? "ol" : "ul", baseIndent = item[1].length, items = [], start = parseInt(item[2], 10);
+        while (i < lines.length) {
+          var current = listItem(lines[i]);
+          if (!current || current[1].length !== baseIndent || /^\d/.test(current[2]) !== ordered) break;
+          var indent = current[1].length + current[2].length + current[3].length, body = [current[4]]; i++;
+          while (i < lines.length) {
+            if (!lines[i].trim()) { body.push(""); i++; continue; }
+            if (lines[i].match(/^ */)[0].length < indent) break;
+            body.push(lines[i].slice(indent)); i++;
+          }
+          var content = renderMarkdown(body.join("\n"), depth + 1);
+          content = content.replace(/^<p>([^]*?)<\/p>(?=\s*<(?:ul|ol)>|$)/, "$1");
+          items.push("<li>" + content + "</li>");
+        }
+        out.push("<" + tag + (ordered && start !== 1 ? ' start="' + start + '"' : "") + ">" + items.join("") + "</" + tag + ">"); continue;
+      }
+      var paragraph = [line]; i++;
+      while (i < lines.length && lines[i].trim() && !blockStart(i)) { paragraph.push(lines[i]); i++; }
+      out.push("<p>" + markdownInline(paragraph.join(" ")) + "</p>");
+    }
+    return out.join("\n");
+  }
+
   var ShelfReaderCore = {
     DIFF_TOKEN_LIMIT: DIFF_TOKEN_LIMIT,
     tokenize: tokenize,
@@ -213,6 +295,8 @@
     makeSrcRefRe: makeSrcRefRe,
     resolveSourcePath: resolveSourcePath,
     matchFilesByText: matchFilesByText,
+    renderMarkdown: renderMarkdown,
+    markdownInline: markdownInline,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = ShelfReaderCore;

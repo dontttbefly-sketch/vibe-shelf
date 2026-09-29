@@ -1,0 +1,20 @@
+.shelf-page.shelf-is-opening-book::before { animation: none; opacity: 0; }
+.shelf-opening { border: 0; padding: 0; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; background: transparent; overflow: hidden; }
+.shelf-opening::backdrop { background: rgba(21,27,30,.12); }
+.shelf-opening-page { position: absolute; inset: 30px max(30px,calc((100vw - 1080px)/2)); padding: clamp(32px,7vw,100px); background: var(--opening-paper,#fffdf7); color: var(--opening-ink,#151b1e); border-radius: 3px 18px 18px 3px; box-shadow: inset 9px 0 0 rgba(21,27,30,.035), 0 24px 80px rgba(21,27,30,.12); transform-origin: top left; display: flex; flex-direction: column; overflow-y: auto; }
+.shelf-opening-content { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; padding-block: 24px; }
+.shelf-opening-content:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+.shelf-opening-kicker { font: 11px/1.6 var(--font-body); letter-spacing: .15em; opacity: .65; }
+.shelf-opening-title { flex: 0 0 auto; font: 500 clamp(32px,5vw,68px)/1.25 var(--font-display); max-width: 760px; margin: auto 0 22px; overflow-wrap: anywhere; }
+.shelf-opening-rule { width: 70px; height: 2px; background: currentColor; opacity: .35; margin-bottom: auto; }
+.shelf-opening-status { flex: 0 0 auto; font-size: 13px; margin-top: 20px; }
+.shelf-opening-actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 14px; }
+.shelf-opening-actions button { border: 0; padding: 8px 0; background: none; color: inherit; text-decoration: underline; text-underline-offset: 5px; }
+.shelf-book-item.is-returned::after, .shelf-book-item.is-new-book::after { content: '刚刚翻过'; position: absolute; left: 20px; top: -29px; font-size: 11px; color: var(--clay-deep); }
+.shelf-book-item.is-new-book::after { content: '新书已入架'; }
+.shelf-arrival-notice { position: fixed; z-index: 180; bottom: 24px; right: 24px; max-width: min(400px,calc(100vw - 40px)); padding: 15px 21px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); box-shadow: 0 10px 40px rgba(21,27,30,.1); font: 13px/1.6 system-ui; }
+.shelf-arrival-notice a { color: var(--clay-deep); margin-left: 14px; text-decoration: underline; }
+@media(max-width:600px) { .shelf-opening-page { inset: 16px; padding: 32px; } }
+.shelf-task-status { border: 0; padding: 7px 10px; border-radius: 20px; color: var(--clay-deep); background: var(--clay-pale); font-size: 11px; }
+@media(max-width:600px) { .shelf-task-status { position: fixed; bottom: 18px; left: 18px; z-index: 30; box-shadow: 0 2px 12px rgba(21,27,30,.08); } }
+.shelf-folder-control.is-dragging { background: var(--clay-pale); border-color: var(--clay-deep); transform: scale(.99); }

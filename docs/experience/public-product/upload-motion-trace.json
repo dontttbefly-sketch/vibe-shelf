@@ -1,0 +1,1083 @@
+[
+  {
+    "ms": 142,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 184,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 228,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 269,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 313,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 360,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 411,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 454,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 499,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 543,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 584,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 625,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 667,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 714,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 799,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 842,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 884,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 927,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 980,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 1035,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 1119,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 1161,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  },
+  {
+    "ms": 1203,
+    "view": "upload",
+    "motion": "enter",
+    "paper": {
+      "transform": "matrix(0.228428, 0.0240088, -0.0451223, 0.42931, 876.938, 167.796)",
+      "opacity": "1"
+    },
+    "groups": [
+      {
+        "className": "upload-story-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-project-leaf",
+        "opacity": "0",
+        "y": "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, 24)"
+      },
+      {
+        "className": "upload-form-heading",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "shelf-launcher-field",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "landing-reading-intent",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      },
+      {
+        "className": "upload-submit-area",
+        "opacity": "0",
+        "y": "matrix(1, 0, 0, 1, 0, 24)"
+      }
+    ],
+    "topZ": "30"
+  }
+]

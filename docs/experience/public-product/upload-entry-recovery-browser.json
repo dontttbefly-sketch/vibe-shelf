@@ -1,0 +1,26 @@
+{
+  "footer": {
+    "view": "home",
+    "expectedScroll": 1280.5,
+    "actualScroll": 1280.5,
+    "focusAtFooter": true
+  },
+  "interrupt": {
+    "view": "home",
+    "layers": 0,
+    "focusAtHero": true
+  },
+  "library": {
+    "view": "upload",
+    "back": "返回书架",
+    "origin": "library"
+  },
+  "draft": {
+    "name": "刷新后保留的本地项目",
+    "intent": "core",
+    "files": 0,
+    "status": "已保留导入信息，请重新选择原文件夹“draft-project”后继续。",
+    "identity": "请重新选择项目文件夹以读取源码",
+    "view": "upload"
+  }
+}

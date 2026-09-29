@@ -1,0 +1,202 @@
+{
+  "date": "2026-09-28T15:30:58.088Z",
+  "kind": "public-mode-real-model",
+  "root": "/var/folders/h1/ll0nfxf90454y2s5vvb7xw780000gn/T/shelf-public-real-dXgeyg",
+  "model": "MiniMax-M3",
+  "oauth": "controlled-provider",
+  "source": [
+    {
+      "path": "README.md",
+      "content": "# Pocket Queue\n这是一个纯内存 FIFO 队列。入口 src/queue.js，无网络、数据库或后台任务。空队列 dequeue 返回 null。\n"
+    },
+    {
+      "path": "src/queue.js",
+      "content": "export function createQueue() {\n  const items = [];\n  return {\n    enqueue(value) {\n      items.push(value);\n      return items.length;\n    },\n    dequeue() {\n      if (items.length === 0) return null;\n      return items.shift();\n    },\n    size() {\n      return items.length;\n    }\n  };\n}\n"
+    }
+  ],
+  "calls": [
+    {
+      "url": "/api/projects/import",
+      "status": 201,
+      "milliseconds": 23
+    },
+    {
+      "url": "/projects/real-public-queue/books/main/",
+      "status": 200,
+      "milliseconds": 6
+    },
+    {
+      "url": "/api/projects/real-public-queue/preview",
+      "status": 200,
+      "milliseconds": 4
+    },
+    {
+      "url": "/api/projects/real-public-queue/books/main/explain",
+      "status": 200,
+      "milliseconds": 2149
+    },
+    {
+      "url": "/api/projects/real-public-queue/books/main/notes",
+      "status": 200,
+      "milliseconds": 2
+    },
+    {
+      "url": "/api/projects/real-public-queue/books/main/notes",
+      "status": 200,
+      "milliseconds": 2
+    },
+    {
+      "url": "/api/account",
+      "status": 200,
+      "milliseconds": 0
+    }
+  ],
+  "observedStages": [
+    {
+      "state": "generating:writing",
+      "elapsedMs": 26
+    },
+    {
+      "state": "ready:",
+      "elapsedMs": 269193
+    }
+  ],
+  "status": "passed",
+  "snapshotId": "s-mulen0e9-98c99440",
+  "generation": {
+    "generationId": "e423497d-ef12-41c1-9f04-622f18e197ff",
+    "status": "ready",
+    "stage": null,
+    "error": null,
+    "bookId": "main",
+    "sourceCoverage": {
+      "included": 2,
+      "includedBytes": 435,
+      "skippedTooLarge": 0,
+      "skippedOverBudget": 0,
+      "skippedUnreadable": 0
+    },
+    "startedAt": 1790609458115,
+    "readingIntent": "handoff",
+    "updatedAt": 1790609726875,
+    "skinWarnings": null
+  },
+  "generationMs": 269193,
+  "book": {
+    "status": 200,
+    "bytes": 23361,
+    "sha256": "12d6b913f66507ec3df1502dc3b19ecfcf080fac6fc34a5cb89c1b2a324fc644",
+    "csp": "default-src 'none'; script-src 'nonce-[redacted]' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://avatars.githubusercontent.com; font-src 'self'; connect-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'self'",
+    "sourceLinks": 1
+  },
+  "preview": {
+    "projectId": "real-public-queue",
+    "title": "Pocket Queue · 真实公共流程验收 · 项目主书",
+    "readingUrl": "/projects/real-public-queue/books/main/",
+    "ready": true,
+    "status": "ready",
+    "generationStatus": "ready",
+    "updatedAt": 1790609726875,
+    "bookCount": 1,
+    "styleFingerprint": {
+      "colors": [
+        "#faf6ef",
+        "#2d2926",
+        "#efe9dc",
+        "#3a342f",
+        "#d8d0c0",
+        "#1f6b7a",
+        "#e3eff1",
+        "#154d57",
+        "#6b635a",
+        "#f5efe2",
+        "#b65a3a",
+        "#f6e4d8"
+      ],
+      "fonts": [
+        "Georgia, \"Source Han Serif SC\", \"Noto Serif CJK SC\", \"Songti SC\", serif",
+        "\"Courier New\", monospace",
+        "\"JetBrains Mono\", \"Courier New\", monospace"
+      ]
+    },
+    "books": [],
+    "booksTruncated": false,
+    "summary": "把一个真实公共流程验收成可读、可改、可讲清楚的最小案例",
+    "chapters": [
+      {
+        "id": "ch1",
+        "title": "项目是什么：一张纯内存的 FIFO 票据",
+        "href": "/projects/real-public-queue/books/main/#ch1"
+      },
+      {
+        "id": "ch2",
+        "title": "目录、入口与运行",
+        "href": "/projects/real-public-queue/books/main/#ch2"
+      },
+      {
+        "id": "ch3",
+        "title": "核心机制：createQueue 工厂与三个对外方法",
+        "href": "/projects/real-public-queue/books/main/#ch3"
+      },
+      {
+        "id": "ch4",
+        "title": "接手时改动会经过哪些真实文件",
+        "href": "/projects/real-public-queue/books/main/#ch4"
+      }
+    ],
+    "chaptersTruncated": false,
+    "previewStatus": "ready"
+  },
+  "annotation": {
+    "content": "三次 `dequeue` 依次返回 `'A'`、`'B'`、`null`。`enqueue` 把 `'A'`、`'B'` 依次 `push` 到数组末尾，而 `dequeue` 用 `shift()` 从数组头部取出元素，所以前两次分别取出 `'A'`、`'B'`，第三次数组已空，命中 `if (items.length === 0) return null`。",
+    "sourceRefs": [
+      {
+        "path": "src/queue.js",
+        "startLine": 1,
+        "endLine": 17
+      },
+      {
+        "path": "README.md",
+        "startLine": 1,
+        "endLine": 3
+      }
+    ]
+  },
+  "noteReadback": {
+    "count": 1,
+    "matches": true
+  },
+  "accountUsage": {
+    "period": "2026-09",
+    "generation": {
+      "limit": 3,
+      "used": 1,
+      "reserved": 0,
+      "remaining": 2
+    },
+    "model": {
+      "period": "2026-09-28",
+      "limit": 100,
+      "used": 2,
+      "remaining": 98
+    }
+  },
+  "scope": "HTTP generation, source anchoring, explanation persistence and actual usage; not a blanket content-quality pass.",
+  "contentReview": {
+    "verified": [
+      "Core enqueue/dequeue/size behavior and factory-versus-instance counts.",
+      "Explanation returns A, B, null and persisted readback exactly matches.",
+      "One complete source block deterministically anchored to src/queue.js line 1."
+    ],
+    "improved": [
+      "No unmeasured numeric capacity thresholds or closure/class speed ranking.",
+      "Explicitly notes that missing tests/dependency files may be outside the provided material."
+    ],
+    "remainingLimitations": [
+      "Other paragraphs still call the selected source the entire project or assert no re-export layer.",
+      "Array push/shift complexity is presented too absolutely for unspecified runtimes.",
+      "The heading no side effects ignores mutation of the queue state."
+    ],
+    "conclusion": "Workflow passed. Source-based explanation improved but the sample still requires editorial review; it is not a public showcase."
+  }
+}

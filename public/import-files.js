@@ -34,14 +34,15 @@
       }
       if (records.length >= MAX_FILES || totalBytes + file.size > MAX_TOTAL_BYTES) {
         truncated = true;
-        break;
+        skipped += 1;
+        continue;
       }
       var content = await file.text();
       if (content.includes("\u0000")) {
         skipped += 1;
         continue;
       }
-      totalBytes += content.length;
+      totalBytes += file.size;
       records.push({ path: relative, content: content });
     }
 
@@ -50,5 +51,28 @@
     return records;
   }
 
-  window.ShelfImport = { readDirectoryTextFiles: readDirectoryTextFiles };
+  async function readDroppedDirectory(dataTransfer) {
+    var items = Array.from(dataTransfer.items || []);
+    var entries = items.map(function (item) { return item.webkitGetAsEntry ? item.webkitGetAsEntry() : null; }).filter(Boolean);
+    if (entries.length !== 1 || !entries[0].isDirectory) throw new Error('请拖入一个项目文件夹，或点击“选择文件夹”。');
+    var files = [], visited = 0;
+    async function walk(entry, prefix) {
+      if (++visited > 10000) throw new Error('这个文件夹内容较多，请先移出依赖或构建目录后重试。');
+      if (entry.isDirectory) {
+        if (/^(\.git|node_modules|dist|build|\.next)$/.test(entry.name)) return;
+        var reader = entry.createReader(), batch;
+        do {
+          batch = await new Promise(function (resolve, reject) { reader.readEntries(resolve, reject); });
+          for (var child of batch) await walk(child, prefix + entry.name + '/');
+        } while (batch.length);
+      } else if (entry.isFile) {
+        var file = await new Promise(function (resolve, reject) { entry.file(resolve, reject); });
+        files.push({ name: file.name, size: file.size, webkitRelativePath: prefix + file.name, text: function () { return file.text(); } });
+      }
+    }
+    await walk(entries[0], '');
+    if (!files.length) throw new Error('文件夹中没有可读取的项目文件。');
+    return files;
+  }
+  window.ShelfImport = { readDirectoryTextFiles: readDirectoryTextFiles, readDroppedDirectory: readDroppedDirectory };
 }());

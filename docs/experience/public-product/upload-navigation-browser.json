@@ -1,0 +1,32 @@
+[
+  {
+    "test": "two-pointer-clicks",
+    "view": "upload",
+    "historyAdded": 1,
+    "layers": 0
+  },
+  {
+    "test": "history-forward-back",
+    "view": "upload",
+    "motion": null
+  },
+  {
+    "test": "refresh",
+    "view": "upload",
+    "motion": null,
+    "layers": 0
+  },
+  {
+    "test": "keyboard-reduced",
+    "view": "upload",
+    "focus": "uploadTitle",
+    "layers": 0,
+    "reduced": true
+  },
+  {
+    "test": "skip-link",
+    "view": "upload",
+    "hash": "#uploadTitle",
+    "focus": "uploadTitle"
+  }
+]

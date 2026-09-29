@@ -1,0 +1,26 @@
+[
+  {
+    "url": "http://localhost:55157/examples/pupkit/books/main/",
+    "title": "PUPKIT 前端代码解剖课",
+    "width": 390,
+    "scrollWidth": 390,
+    "wrap": "normal",
+    "svgCount": 0
+  },
+  {
+    "url": "http://localhost:55157/examples/learn-claude-code/books/main/",
+    "title": "Claude Code 实现课",
+    "width": 390,
+    "scrollWidth": 390,
+    "wrap": "normal",
+    "svgCount": 0
+  },
+  {
+    "url": "http://localhost:55157/examples/llm-evolution-course/books/main/",
+    "title": "大模型进化馆从 Transformer 到 2026 · 写给 AI 产品经理的架构课",
+    "width": 390,
+    "scrollWidth": 390,
+    "wrap": "normal",
+    "svgCount": 11
+  }
+]

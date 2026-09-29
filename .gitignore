@@ -5,6 +5,7 @@ notes-local/
 .superpowers/
 .workbuddy/
 data/projects.json
+data/.shelf-runtime*
 data/projects/*
 !data/projects/pupkit/
 !data/projects/pupkit/**
@@ -12,3 +13,6 @@ public/projects/*
 !public/projects/pupkit/
 !public/projects/pupkit/**
 .claude/
+# Public service accounts, sessions, source snapshots, and usage ledgers.
+data/public-service/
+data/tmp-import/

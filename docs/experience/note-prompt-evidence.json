@@ -1,0 +1,93 @@
+{
+  "date": "2026-09-28",
+  "model": "MiniMax-M3",
+  "kind": "real-model-prompt-check",
+  "results": [
+    {
+      "name": "simple-note",
+      "input": {
+        "quote": "const message = title + name;",
+        "sectionTitle": "greet 函数的源码逐行",
+        "blockText": "const message = title + name;",
+        "files": [
+          {
+            "path": "src/main.js:1-6",
+            "content": "export function greet(name) {\n  const title = 'Hello';\n  const message = title + name;\n  return message;\n}\n"
+          }
+        ],
+        "question": "结合这个项目的真实源码，如果 name 是 Ada，这一行算出的 message 是什么？请用两句话解释，不要修改源码。"
+      },
+      "answer": "如果 `name` 是 `\"Ada\"`，这一行算出的 `message` 是 `\"HelloAda\"`——`Hello` 和 `Ada` 直接拼在一起，中间没有空格。\n\n因为 `title` 和 `name` 都是字符串，JavaScript 的 `+` 在两边都是字符串时执行拼接而非加法，所以结果是连写的 `HelloAda`，要想得到 `\"Hello, Ada\"` 这种带空格或逗号的版本，需要修改源码里这一行的字符串字面量。",
+      "ms": 5763,
+      "chars": 216
+    },
+    {
+      "name": "shorten-existing",
+      "input": {
+        "quote": "const message = title + name;",
+        "sectionTitle": "greet 函数的源码逐行",
+        "blockText": "const message = title + name;",
+        "files": [
+          {
+            "path": "src/main.js:1-6",
+            "content": "export function greet(name) {\n  const title = 'Hello';\n  const message = title + name;\n  return message;\n}\n"
+          }
+        ],
+        "mode": "free",
+        "context": "直接答你的问题：如果传进去的 `name` 是 `'Ada'`，这一行算出来的 `message` 就是字符串 `'HelloAda'`，因为 `title` 的值是 `'Hello'`（末尾没有任何空格），而 JS 里两个字符串用 `+` 拼在一起，就是把它们首尾相接粘起来——它只管\"接\"，不管你空不空格，所以 `Hello` 和 `Ada` 直接贴成了 `HelloAda`，中间没东西。\n\n顺便提醒一句：很多人第一次看到这行，会下意识以为结果是 `'Hello Ada'`（带个空格），结果一跑被现实教训了一下。这正是 JS 里 `+` 的脾气——只要两边有一个是字符串，它就当成拼接符；要拼出空格，得自己写出来，比如 `title + ' ' + name`。这本书后面的章节应该就会处理这个问题，留意一下就行。\n\n顺手再举个例子：把 `name` 换成 `'小明'`，其他一行都不动，这一行算出的 `message` 就是 `'Hello小明'`。道理还是一样——`title` 还是 `'Hello'`，`+` 只管把两边字符串首尾相接，中文字符串也一样直接被粘上去，中间照样没空格。",
+        "instruction": "请把现有旁注压成两句话，保留 Ada 和小明的准确返回值，并删除对后续章节的推测。"
+      },
+      "answer": "如果传进去的 `name` 是 `'Ada'`，这一行算出来的 `message` 就是 `'HelloAda'`；把 `name` 换成 `'小明'`，结果就是 `'Hello小明'`。不管哪种情况，`+` 都只管把字符串首尾相接，`title` 末尾本来就没空格，它当然不会帮你补上，要空格得自己写，比如 `title + ' ' + name`。",
+      "ms": 2695,
+      "chars": 176
+    }
+  ],
+  "refinedResults": [
+    {
+      "name": "simple-note-final",
+      "input": {
+        "quote": "const message = title + name;",
+        "sectionTitle": "greet 函数的源码逐行",
+        "blockText": "const message = title + name;",
+        "files": [
+          {
+            "path": "src/main.js:1-6",
+            "content": "export function greet(name) {\n  const title = 'Hello';\n  const message = title + name;\n  return message;\n}\n"
+          }
+        ],
+        "question": "结合这个项目的真实源码，如果 name 是 Ada，这一行算出的 message 是什么？请用两句话解释，不要修改源码。"
+      },
+      "answer": "`title` 的值是字符串 `'Hello'`，`name` 是传入的字符串 `'Ada'`，所以 `message = title + name` 是 `'Hello' + 'Ada'`，结果为字符串 `'HelloAda'`。\n\n这里 `+` 是字符串拼接而不是算术加法，因此两段文字直接连在一起，中间没有空格。",
+      "ms": 2003,
+      "chars": 159
+    },
+    {
+      "name": "explicit-detail",
+      "input": {
+        "quote": "const message = title + name;",
+        "sectionTitle": "greet 函数的源码逐行",
+        "blockText": "const message = title + name;",
+        "files": [
+          {
+            "path": "src/main.js:1-6",
+            "content": "export function greet(name) {\n  const title = 'Hello';\n  const message = title + name;\n  return message;\n}\n"
+          }
+        ],
+        "question": "请详细解释这一行的字符串拼接：分别列出 name 为 Ada、数字 3、空字符串时的结果，用一个小表格说明，再解释为什么不会自动补空格。"
+      },
+      "answer": "### 这一行在做什么\n\n`title` 是字符串 `'Hello'`，`name` 是函数参数。JS 里 `字符串 + 任意值` 会先把非字符串值转成字符串，再拼到一起（隐式类型转换），所以这一行把两段文字首尾相接得到 `message`。\n\n### 三种 `name` 的拼接结果\n\n| `name` 的值 | `title + name` 的结果 | 说明 |\n|---|---|---|\n| `'Ada'` | `'HelloAda'` | 字符串直接拼接 |\n| `3` | `'Hello3'` | 数字被转成字符串 `'3'` 后再拼 |\n| `''` | `'Hello'` | 空字符串拼上去等于没加 |\n\n可以放进代码里跑一遍验证：\n\n```js\ngreet('Ada') // 'HelloAda'\ngreet(3)     // 'Hello3'\ngreet('')    // 'Hello'\n```\n\n### 为什么不会自动补空格\n\nJS 的 `+` 在字符串拼接上只做“首尾相连”这一件事，不会自作主张在中间插空格。本项目这里也没有写空格——源文件里 `title` 是 `'Hello'`（末尾没有空格），`name` 又是函数调用时原样传进来的，两者之间自然没有间隔。如果想要 `'Hello Ada'`，得写成 `title + ' ' + name`，或者在 `title` 末尾加一个空格字符。",
+      "ms": 3338,
+      "chars": 617
+    }
+  ],
+  "browser": {
+    "url": "http://127.0.0.1:8908/projects/real-experience-qa/books/main/#ch3",
+    "body": "直接答你的问题：如果传进去的 name 是 'Ada'，这一行算出来的 message 就是字符串 'HelloAda'，因为 title 的值是 'Hello'（末尾没有任何空格），JS 里两个字符串用 + 拼起来只是首尾相接粘上去，Hello 和 Ada 直接贴成 HelloAda，中间没空格；要拼出空格得自己写，比如 title + ' ' + name。\n\n直接答你的问题：顺手再举个例子：如果传进去的把 name 是换成 'Ada'小明'，其他一行都不动，这一行算出来的 message 就是字符串 'HelloAda'Hello小明'，因为 ——title 的值还是 'Hello'（末尾没有任何空格），而 JS 里两个字符串用 + 拼在一起，就是把它们一样只管首尾相接粘起来——它只管\"接\"，不管你空不空格，所以 Hello 和 Ada 直接，中文字符串也一样直接贴成了 HelloAda被粘上去，中间照样没东西。没空格。\n\n顺便提醒一句：很多人第一次看到这行，会下意识以为结果是 'Hello Ada'（带个空格），结果一跑被现实教训了一下。这正是 JS 里 + 的脾气——只要两边有一个是字符串，它就当成拼接符；要拼出空格，得自己写出来，比如 title + ' ' + name。这本书后面的章节应该就会处理这个问题，留意一下就行。\n\n顺手再举个例子：把 name 换成 '小明'，其他一行都不动，这一行算出的 message 就是 'Hello小明'。道理还是一样——title 还是 'Hello'，+ 只管把两边字符串首尾相接，中文字符串也一样直接被粘上去，中间照样没空格。",
+    "trail": "↳ 你问：请把选中的内容压成两句话，保留 Ada 和小明的准确返回值，并删除对…",
+    "bubbles": 1,
+    "noteId": "nmula68pxxso0x",
+    "persistedBody": "直接答你的问题：如果传进去的 `name` 是 `'Ada'`，这一行算出来的 `message` 就是字符串 `'HelloAda'`，因为 `title` 的值是 `'Hello'`（末尾没有任何空格），JS 里两个字符串用 `+` 拼起来只是首尾相接粘上去，`Hello` 和 `Ada` 直接贴成 `HelloAda`，中间没空格；要拼出空格得自己写，比如 `title + ' ' + name`。\n\n顺手再举个例子：把 `name` 换成 `'小明'`，其他一行都不动，这一行算出的 `message` 就是 `'Hello小明'`——`title` 还是 `'Hello'`，`+` 一样只管首尾相接，中文字符串也一样直接被粘上去，中间照样没空格。",
+    "visibleDiffIncludesDeletedText": true,
+    "review": "Judge saved content rather than innerText containing both additions and deletions."
+  }
+}

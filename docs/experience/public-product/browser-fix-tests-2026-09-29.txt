@@ -1,0 +1,43 @@
+✔ explicit preview main navigation closes preview and carries the current book and shelf state (9.0735ms)
+✔ explicit preview chapter navigation closes preview and carries the current book and shelf state (2.338291ms)
+✔ explicit preview small navigation closes preview and carries the current book and shelf state (2.972875ms)
+✔ modified and new-tab preview links preserve native navigation and the open preview (1.226625ms)
+✔ hover preview chapters share the cover transition and dismiss the expanded preview first (1.766125ms)
+✔ reduced-motion preview navigation still stores the current shelf state and closes the dialog (0.840208ms)
+✔ cancelling preview navigation returns focus to the currently previewed book and ignores late loading (1.184583ms)
+✔ previewing beyond the displayed page retains enough catalog entries to restore the selected book (1.81125ms)
+✔ a late response cannot replace the next book or reopen a closed preview (0.683458ms)
+✔ simultaneous requests and repeated visits reuse the same version; updates and expiry reload (0.289042ms)
+✔ failures and mismatched project payloads are not cached as successful previews (0.301666ms)
+✔ book links use validated IDs and encode chapter IDs instead of trusting response URLs (0.071083ms)
+✔ fingerprints yield readable covers and never carry arbitrary CSS or fonts (0.338208ms)
+✔ example previews and personal projects with the same ID never share a URL or cached payload (0.1145ms)
+✔ passing over a book never opens or fetches a preview; dwelling opens once after 180ms (0.718167ms)
+✔ pointer can cross the preview bridge during leave grace without closing or refetching (0.094542ms)
+✔ keyboard previews immediately and keeps ownership after pointer leaves (0.059042ms)
+✔ Escape suppresses reopening until focus and pointer really leave (0.066125ms)
+✔ destroy cancels an unopened timer and prevents detached cards from reopening (0.057458ms)
+✔ a fetch that resolves after closing never repaints; reopening gets a new session (0.158291ms)
+✔ reading copy uses validated saved chapters, never inferred percentages or another book's record (0.082625ms)
+✔ mounted keyboard preview remains inside the viewport after the reproduced wheel displacement and resize (3.249416ms)
+✔ mounted loading preview grows without flipping away from a pointer already inside it (1.439208ms)
+✔ mounted oversized preview has a keyboard-scrollable viewport region and destroys queued geometry work (1.142125ms)
+✔ opening accepts only a same-origin book and retains explicit chapter destinations (0.508875ms)
+✔ duplicate opens are gated, cancelled fetches cannot navigate a later selection (0.077333ms)
+✔ mounted reduced-motion opening resets after bfcache return so a second book actually navigates (1.665333ms)
+✔ cancelling a mounted opening ignores a late response and only the new selected book navigates (1.898709ms)
+✔ cancelling after response headers also prevents a late response body from navigating (1.991583ms)
+✔ mounted return restores captured page limits before locating the saved book and scrolling (1.369834ms)
+✔ returning to the shelf cancels a document navigation already issued after a successful prefetch (0.526584ms)
+✔ a stale opening cancel button cannot stop a later document navigation (0.597334ms)
+✔ cancel before document navigation and bfcache lifecycle cleanup never stop unrelated loading (0.917333ms)
+✔ a timeout from an aborted prefetch cannot abort the next opening controller (0.756ms)
+✔ network failure leaves a readable recovery message and a working retry for the same book (0.839958ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.637417

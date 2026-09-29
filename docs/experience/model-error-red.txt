@@ -1,0 +1,82 @@
+✖ HTTP 401 errors give safe guidance without echoing the model response (3.576375ms)
+✖ network failures never expose the underlying exception message (0.609084ms)
+✖ interrupted response bodies never expose the stream exception message (1.473167ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.651209
+
+✖ failing tests:
+
+test at test/model-error-boundary.test.mjs:48:3
+✖ HTTP 401 errors give safe guidance without echoing the model response (3.576375ms)
+  AssertionError [ERR_ASSERTION]: public errors must not contain untrusted upstream diagnostics
+  
+  true !== false
+  
+      at assertSafe (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:17:12)
+      at assertPublicError (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:30:3)
+      at Object.<anonymous> (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:57:7)
+      at expectedException (node:assert:578:17)
+      at expectsError (node:assert:703:21)
+      at strict.rejects (node:assert:769:3)
+      at async TestContext.<anonymous> (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:56:5)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/model-error-boundary.test.mjs:65:1
+✖ network failures never expose the underlying exception message (0.609084ms)
+  AssertionError [ERR_ASSERTION]: public errors must not contain untrusted upstream diagnostics
+  
+  true !== false
+  
+      at assertSafe (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:17:12)
+      at assertPublicError (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:30:3)
+      at Object.<anonymous> (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:67:91)
+      at expectedException (node:assert:578:17)
+      at expectsError (node:assert:703:21)
+      at strict.rejects (node:assert:769:3)
+      at async TestContext.<anonymous> (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:67:3)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/model-error-boundary.test.mjs:70:1
+✖ interrupted response bodies never expose the stream exception message (1.473167ms)
+  AssertionError [ERR_ASSERTION]: public errors must not contain untrusted upstream diagnostics
+  
+  true !== false
+  
+      at assertSafe (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:17:12)
+      at assertPublicError (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:30:3)
+      at Object.<anonymous> (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:74:91)
+      at expectedException (node:assert:578:17)
+      at expectsError (node:assert:703:21)
+      at strict.rejects (node:assert:769:3)
+      at async TestContext.<anonymous> (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/model-error-boundary.test.mjs:74:3)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

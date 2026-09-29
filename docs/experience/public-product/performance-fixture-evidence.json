@@ -1,0 +1,45 @@
+{
+  "date": "2026-09-28T15:41:59.542Z",
+  "url": "http://localhost:56959",
+  "scope": "Isolated HTTP fixture preparation only; browser performance not measured.",
+  "privateBooks": 120,
+  "owner": "github-900002",
+  "cookieHost": "localhost",
+  "catalogSamples": [
+    {
+      "milliseconds": 87.41,
+      "bytes": 78422
+    },
+    {
+      "milliseconds": 18.26,
+      "bytes": 78422
+    },
+    {
+      "milliseconds": 22.72,
+      "bytes": 78422
+    },
+    {
+      "milliseconds": 13.81,
+      "bytes": 78422
+    },
+    {
+      "milliseconds": 13.78,
+      "bytes": 78422
+    }
+  ],
+  "preview75": {
+    "title": "性能样本 075 · 队列与数据流：跨模块状态、长标题与返回书架位置的连续阅读验证",
+    "chapters": 3
+  },
+  "previewChangedReadingPosition": false,
+  "publicExamples": [
+    "pupkit",
+    "learn-claude-code",
+    "llm-evolution-course"
+  ],
+  "guestPrivatePageStatus": 401,
+  "actualModelCalls": 0,
+  "chargedBooks": 0,
+  "loginTarget": "/#library",
+  "browserMeasurement": "pending explicit browser-control authorization"
+}

@@ -1,0 +1,26 @@
+✔ every request carries an abort signal so a hung model cannot block forever (2.140875ms)
+✔ reasoning_split only goes to MiniMax endpoints (1.325458ms)
+✔ a length-truncated answer fails loudly instead of shipping half a book (0.594708ms)
+✔ a missing model config reports model-unavailable instead of a generic 500 (0.319208ms)
+✔ HTTP 401 errors give safe guidance without echoing the model response (2.610041ms)
+✔ HTTP 403 errors give safe guidance without echoing the model response (0.573541ms)
+✔ HTTP 400 errors give safe guidance without echoing the model response (0.503667ms)
+✔ HTTP 404 errors give safe guidance without echoing the model response (0.5365ms)
+✔ HTTP 413 errors give safe guidance without echoing the model response (0.474709ms)
+✔ HTTP 429 errors give safe guidance without echoing the model response (2005.774833ms)
+✔ HTTP 503 errors give safe guidance without echoing the model response (2005.549292ms)
+✔ HTTP 302 errors give safe guidance without echoing the model response (2.800292ms)
+✔ network failures never expose the underlying exception message (1.491792ms)
+✔ interrupted response bodies never expose the stream exception message (2.045125ms)
+✔ timeout errors retain their timeout classification and safe retry guidance (1.563375ms)
+✔ retryable transport failures still retry before returning a safe error (2004.578042ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ ordinary API errors and persisted exploration/generation failures keep upstream diagnostics private (80.381958ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6171.511292

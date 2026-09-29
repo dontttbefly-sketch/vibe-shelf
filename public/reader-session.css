@@ -1,0 +1,42 @@
+/* 公共阅读工具沿用纸面与粘土；不覆盖书的正文皮肤。 */
+.shelf-project-toggle {
+  appearance: none; pointer-events: auto; flex: 0 0 auto;
+  border: 1px solid transparent; border-radius: 8px; background: transparent;
+  padding: 7px 10px; color: var(--muted, #696661); font: 500 12px/1.4 system-ui, sans-serif;
+  cursor: pointer;
+}
+.shelf-project-toggle:hover, .shelf-project-toggle[aria-expanded="true"] {
+  color: var(--clay, #993c1d); background: rgba(206, 123, 81, .09);
+}
+.shelf-project-toggle:focus-visible, .shelf-project-dialog :focus-visible {
+  outline: 2px solid var(--clay, #ce7b51); outline-offset: 3px;
+}
+.shelf-project-dialog {
+  --library-paper: #fffdf7; --library-ink: #151b1e; --library-muted: #716b62; --library-line: rgba(21,27,30,.10);
+  position: fixed; inset: 66px 20px auto auto; margin: 0; width: min(410px, calc(100vw - 32px));
+  max-height: min(720px, calc(100dvh - 90px)); padding: 0; border: 1px solid var(--library-line);
+  border-radius: 16px; background: var(--library-paper); color: var(--library-ink);
+  box-shadow: 0 18px 60px rgba(21,27,30,.13); font: 14px/1.6 system-ui, sans-serif;
+  overflow: auto; overscroll-behavior: contain;
+}
+.shelf-project-dialog[open] { animation: shelf-project-enter .18s ease-out; }
+.shelf-project-dialog::backdrop { background: rgba(21,27,30,.12); }
+.shelf-project-head { display: flex; align-items: center; gap: 14px; padding: 18px 20px 12px; }
+.shelf-project-head h2 { margin: 0; font: 650 17px/1.4 system-ui, sans-serif; flex: 1; overflow-wrap: anywhere; }
+.shelf-project-close { border: 0; background: transparent; color: var(--library-muted); cursor: pointer; padding: 4px 8px; font: 24px/1 system-ui, sans-serif; }
+.shelf-project-close:hover { color: var(--library-ink); }
+.shelf-project-content { padding: 0 14px 18px; }
+.shelf-project-content section + section { margin-top: 20px; }
+.shelf-project-content h3 { margin: 10px 6px 6px; font: 550 11px/1.5 system-ui, sans-serif; letter-spacing: .06em; color: var(--library-muted); }
+.shelf-project-content p { margin: 10px 6px; color: var(--library-muted); font: 13px/1.7 system-ui, sans-serif; }
+.shelf-project-link { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px; border-radius: 8px; text-decoration: none; color: var(--library-ink); overflow-wrap: anywhere; }
+.shelf-project-link small { color: var(--library-muted); font-size: 11px; }
+.shelf-project-link:hover, .shelf-project-link[aria-current="page"] { background: rgba(206,123,81,.09); }
+.shelf-project-retry { margin: 6px; padding: 6px 12px; background: transparent; color: var(--library-ink); border: 1px solid var(--library-line); border-radius: 7px; cursor: pointer; }
+.shelf-reading-status { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 10px 16px; border-radius: 9px; background: #fffdf7; color: #151b1e; box-shadow: 0 4px 20px rgba(21,27,30,.15); font: 13px/1.5 system-ui, sans-serif; }
+html[data-theme="dark"] .shelf-project-dialog { --library-paper: #211d19; --library-ink: #eee7dd; --library-muted: #b6a99a; --library-line: rgba(238,231,221,.13); }
+html[data-theme="dark"] .shelf-reading-status { background: #211d19; color: #eee7dd; }
+@keyframes shelf-project-enter { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 600px) { .shelf-project-dialog { inset: 62px 16px auto; width: auto; } .shelf-project-toggle { padding: 7px; } }
+@media (prefers-reduced-motion: reduce) { .shelf-project-dialog[open] { animation: none; } }
+.shelf-reading-status a { margin-left: 12px; color: inherit; text-decoration: underline; text-underline-offset: 4px; }

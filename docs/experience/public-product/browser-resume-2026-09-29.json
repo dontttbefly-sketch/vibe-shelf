@@ -1,0 +1,62 @@
+{
+  "date": "2026-09-29",
+  "scope": "同一 Ego TaskSpace 6，恢复用户授权后的本地公共模式浏览器补验",
+  "userAuthorization": "允许继续浏览器测试",
+  "environment": {
+    "normalPreview": "http://127.0.0.1:8911/",
+    "performancePreview": "http://localhost:55157/",
+    "performanceRoot": "shelf-public-product-E8o9c6",
+    "fixtureOwner": "github-900002",
+    "syntheticPrivateBooks": 120,
+    "publicExamples": 3,
+    "modelCallsObserved": 0,
+    "browserSpace": 6,
+    "pages": {"p1": "用户原有8911页面，未关闭", "p2": "本轮新增的隔离样本页"},
+    "slowNavigationProxy": {"url": "http://localhost:61266/", "script": "/private/tmp/shelf-browser-delay-proxy.mjs", "documentDelayMs": 8000}
+  },
+  "verifiedBeforeFinalFixes": [
+    {"case": "官网动画终态", "result": "源码、纸页、封面序列结束后无持续动画；没有横向溢出或捕获到的页面脚本错误。截图失败，不能据此判定视觉节奏合格。"},
+    {"case": "多书分页与检索", "result": "120个项目120本书，初始40张书卡；加载更多为80张。搜索075仅得到正确项目；搜索性能样本先60条，加载更多为120条，清空后恢复40张。"},
+    {"case": "悬停基本行为", "result": "perf-041悬停后鼠标进入预览仍保持展开；邻书几何位移为0。"},
+    {"case": "预览切书及章节打开", "result": "从第75本长标题预览切至第76本，点击运行机制。开书层标题为第76本，原预览已关闭；目标URL为/projects/perf-076/books/main/#flow，读本h1一致，章节顶约-9.5px。"},
+    {"case": "返回位置", "result": "恢复sort=name、80张书卡、scrollY=11707与book:perf-076焦点，与打开前相同。"},
+    {"case": "公共账户入口", "result": "390×844显示当前临时账户与用量，个人资料管理按钮可见。已完成0本、今日AI使用0/100。点击个人资料管理前工具被审批额度拒绝，未验证其后续浏览器操作。"}
+  ],
+  "reproducedBugsAndCodeFixes": [
+    {
+      "case": "保持打开的悬停预览随滚动越界",
+      "before": "1470×836，perf-041面板top576.7/bottom835.3；键盘聚焦项目入口，原生wheel(0,-300)后scrollY6305到6052，仍open且面板top834.7/bottom1093.3。",
+      "fix": "仅活动预览监听滚动/resize并按RAF合批，用transform夹入视口。鼠标或键盘进入面板后锁定展开侧；超高内容内部滚动；关闭时清理监听。",
+      "browserRetested": false
+    },
+    {
+      "case": "第二次Document请求开始后取消仍导航",
+      "before": "仅本机代理延迟Document GET 8秒，首HTML fetch正常。点击perf-119后1200ms通过程序调用真实返回按钮handler：旧URL仍为书架、overlay存在且已移除；9500ms后却导航到了perf-119。此取消为程序触发DOM按钮，不冒充物理点击。",
+      "fix": "导航绑定本次token，取消用window.stop停止本次未提交文档请求；旧按钮不能取消新导航；pagehide/pageshow清理不误停恢复页。修复旧请求timeout可能abort下一轮controller的问题。",
+      "browserRetested": false
+    },
+    {
+      "case": "390×600长标题断网恢复按钮被裁切",
+      "before": "perf-120长标题打开失败时返回按钮top612.5/bottom643.5超过600px视口，snapshot无操作按钮；错误原文为Failed to fetch。网络随后恢复。",
+      "fix": "标题内容区可滚动并支持键盘，状态和动作单独保留空间，极短视口外层可滚动；加载失败显示固定中文恢复说明。",
+      "browserRetested": false
+    }
+  ],
+  "localVerification": {
+    "command": "node --test test/shelf-transition.test.mjs test/shelf-preview-navigation.test.mjs test/shelf-stack.test.mjs test/shelf-preview.test.mjs",
+    "passed": 35,
+    "failed": 0,
+    "syntax": ["public/notes.js", "public/shelf-stack.js", "public/shelf-transition.js"],
+    "diffCheck": "passed",
+    "output": "browser-fix-tests-2026-09-29.txt",
+    "priorFullSuite": "321/321属于上述最终修复之前，不冒充本次全套重跑结果"
+  },
+  "limitations": [
+    "Page.captureScreenshot多次超时，本次没有新增截图。",
+    "空闲页requestAnimationFrame约1Hz，双RAF计时约1至2秒；不能作为产品真实输入延迟或60fps证据。观察期间无新增long task不等于普遍性能通过。",
+    "原生应用全窗口状态读取异常耗时约923秒，未对其他用户内容执行操作。后续不再重复宽范围读取。",
+    "自动审批在点击个人资料管理时拒绝执行，原因为Codex使用额度耗尽。没有绕过或重试该浏览器操作。",
+    "待续：三处修复浏览器复验、个人资料管理完整交互、生成最新阶段动效、可靠前台帧性能及真实设备/用户视觉验收。",
+    "真实GitHub OAuth、域名部署仍按用户约定后置；真实模型文字质量边界沿用单独记录。"
+  ]
+}

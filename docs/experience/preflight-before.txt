@@ -1,0 +1,28 @@
+✖ local validation failure never recovers an unrelated previous import as its result (8.201291ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.730709
+
+✖ failing tests:
+
+test at test/shelf-import-feedback.test.mjs:292:1
+✖ local validation failure never recovers an unrelated previous import as its result (8.201291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/bottom_/kong/%E3%80%90project%E3%80%91%E4%B8%AA%E4%BA%BA%E9%A1%B9%E7%9B%AE/%E7%9F%A5%E8%AF%86%E4%B9%A6%E6%9E%B6/test/shelf-import-feedback.test.mjs:296:10)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

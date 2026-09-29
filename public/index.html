@@ -3,103 +3,188 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>知识书架 · 把项目读成一本自己的书</title>
+  <meta name="description" content="把 GitHub 仓库或本地项目变成一本为你定制的阅读书。沿着章节理解项目，在页边追问，回到源码核验，让每一次理解都有归处。">
+  <meta name="theme-color" content="#fffdf7">
+  <title>知识书架 · 把你的项目，读成一本书</title>
   <script src="theme.js"></script>
   <link rel="stylesheet" href="shelf.css">
+  <link rel="stylesheet" href="settings.css">
+  <link rel="stylesheet" href="shelf-preview.css">
+  <link rel="stylesheet" href="shelf-stack.css">
+  <link rel="stylesheet" href="shelf-transition.css">
+  <link rel="stylesheet" href="landing.css">
+  <link rel="stylesheet" href="upload-workspace.css">
 </head>
-<body class="shelf-page">
+<body class="shelf-page" data-page-view="home">
+  <a class="landing-skip" href="#landingTitle">跳到主要内容</a>
   <header class="shelf-topbar">
-    <a class="shelf-brand" href="index.html" aria-label="知识书架首页"><span class="shelf-brand-mark">书</span><span>知识书架</span></a>
-    <a class="shelf-existing-link" href="#bookshelf">书架</a>
+    <a class="shelf-brand" href="#" data-home-open aria-label="知识书架首页"><span class="shelf-brand-mark" aria-hidden="true">书</span><span>知识书架</span></a>
+    <button class="upload-back" type="button" data-upload-back hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M15.5 10h-11m5-5-5 5 5 5"/></svg><span>返回</span></button>
+    <nav class="landing-nav" aria-label="主导航">
+      <a href="#examples" data-examples-open>看看成书</a>
+      <a href="#library" data-library-open>我的书架</a>
+    </nav>
+    <div class="shelf-topbar-actions">
+      <button class="shelf-new-book landing-nav-import" type="button" data-import-open><span aria-hidden="true">＋</span> 新建项目书</button>
+      <button class="landing-account-open" type="button" data-account-open aria-haspopup="dialog"><span class="landing-account-dot" aria-hidden="true"></span><span data-account-label>账户与用量</span></button>
+    </div>
   </header>
-  <main class="shelf-home">
-    <section class="shelf-hero" aria-labelledby="shelfTitle">
-      <span class="shelf-hero-watermark" aria-hidden="true">书</span>
-      <p class="shelf-hero-kicker" aria-hidden="true">KNOWLEDGE SHELF</p>
-      <h1 id="shelfTitle">把一个项目，读成一本自己的书。</h1>
-      <p class="shelf-hero-copy">导入你的项目源码，AI 为它写一部讲解书；读到哪里不懂，就在哪里问下去。</p>
 
-      <!-- 首屏唯一主动作：开始一个新的项目理解过程（基线 6.1） -->
-      <form class="shelf-launcher" data-project-import data-primary-start data-project-launcher data-launcher-state="idle">
-        <div class="shelf-launcher-field">
-          <input class="shelf-import-name" id="projectName" name="name" data-launcher-name autocomplete="off" placeholder=" " required>
-          <span class="shelf-float-label" aria-hidden="true">给这个项目起个名字，比如「我的博客」</span>
-          <label class="shelf-sr-only" for="projectName">给这个项目起个名字</label>
+  <main class="landing-home" data-landing>
+    <section class="landing-hero" aria-labelledby="landingTitle">
+      <div class="landing-hero-copy">
+        <p class="landing-eyebrow"><span></span> 给源码，一个可读的形状</p>
+        <h1 id="landingTitle" tabindex="-1">把你的项目，<br>读成<span class="landing-title-book">一本书<svg viewBox="0 0 285 18" fill="none" aria-hidden="true"><path d="M3 12C79 2 170 1 279 8M33 17C118 8 196 8 262 12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span>。</h1>
+        <p class="landing-hero-description">不必在文件之间迷路。带来一个项目，<br class="landing-desktop-break">让章节串起全貌，让每个疑问都能回到源码。</p>
+        <div class="landing-primary-actions">
+          <button type="button" class="landing-primary" data-import-open>把我的项目变成书 <span aria-hidden="true">↗</span></button>
+          <p class="landing-source-note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M6 4.5H3.5v11H6m8-11h2.5v11H14M12 3 8 17"/></svg> GitHub 仓库 <span>或</span> 本地项目文件夹</p>
         </div>
-
-        <div class="shelf-launcher-sources">
-          <label class="shelf-source-option" data-source-choice="local" data-folder-pick>
-            <span class="shelf-source-mark" aria-hidden="true"></span>
-            <span class="shelf-source-copy"><strong>本地文件夹</strong><small data-folder-label>选择电脑上的项目源码</small></span>
-            <span class="shelf-source-action" data-folder-action>选择</span>
-            <input name="folder" type="file" webkitdirectory multiple required>
-          </label>
-          <button class="shelf-source-option" type="button" data-source-choice="github" data-github-import aria-label="从 GitHub 仓库导入公开项目">
-            <span class="shelf-source-mark" aria-hidden="true"></span>
-            <span class="shelf-source-copy"><strong>GitHub 仓库</strong><small>粘贴 owner/name，导入公开仓库</small></span>
-            <span class="shelf-source-action" aria-hidden="true">↗</span>
-          </button>
-        </div>
-
-        <button class="shelf-import-submit" type="submit">
-          <span>读懂这个项目</span>
-          <span class="shelf-submit-arrow" aria-hidden="true">→</span>
-        </button>
-        <p class="shelf-import-status" data-import-status role="status"></p>
-
-        <div class="shelf-generating" data-generating hidden>
-          <div class="shelf-generating-bar" aria-hidden="true"><i></i></div>
-          <p class="shelf-generating-stage" data-generating-stage role="status"></p>
-        </div>
-
-        <p class="shelf-local-note">所有资料只保存在当前设备</p>
-      </form>
-
-      <ol class="shelf-reading-journey" data-reading-journey data-reveal aria-label="项目理解路径">
-        <li><i aria-hidden="true"></i><span>源码</span></li>
-        <li><i aria-hidden="true"></i><span>主书</span></li>
-        <li><i aria-hidden="true"></i><span>探索</span></li>
-      </ol>
-    </section>
-
-    <section class="shelf-bookshelf" aria-labelledby="projectShelfTitle" id="bookshelf" data-reveal>
-      <div class="shelf-bookshelf-head" data-reveal>
-        <div>
-          <p class="shelf-bookshelf-kicker" aria-hidden="true">ALREADY HERE</p>
-          <h2 id="projectShelfTitle">我的书架</h2>
-        </div>
-        <p>从上次读到的地方继续。</p>
+        <a class="landing-examples-link" href="#examples" data-examples-open>先翻几页真实成品 <span aria-hidden="true">↓</span></a>
       </div>
-      <div class="shelf-project-list" data-project-list></div>
+      <figure class="landing-transformation" aria-labelledby="transformationCaption">
+        <div class="landing-transformation-stage" aria-hidden="true">
+          <div class="landing-orbit landing-orbit-one"></div>
+          <div class="landing-orbit landing-orbit-two"></div>
+          <div class="landing-source-sheet">
+            <div class="landing-sheet-top"><span>你的项目 /</span><span>源文件</span></div>
+            <div class="landing-source-tree"><span>⌄ &nbsp; src</span><span>├ &nbsp; app.ts</span><span>├ &nbsp; components</span><span>└ &nbsp; services</span><span>README.md</span></div>
+            <div class="landing-code-lines"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="landing-page-sheet landing-page-back"></div>
+          <div class="landing-page-sheet landing-page-middle"></div>
+          <div class="landing-hero-book">
+            <div class="landing-book-binding"></div>
+            <div class="landing-book-content">
+              <div class="landing-book-overline">KNOWLEDGE SHELF <span>01</span></div>
+              <div class="landing-book-mini-mark"><span></span><span></span><span></span></div>
+              <p class="landing-book-kicker">从源码出发 · 为理解而写</p>
+              <h2>你的项目<br><em>有了脉络。</em></h2>
+              <div class="landing-book-chapter"><span>01</span><p>从全貌开始</p><i></i></div>
+              <div class="landing-book-chapter"><span>02</span><p>深入核心机制</p><i></i></div>
+              <div class="landing-book-chapter"><span>03</span><p>回到每一行源码</p><i></i></div>
+              <div class="landing-book-bottom"><span>一本属于你的项目读本</span><span>↗</span></div>
+            </div>
+          </div>
+          <div class="landing-margin-note"><span class="landing-margin-tick">↳</span><p>这一段，<br>还可以继续问。</p><span class="landing-margin-dots">···</span></div>
+          <span class="landing-floating-ref">app.ts <span>↗</span> 源码可核验</span>
+        </div>
+        <figcaption id="transformationCaption"><span>源码</span><i>→</i><span>章节</span><i>→</i><span>你的理解</span><small>过程示意</small></figcaption>
+      </figure>
     </section>
 
-    <section class="shelf-how" aria-labelledby="howTitle">
-      <h2 class="shelf-how-title" id="howTitle">它是怎么工作的</h2>
-      <div class="shelf-how-grid">
-        <article class="shelf-how-card" data-reveal>
-          <span class="shelf-how-num" aria-hidden="true">01</span>
-          <h3>导入项目</h3>
-          <p>选一个本地文件夹，源码会被保存成本地快照——它是所有解释的事实底座。</p>
-        </article>
-        <article class="shelf-how-card" data-reveal>
-          <span class="shelf-how-num" aria-hidden="true">02</span>
-          <h3>AI 写成主书</h3>
-          <p>后台把整个项目讲成一部连续的教学书。你不用先看懂目录树，直接从第一页读起。</p>
-        </article>
-        <article class="shelf-how-card" data-reveal>
-          <span class="shelf-how-num" aria-hidden="true">03</span>
-          <h3>划词追问</h3>
-          <p>读到哪里不懂就在哪里问。值得深挖的问题，可以长成一本书，继续读下去。</p>
-        </article>
-      </div>
+    <section class="landing-promise" aria-label="从项目到读本">
+      <p>一份项目，<br><span>三种读懂的方式。</span></p>
+      <div><span class="landing-promise-number">01 /</span><h2>顺着章节，建立全貌</h2><p>以你的项目为线索，把零散文件组织成有起承转合的读本。</p></div>
+      <div><span class="landing-promise-number">02 /</span><h2>停在疑问，继续追问</h2><p>划出不懂的地方，在页边聊清楚。理解与正文留在一起。</p></div>
+      <div><span class="landing-promise-number">03 /</span><h2>回到源码，亲自确认</h2><p>沿着文件引用查看项目快照，读到的结论，有原文可以核验。</p></div>
     </section>
 
+    <section class="landing-examples" id="examples" aria-labelledby="examplesTitle">
+      <div class="landing-section-heading"><div><p class="landing-eyebrow">已经从源码长出的书</p><h2 id="examplesTitle">项目不同，<br class="landing-mobile-break">书也各有模样。</h2></div><p>翻开真实成品，看看你的项目<br>将获得怎样的阅读体验。</p></div>
+      <div class="landing-example-list" data-example-list aria-live="polite"><p class="landing-example-status" data-example-status>正在取来真实读本…</p></div>
+      <p class="landing-example-footnote">案例展示的是现有读本；你的章节、代码示例与源码引用，来自你自己的项目。</p>
+    </section>
+
+    <section class="landing-closing" aria-labelledby="closingTitle"><p class="landing-eyebrow">下一本，是你的项目。</p><h2 id="closingTitle">让“以后再看”，<br>从今天翻开。</h2><button type="button" class="landing-primary" data-import-open>把我的项目变成书 <span aria-hidden="true">↗</span></button><p>GitHub 仓库 / 本地项目 · 选择阅读目的，再开始生成</p></section>
   </main>
-  <footer class="shelf-footer">
-    <span>知识书架 · 本地优先</span>
-    <a href="https://github.com/dontttbefly-sketch/vibe-shelf" target="_blank" rel="noreferrer">GitHub</a>
-  </footer>
+
+  <main class="upload-workspace" aria-labelledby="uploadTitle" data-upload-workspace data-phase="idle" hidden>
+    <div class="upload-spread">
+      <section class="upload-story" aria-label="你的项目读本">
+        <div class="upload-story-heading" data-workspace-reveal>
+          <p class="upload-story-kicker">从一份源码开始</p>
+          <h1 id="uploadTitle" tabindex="-1">下一本，<br>写你的项目。</h1>
+          <p class="upload-story-description">把散落的文件，读成连贯的理解。</p>
+        </div>
+        <div class="upload-project-leaf" data-workspace-reveal>
+          <div class="upload-leaf-stack" aria-hidden="true"><i></i><i></i></div>
+          <div class="upload-leaf-content">
+            <span class="upload-leaf-label">项目读本</span>
+            <span class="upload-leaf-mark" aria-hidden="true"><svg viewBox="0 0 112 78" fill="none"><path d="M14 16C31 9 43 12 56 21v45c-13-9-25-12-42-5V16Z"/><path d="M98 16C81 9 69 12 56 21v45c13-9 25-12 42-5V16Z"/><path d="m23 25 19 4m-19 7 19 4m-19 7 13 3m47-25-19 4m19 7-19 4m19 7-13 3"/></svg></span>
+            <h2 data-upload-project-name>你的项目，<br>将在这里成书。</h2>
+            <p class="upload-project-source" data-upload-project-source>等待放入源码</p>
+            <p class="upload-project-summary" data-upload-project-summary>目录、讲解与代码示例<br>都将从你的项目出发。</p>
+            <span class="upload-leaf-corner" aria-hidden="true">书</span>
+          </div>
+        </div>
+        <ol class="shelf-reading-journey" data-reading-journey aria-label="项目理解路径"><li>项目源码</li><li>一本主书</li><li>你的理解</li></ol>
+      </section>
+
+      <section class="upload-workbench" aria-label="上传与生成">
+        <div class="upload-access" data-upload-access>
+          <div data-workspace-reveal><p class="upload-form-kicker">你的阅读空间</p><h2>让这本书，<br>有自己的归处。</h2><p class="upload-access-description">登录后，把项目、书和阅读时的每一个疑问，留在你的书架。</p></div>
+          <div class="upload-access-actions" data-workspace-reveal>
+            <a class="upload-signin" data-upload-signin href="/auth/github?returnTo=%2F%23upload" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.86c-2.78.6-3.37-1.18-3.37-1.18-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.33 1.09 2.9.83.09-.64.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.5 9.5 0 0 1 12 6.83a9.5 9.5 0 0 1 2.5.34c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.75c0 .26.18.57.69.48A10 10 0 0 0 12 2Z"/></svg>使用 GitHub 登录</a>
+            <form method="post" action="/__acceptance/session" data-upload-local-login hidden><button class="upload-signin" type="submit">使用本机体验账户</button></form>
+            <button class="upload-reconnect" type="button" data-upload-retry hidden>重新连接</button>
+            <p class="upload-access-status" data-upload-access-status role="status">正在连接你的空间…</p>
+          </div>
+        </div>
+
+        <form class="shelf-launcher upload-form" data-project-import data-primary-start data-project-launcher data-launcher-state="idle" novalidate hidden>
+          <div data-upload-fields>
+            <div class="upload-form-heading" data-workspace-reveal><h2>带来一个项目。</h2><p>选一份源码，再选一种读法。</p></div>
+            <div data-workspace-reveal>
+              <div class="shelf-source-tabs" role="group" aria-label="项目来源"><button type="button" data-source-choice="local" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3.5 7V5.5h6l2 2h9v12h-17V7Z"/><path d="M3.5 10h17"/></svg>本地文件夹</button><button type="button" data-source-choice="github" data-github-import aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="m9 6-6 6 6 6m6-12 6 6-6 6m-2-14-2 16"/></svg>GitHub 仓库</button></div>
+              <div class="shelf-source-panel" data-local-source><label class="shelf-folder-control" data-folder-pick><span class="upload-folder-symbol" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M7 12V9h11l4 4h11v20H7V12Z"/><path d="M7 17h26M20 22v7m-3-4 3-3 3 3"/></svg></span><span class="upload-folder-copy"><strong data-folder-label>放入你的项目源码</strong><small>选择或拖入文件夹，依赖与二进制文件会自动跳过</small></span><span class="shelf-source-action" data-folder-action>选择文件夹</span><input name="folder" type="file" webkitdirectory multiple aria-label="选择项目源码文件夹"></label></div>
+              <div class="shelf-source-panel" data-github-source hidden><label class="shelf-field-label" for="githubRepo">公开仓库地址</label><input class="shelf-repo-input" id="githubRepo" name="repo" autocomplete="off" placeholder="owner/repository 或完整 GitHub 地址" spellcheck="false"><p class="shelf-field-help">只读取公开仓库中的文本文件。</p></div>
+            </div>
+            <div class="shelf-launcher-field" data-workspace-reveal><label class="shelf-field-label" for="projectName">项目名称</label><input class="shelf-import-name" id="projectName" name="name" data-launcher-name autocomplete="off" maxlength="120" placeholder="选择来源后自动填入，也可以修改"></div>
+            <fieldset class="landing-reading-intent" data-workspace-reveal><legend>这次，想怎样读懂它？</legend><div class="landing-intent-options"><label><input type="radio" name="readingIntent" value="overview" checked><span><strong>快速理解</strong><small>先建立整体脉络</small></span></label><label><input type="radio" name="readingIntent" value="core"><span><strong>深入机制</strong><small>读懂关键设计</small></span></label><label><input type="radio" name="readingIntent" value="handoff"><span><strong>接手修改</strong><small>为动手做好准备</small></span></label></div></fieldset>
+            <p class="shelf-import-summary" data-import-summary role="status"></p>
+          </div>
+          <div class="shelf-generating" data-generating hidden>
+            <div class="upload-generation-heading"><p>正在成为你的书</p><h2>理解，正在成形。</h2></div>
+            <div class="landing-generation-art" aria-hidden="true"><span></span><span></span><span></span><i>书</i></div>
+            <ol class="landing-generation-steps" aria-label="生成阶段"><li data-generation-step="reading"><span>01</span>文件归集</li><li data-generation-step="writing"><span>02</span>内容组织</li><li data-generation-step="compiling"><span>03</span>书页形成</li><li data-generation-step="ready"><span>04</span>封面完成</li></ol>
+            <div class="shelf-generating-bar" aria-hidden="true"><i></i></div>
+            <p class="shelf-generating-stage" data-generating-stage role="status"></p>
+            <p class="landing-generation-note">阶段随实际任务更新。写书需要一些时间，可以先逛书架。</p>
+          </div>
+          <div class="upload-submit-area" data-workspace-reveal>
+            <button class="shelf-import-submit" type="submit"><span>生成项目书</span><span class="shelf-submit-arrow" aria-hidden="true">→</span></button>
+            <p class="shelf-import-status" data-import-status role="status"></p>
+            <div class="shelf-import-secondary" data-import-secondary hidden><button type="button" data-generation-browse>先逛书架</button><button type="button" data-new-import>导入另一个项目</button></div>
+            <p class="shelf-local-note" data-storage-note>生成时会将相关源码发送给已配置的模型。</p>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <dialog class="landing-account-panel" data-account-dialog aria-labelledby="accountTitle">
+    <div class="landing-account-heading"><p class="landing-eyebrow">你的阅读空间</p><button type="button" class="shelf-dialog-close" data-account-close aria-label="关闭账户面板">×</button></div>
+    <h2 id="accountTitle" data-account-title>账户与生成用量</h2>
+    <p class="landing-account-description" data-account-description>正在连接你的空间…</p>
+    <div class="landing-account-identity" data-account-identity hidden><span data-account-avatar aria-hidden="true"></span><div><strong data-account-name></strong><small data-account-login></small></div></div>
+    <div class="landing-account-usage" data-account-usage hidden><div><span data-account-period>本月项目主书额度</span><strong data-account-remaining></strong></div><p data-account-usage-detail></p><p data-account-model-usage></p></div>
+    <a class="landing-primary landing-account-signin" href="/auth/github?returnTo=%2F%23library" data-account-signin hidden>使用 GitHub 登录 <span aria-hidden="true">↗</span></a>
+    <button type="button" class="landing-account-settings" data-account-settings data-settings-open hidden><span data-account-settings-label>个人资料管理</span> <span aria-hidden="true">→</span></button>
+    <button type="button" class="landing-account-retry" data-account-retry hidden>重新连接</button>
+    <button type="button" class="landing-account-logout" data-account-logout hidden>退出当前账户</button>
+    <p class="landing-account-status" data-account-status role="status"></p>
+    <p class="landing-account-footnote" data-account-footnote>访客可以阅读公开案例。登录后，让自己的项目与理解拥有一个归处。</p>
+  </dialog>
+
+  <main class="shelf-home" id="bookshelf" hidden>
+    <section class="shelf-library-heading" aria-labelledby="shelfTitle"><div><p class="shelf-eyebrow">属于你的知识，慢慢成书</p><h1 id="shelfTitle" tabindex="-1">我的书架<span aria-hidden="true">。</span></h1></div><p class="shelf-library-count" data-library-count aria-live="polite">正在整理书架…</p></section>
+    <a class="shelf-resume" data-resume-book hidden></a>
+    <section class="shelf-collection" aria-label="项目书籍">
+      <div class="shelf-catalog-toolbar"><div class="shelf-catalog-tabs" role="group" aria-label="书架范围"><button type="button" data-catalog-filter="all" aria-pressed="true">全部项目</button><button type="button" data-catalog-filter="read" aria-pressed="false">最近阅读</button></div><div class="shelf-catalog-tools"><label class="shelf-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg><input type="search" data-shelf-search placeholder="找一本书、一个项目…" aria-label="搜索项目与小书" autocomplete="off"><kbd aria-hidden="true">⌘ K</kbd></label><label class="shelf-sort"><span class="shelf-sr-only">书架排序</span><select data-shelf-sort aria-label="书架排序"><option value="recent">最近更新</option><option value="name">名称排序</option></select></label></div></div>
+      <p class="shelf-search-status" data-search-status role="status" hidden></p><div class="shelf-project-list" data-project-list aria-label="书架"></div>
+      <div class="shelf-empty-state" data-library-empty hidden><div class="shelf-empty-book" aria-hidden="true"><span>你的<br>第一本书</span><i>＋</i></div><h2>从一个想读懂的项目开始。</h2><p>源码变成书，疑问留在页边。</p><button type="button" class="shelf-new-book" data-import-open>新建项目书 <span aria-hidden="true">↗</span></button></div>
+    </section>
+  </main>
+  <footer class="shelf-footer"><span>知识书架<span class="shelf-footer-dot">·</span>让每一次理解，都有归处</span><span data-footer-space>从项目出发，向理解生长。</span></footer>
+  <script src="settings.js"></script>
   <script src="import-files.js"></script>
+  <script src="shelf-preview.js"></script>
+  <script src="shelf-stack.js"></script>
+  <script src="shelf-transition.js"></script>
+  <script src="upload-motion.js"></script>
+  <script src="generation-feedback.js"></script>
   <script src="shelf.js"></script>
+  <script src="landing.js"></script>
 </body>
 </html>

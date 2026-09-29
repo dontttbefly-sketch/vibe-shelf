@@ -1,0 +1,53 @@
+{
+  "date": "2026-09-28",
+  "method": "Actual browser hover/computed colors; opaque text and button background luminance ratio",
+  "before": [
+    {
+      "name": "settings hover light",
+      "fg": "rgb(255, 253, 247)",
+      "bg": "rgb(255, 255, 255)",
+      "ratio": 1.02
+    },
+    {
+      "name": "PUPKIT explore light",
+      "fg": "rgb(255, 253, 247)",
+      "bg": "rgb(206, 123, 81)",
+      "ratio": 3.14
+    }
+  ],
+  "after": {
+    "settings": [
+      {
+        "hover": true,
+        "fg": "rgb(255, 253, 247)",
+        "bg": "rgb(21, 27, 30)",
+        "theme": "light",
+        "ratio": 17.1
+      },
+      {
+        "hover": true,
+        "fg": "rgb(21, 20, 17)",
+        "bg": "rgb(240, 237, 228)",
+        "theme": "dark",
+        "ratio": 15.74
+      }
+    ],
+    "explore": [
+      {
+        "book": "PUPKIT 前端代码解剖课",
+        "theme": "light",
+        "fg": "rgb(255, 253, 247)",
+        "bg": "rgb(153, 60, 29)",
+        "ratio": 6.84
+      },
+      {
+        "book": "PUPKIT 前端代码解剖课",
+        "theme": "dark",
+        "fg": "rgb(23, 17, 13)",
+        "bg": "rgb(226, 154, 112)",
+        "ratio": 8.1
+      }
+    ]
+  },
+  "limits": "Only measured controls and theme samples; not a full accessibility conformance audit."
+}

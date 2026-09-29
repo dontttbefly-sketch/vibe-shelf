@@ -1,0 +1,385 @@
+{
+  "date": "2026-09-28T12:14:09.473Z",
+  "kind": "real-model",
+  "calls": [
+    {
+      "route": "/api/status",
+      "status": 200,
+      "ms": 20
+    },
+    {
+      "route": "/api/model/check",
+      "status": 200,
+      "ms": 3051
+    },
+    {
+      "route": "/api/projects/import",
+      "status": 201,
+      "ms": 31
+    },
+    {
+      "route": "/api/projects/real-experience-qa/explorations",
+      "status": 201,
+      "ms": 5
+    },
+    {
+      "route": "/api/projects/real-experience-qa/explorations/e-mul7lz6r-f17e8569aa/messages",
+      "status": 200,
+      "ms": 4237
+    },
+    {
+      "route": "/api/projects/real-experience-qa/explorations/e-mul7lz6r-f17e8569aa/messages",
+      "status": 200,
+      "ms": 2526
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 2
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 2
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 6
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 24
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 2
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 2
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 5
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 2
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 4
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 2
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 4
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 4
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 10
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 9
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 7
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 5
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 19
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 2
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 1
+    },
+    {
+      "route": "/api/projects/real-experience-qa/generation",
+      "status": 200,
+      "ms": 3
+    },
+    {
+      "route": "/api/projects/real-experience-qa",
+      "status": 200,
+      "ms": 7
+    }
+  ],
+  "projectId": "real-experience-qa",
+  "model": {
+    "configured": true,
+    "model": "MiniMax-M3"
+  },
+  "sessionId": "e-mul7lz6r-f17e8569aa",
+  "questions": [
+    {
+      "prompt": "greet 传入 Ada，严格按源码返回什么字符串？指出依据，不要替它增加空格。",
+      "result": {
+        "assistantMessage": {
+          "id": "m-mul7lz6u-3ab2d9e89f",
+          "role": "assistant",
+          "status": "complete",
+          "content": "`greet('Ada')` 返回字符串 `'HelloAda'`。\n\n依据：\n\n- `src/main.js` 中第 2–4 行：\n  ```javascript\n  const title = 'Hello';\n  const message = title + name;\n  return message;\n  ```\n  当 `name` 为 `'Ada'` 时，`title + name` 拼接结果为 `'Hello' + 'Ada'`，即 `'HelloAda'`，函数 `return` 该值。\n- `README.md` 同样明确：\"greet 将固定前缀 Hello 直接与传入的名字拼接，不加空格。\"\n\n所以严格按源码，调用 `greet('Ada')` 得到的是 `HelloAda`，中间没有空格、也没有句号或感叹号。",
+          "sourceRefs": [
+            {
+              "path": "README.md",
+              "startLine": 1,
+              "endLine": 3
+            },
+            {
+              "path": "src/main.js",
+              "startLine": 1,
+              "endLine": 6
+            }
+          ],
+          "createdAt": 1790597652582,
+          "updatedAt": 1790597656816
+        }
+      }
+    },
+    {
+      "prompt": "如果把刚才那个入参换成“小明”，其他都不变，它会返回什么？请承接上面的解释。",
+      "result": {
+        "assistantMessage": {
+          "id": "m-mul7m2gk-56a37ef245",
+          "role": "assistant",
+          "status": "complete",
+          "content": "直接回答：`greet('小明')` 返回字符串 `'Hello小明'`。\n\n依据：\n\n- `src/main.js` 第 2–4 行：\n  ```javascript\n  const title = 'Hello';\n  const message = title + name;\n  return message;\n  ```\n  当 `name` 为 `'小明'` 时，`title + name` 即 `'Hello' + '小明'`，JavaScript 字符串拼接直接得到 `'Hello小明'`，函数 `return` 该值。\n\n要点（和之前 `Ada` 例子一致）：\n\n- 不会在 `Hello` 和名字之间加空格，所以是 `Hello小明`，不是 `Hello 小明`。\n- 不会做翻译、转写或语种切换，前缀始终是英文 `Hello`。\n- 结尾没有句号、感叹号或任何标点。\n- 这里同样要明确一条边界：源码没有对 `name` 做任何校验（不判断类型、不判断空字符串、不判断是否包含空格），所以严格按源码只能承诺“把 `Hello` 和入参原样拼接”这一行为；至于“是否应该这样写”“会不会和中文混排好看”，源码没有给出答案，不要替它猜测。",
+          "sourceRefs": [
+            {
+              "path": "README.md",
+              "startLine": 1,
+              "endLine": 3
+            },
+            {
+              "path": "src/main.js",
+              "startLine": 1,
+              "endLine": 6
+            }
+          ],
+          "createdAt": 1790597656820,
+          "updatedAt": 1790597659342
+        }
+      }
+    }
+  ],
+  "generation": {
+    "status": "ready",
+    "stage": null,
+    "error": null,
+    "bookId": "main",
+    "sourceCoverage": {
+      "included": 2,
+      "includedBytes": 220,
+      "skippedTooLarge": 0,
+      "skippedOverBudget": 0,
+      "skippedUnreadable": 0
+    },
+    "startedAt": 1790597652572,
+    "updatedAt": 1790597781603,
+    "skinWarnings": null
+  },
+  "books": [
+    {
+      "id": "main",
+      "projectId": "real-experience-qa",
+      "kind": "main",
+      "title": "真实模型验收 · 问候函数 · 项目主书",
+      "parentBookId": null,
+      "originExplorationId": null,
+      "originAnswerMessageId": null,
+      "sourceSnapshotId": "s-mul7lz6f-3440440a",
+      "sourceRefs": [],
+      "sourceHtmlFile": "source.html",
+      "styleFingerprint": {
+        "colors": [
+          "#f5efe4",
+          "#ebe3d2",
+          "#2a2520",
+          "#5a544c",
+          "#3d342a",
+          "#d4c9b1",
+          "#b04a2f",
+          "#e8c4a0",
+          "#8a3a23"
+        ],
+        "fonts": [
+          "\"Source Han Serif SC\", \"Noto Serif SC\", \"Songti SC\", \"STSong\", \"SimSun\", serif",
+          "\"Songti SC\", \"STSong\", serif",
+          "\"SF Mono\", \"Monaco\", \"Cascadia Code\", \"Roboto Mono\", \"Courier New\", monospace"
+        ]
+      },
+      "createdAt": 1790597781596,
+      "url": "/projects/real-experience-qa/books/main/"
+    }
+  ],
+  "afterRestartBrowserCheck": {
+    "question": "接着刚才“小明”的例子：如果这次参数是空字符串，它返回什么？请承接上面的解释，不要修改源码。",
+    "answer": {
+      "id": "m-mul9eeyi-301036b5fa",
+      "role": "assistant",
+      "status": "complete",
+      "content": "直接回答：`greet('')` 返回字符串 `'Hello'`。\n\n依据（继续承接上面 `Ada`、`小明` 的解释）：\n\n- `src/main.js` 第 2–4 行：\n  ```javascript\n  const title = 'Hello';\n  const message = title + name;\n  return message;\n  ```\n  当 `name` 为 `''`（空字符串）时，`title + name` 即 `'Hello' + ''`，JavaScript 字符串拼接里空串相当于“什么都不加”，结果就是 `'Hello'`，函数 `return` 该值。\n\n要点（和前两个例子一致）：\n\n- 没有额外分支、没有空值判断、没有默认值替换，所以函数不会返回 `'Hello, !'`、`'Hello 陌生人'` 之类的兜底字符串。\n- 前缀仍是英文 `Hello`，结尾仍然没有句号或感叹号。\n- 这里要再次明确边界：源码没有对 `name` 做任何校验（不判断是否为空、不判断类型），严格按源码只能承诺“`Hello` 与入参原样拼接”这一行为；至于“空名字该不该这样返回”“是否应该报错或给出默认问候”，源码没有给出答案，不要替它猜测。",
+      "sourceRefs": [
+        {
+          "path": "README.md",
+          "startLine": 1,
+          "endLine": 3
+        },
+        {
+          "path": "src/main.js",
+          "startLine": 1,
+          "endLine": 6
+        }
+      ],
+      "createdAt": 1790600659002,
+      "updatedAt": 1790600662170
+    },
+    "elapsedMs": 3168,
+    "verifiedResult": "Hello",
+    "notes": "在 server.mjs 重启后从浏览器恢复原探索并追问，按实际快照核验字符串拼接；不推断任意项目。"
+  }
+}

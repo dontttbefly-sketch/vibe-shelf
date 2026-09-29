@@ -31,7 +31,9 @@ async function requestJson(base, requestPath, method = "GET", body) {
 async function pollGeneration(base, projectId, { timeoutMs = 3000 } = {}) {
   const started = Date.now();
   for (;;) {
-    const { body } = await requestJson(base, `/api/projects/${projectId}/generation`);
+    const { response, body } = await requestJson(base, `/api/projects/${projectId}/generation`);
+    assert.equal(response.status, 200, `generation response: ${JSON.stringify(body)}`);
+    assert.ok(body?.generation, `missing generation: ${JSON.stringify(body)}`);
     if (body?.generation && body.generation.status !== "generating") return body.generation;
     if (Date.now() - started > timeoutMs) throw new Error("generation polling timed out");
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -148,7 +150,8 @@ test("main book generation asks for a generation-sized timeout, not the interact
   const { base } = await startTestServer(t, {
     modelClient: { complete: async (options) => { seen = options; return validBookHtml; } },
   });
-  await importWithoutMainBook(base, "demo-timeout");
+  const imported = await importWithoutMainBook(base, "demo-timeout");
+  assert.equal(imported.response.status, 201, `import response: ${JSON.stringify(imported.body)}`);
   await pollGeneration(base, "demo-timeout");
 
   // 主书是几万字的输出；沿用旁注的 120 秒会让稍大的项目必然超时失败
@@ -196,4 +199,15 @@ test("verbatim code blocks get anchored to snapshot files at compile time", asyn
   const page = await fetch(`${base}/projects/demo-anchor/books/main/index.html`);
   const html = await page.text();
   assert.match(html, /<pre data-file="src\/app\.mjs" data-line="1">/);
+});
+
+test('a model HTML shell without readable chapters is not published as a completed book', async (t) => {
+  const { base } = await startTestServer(t, { modelClient: queueModel(['<style>body{color:black}</style><div class="progress"></div><script>void 0</script>']) });
+  await importWithoutMainBook(base, 'empty-shell');
+  const generation = await pollGeneration(base, 'empty-shell');
+  assert.equal(generation.status, 'failed');
+  assert.match(generation.error, /正文|章节/);
+  const view = await requestJson(base, '/api/projects/empty-shell');
+  assert.equal(view.body.books.length, 0);
+  assert.equal((await fetch(base + '/projects/empty-shell/books/main/')).status, 404);
 });

@@ -1,0 +1,59 @@
+{
+  "date": "2026-09-29",
+  "request": "我那三本书放进来呀",
+  "url": "http://127.0.0.1:8911/#library",
+  "owner": "github-900001",
+  "beforeProjects": 0,
+  "projects": [
+    {
+      "id": "llm-evolution-course",
+      "name": "大模型进化馆",
+      "bookCount": 1,
+      "status": "idle"
+    },
+    {
+      "id": "learn-claude-code",
+      "name": "Claude Code 实现课",
+      "bookCount": 1,
+      "status": "ready"
+    },
+    {
+      "id": "pupkit",
+      "name": "PUPKIT",
+      "bookCount": 1,
+      "status": "idle"
+    }
+  ],
+  "results": [
+    {
+      "id": "pupkit",
+      "status": 201,
+      "fileCount": 22,
+      "bytes": 1245696,
+      "checksumReadback": true,
+      "originalBookUnchanged": true,
+      "readingStatus": 200
+    },
+    {
+      "id": "learn-claude-code",
+      "status": 201,
+      "fileCount": 238,
+      "bytes": 4327894,
+      "checksumReadback": true,
+      "originalBookUnchanged": true,
+      "readingStatus": 200
+    },
+    {
+      "id": "llm-evolution-course",
+      "status": 201,
+      "fileCount": 6,
+      "bytes": 261103,
+      "checksumReadback": true,
+      "originalBookUnchanged": true,
+      "readingStatus": 200
+    }
+  ],
+  "usageUnchanged": true,
+  "modelCalls": 0,
+  "browser": "Ego Lite reports user control; no page commands after hard stop. Service restore and exact HTTP readback completed; user refresh required."
+}

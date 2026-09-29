@@ -1,280 +1,263 @@
-/* 知识书架 · 项目探索会话（独立于旁注层） */
+/* 书底探索：连续问答、草稿与历史，让成果下次找得到。 */
 (function () {
   "use strict";
-
-  function storageKey(context) {
-    return "shelf-exploration-" + context.projectId + "-" + (context.bookId || "project");
-  }
-
-  function currentChapterId() {
-    var node = document.elementFromPoint(window.innerWidth / 2, 80);
-    var chapter = node && node.closest ? node.closest(".chapter") : null;
-    return chapter ? chapter.id : null;
-  }
-
+  function storageKey(context) { return "shelf-exploration-" + context.projectId + "-" + (context.bookId || "project"); }
+  function readLocal(key) { try { return localStorage.getItem(key); } catch (error) { return null; } }
+  function writeLocal(key, value) { try { if (value) localStorage.setItem(key, value); else localStorage.removeItem(key); return true; } catch (error) { return false; } }
+  function projectPath(context, suffix) { return "/api/projects/" + encodeURIComponent(context.projectId) + suffix; }
   async function request(url, options) {
-    var response = await fetch(url, options);
-    var data;
-    try { data = await response.json(); } catch (error) { data = null; }
-    if (!response.ok) {
-      throw new Error(data && data.error && data.error.message ? data.error.message : "请求没有成功");
-    }
+    var response = await fetch(url, Object.assign({ signal: AbortSignal.timeout(130000) }, options || {}));
+    var data = await response.json().catch(function () { return null; });
+    if (!response.ok) { var error = new Error(data && data.error ? data.error.message : "请求没有成功"); error.status = response.status; throw error; }
     return data;
   }
-
-  function post(url, body) {
-    return request(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body || {}),
-    });
-  }
-
-  function projectPath(context, suffix) {
-    return "/api/projects/" + encodeURIComponent(context.projectId) + suffix;
-  }
-
+  function post(url, body) { return request(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) }); }
+  function textNode(parent, tag, value, className) { var node = document.createElement(tag); node.textContent = value; if (className) node.className = className; parent.appendChild(node); return node; }
+  function currentChapterId() { var chapters = Array.from(document.querySelectorAll(".chapter[id]")); var found = chapters.filter(function (node) { return node.getBoundingClientRect().top < 180; }).pop(); return found ? found.id : null; }
   function renderExploreForm() {
-    return '<section class="shelf-explore" aria-label="探索这个项目">' +
-      '<div class="shelf-explore-head"><p class="shelf-explore-kicker">继续探索</p>' +
-      '<h2>这本书之外，你还想弄懂什么？</h2>' +
-      '<p>问一个具体问题，回答会先留在这次探索里；只有你确认后，它才会长成一本小书。</p></div>' +
-      '<div class="shelf-explore-history" data-explore-history></div>' +
-      '<form class="shelf-explore-form" data-explore-form>' +
-      '<label class="shelf-explore-label" for="shelfExploreQuestion">提出一个问题</label>' +
-      '<div class="shelf-explore-input"><textarea id="shelfExploreQuestion" rows="2" placeholder="例如：这个项目启动时，配置是怎样流动的？"></textarea>' +
-      '<button type="submit">开始探索</button></div>' +
-      '<p class="shelf-explore-status" data-explore-status></p></form>' +
-      '</section>';
+    return '<section class="shelf-explore" aria-label="探索这个项目"><div class="shelf-explore-head"><p class="shelf-explore-kicker">继续探索</p>' +
+      '<h2>换个方向，再深入一点。</h2><p>从这里展开新的问题。探索会留在本项目里，值得保存时，再让它长成小书。</p></div>' +
+      '<div class="shelf-explore-toolbar"><span data-explore-title>新的探索</span><button type="button" data-explore-list aria-expanded="false" aria-controls="shelfExploreSessions">探索历史</button><button type="button" data-explore-new>新探索</button></div>' +
+      '<div id="shelfExploreSessions" class="shelf-explore-sessions" data-explore-sessions hidden></div><div class="shelf-explore-history" data-explore-history></div>' +
+      '<form class="shelf-explore-form" data-explore-form><label class="shelf-explore-label" for="shelfExploreQuestion">你想弄懂什么？</label>' +
+      '<div class="shelf-explore-input"><textarea id="shelfExploreQuestion" maxlength="4000" rows="2" placeholder="例如：这个项目启动时，配置是怎样流动的？"></textarea><button type="submit">开始探索</button></div>' +
+      '<p class="shelf-explore-status" data-explore-status role="status" aria-live="polite"></p></form></section>';
   }
-
-  function historyRoot(root) {
-    return root.querySelector("[data-explore-history]");
-  }
-
-  function statusRoot(root) {
-    return root.querySelector("[data-explore-status]");
-  }
-
-  function formRoot(root) {
-    return root.querySelector("[data-explore-form]");
-  }
-
-  function appendSourceRefs(container, refs) {
-    if (!Array.isArray(refs) || !refs.length) return;
-    var details = document.createElement("details");
-    details.className = "shelf-explore-sources";
-    var summary = document.createElement("summary");
-    summary.textContent = "这次回答参考的源码";
-    details.appendChild(summary);
-    var list = document.createElement("ul");
-    refs.forEach(function (ref) {
-      var item = document.createElement("li");
-      var code = document.createElement("code");
-      code.textContent = ref.path + ":" + ref.startLine + "-" + ref.endLine;
-      item.appendChild(code);
-      list.appendChild(item);
-    });
-    details.appendChild(list);
-    container.appendChild(details);
-  }
-
-  function renderMessage(root, message, handlers) {
-    var history = historyRoot(root);
-    if (!history || !message) return;
-    var item = document.createElement("article");
-    item.className = "shelf-explore-message shelf-explore-message--" + (message.role || "assistant");
-    var role = document.createElement("p");
-    role.className = "shelf-explore-message-role";
-    role.textContent = message.role === "user" ? "你的问题" : "探索回答";
-    var content = document.createElement("div");
-    content.className = "shelf-explore-message-content";
-    var text = message.content || (message.status === "pending" ? "正在查阅项目源码…" : "暂时没有内容");
-    // 回答本身是 Markdown（标题/列表/代码块），当纯文本读会满屏 ### 和 **；
-    // 用户自己写的问题则原样显示，免得问句里的星号被当成语法
-    if (message.role === "assistant" && message.content && window.ShelfMarkdown) {
-      content.innerHTML = window.ShelfMarkdown.render(message.content);
-    } else {
-      content.textContent = text;
-    }
-    item.appendChild(role);
-    item.appendChild(content);
-
-    if (message.role === "assistant") {
-      appendSourceRefs(item, message.sourceRefs || []);
-      var actions = document.createElement("div");
-      actions.className = "shelf-explore-message-actions";
-      if (message.status === "failed") {
-        var retry = document.createElement("button");
-        retry.type = "button";
-        retry.textContent = "重试这次回答";
-        retry.addEventListener("click", function () { handlers.retryMessage(message.id); });
-        actions.appendChild(retry);
-      }
-      if (message.status === "complete") {
-        var grow = document.createElement("button");
-        grow.type = "button";
-        grow.className = "shelf-explore-grow";
-        grow.textContent = "让这个问题长成一本书";
-        grow.addEventListener("click", function () { handlers.growIntoBook(message.id); });
-        actions.appendChild(grow);
-      }
-      if (actions.childNodes.length) item.appendChild(actions);
-    }
-    history.appendChild(item);
-  }
-
-  function renderSession(root, session, handlers) {
-    var history = historyRoot(root);
-    if (!history) return;
-    history.replaceChildren();
-    (session.messages || []).forEach(function (message) { renderMessage(root, message, handlers); });
-  }
-
-  function setBusy(root, busy, message) {
-    var form = formRoot(root);
-    if (form) {
-      form.querySelector("textarea").disabled = busy;
-      form.querySelector("button[type=submit]").disabled = busy;
-    }
-    var status = statusRoot(root);
-    if (status) status.textContent = message || "";
-  }
-
-  // 只在"根本没有本地服务"时用：表单永久禁用是对的，因为重试也不会成功
-  function showLocalOnly(root, error) {
-    var form = formRoot(root);
-    if (form) {
-      form.querySelector("textarea").disabled = true;
-      form.querySelector("button[type=submit]").disabled = true;
-    }
-    var status = statusRoot(root);
-    if (status) {
-      status.className = "shelf-explore-status is-local-only";
-      status.textContent = "需要本地运行后才能探索项目。" + (error && error.message ? "（" + error.message + "）" : "");
-    }
-  }
-
-  // 一次请求失败（模型超时、5xx）不该把整个会话锁死：提示原因，表单保持可用
-  function showError(root, error) {
-    setBusy(root, false, "");
-    var status = statusRoot(root);
-    if (!status) return;
-    status.className = "shelf-explore-status is-error";
-    status.textContent = (error && error.message ? error.message : "这次没有成功") + " · 可以再试一次";
-  }
-
   function mount(options) {
-    options = options || {};
-    var context = options.context || window.SHELF_CONTEXT;
-    var root = options.root;
-    if (!root || !context) return null;
-
-    var sessionId = options.sessionId || sessionStorage.getItem(storageKey(context)) || null;
-    if (sessionId) sessionStorage.setItem(storageKey(context), sessionId);
-    root.innerHTML = renderExploreForm();
-
-    function handlers() {
-      return { sendMessage: sendMessage, retryMessage: retryMessage, growIntoBook: growIntoBook };
-    }
-
-    async function resumeSession() {
-      if (!sessionId || !context.projectId) return;
-      var result = await request(projectPath(context, "/explorations/" + encodeURIComponent(sessionId)));
-      renderSession(root, result.session, handlers());
-    }
-
-    async function sendMessage(prompt) {
-      var question = String(prompt || "").trim();
-      if (!question) return;
-      if (!context.projectId) {
-        showLocalOnly(root);
-        return;
-      }
-      setBusy(root, true, "正在结合项目源码整理回答…");
-      var history = historyRoot(root);
-      var pending = document.createElement("p");
-      pending.className = "shelf-explore-pending";
-      pending.textContent = "正在查阅项目源码…";
-      if (history) history.appendChild(pending);
+    options = options || {}; var root = options.root; var context = options.context || window.SHELF_CONTEXT;
+    if (!root || !context || root.dataset.exploreMounted) return null;
+    root.dataset.exploreMounted = "true"; root.id = "shelf-explore"; root.innerHTML = renderExploreForm();
+    var stored = readLocal(storageKey(context));
+    if (!stored) { try { stored = sessionStorage.getItem(storageKey(context)); } catch (error) {} }
+    var requested = new URLSearchParams(window.location.search).get("exploration");
+    var sessionId = options.sessionId || requested || stored || null;
+    if (sessionId && !/^[a-z0-9-]+$/.test(sessionId)) sessionId = null;
+    var form = root.querySelector("form"); var textarea = form.querySelector("textarea"); var status = root.querySelector("[data-explore-status]");
+    var history = root.querySelector("[data-explore-history]"); var sessionsBox = root.querySelector("[data-explore-sessions]");
+    var busy = false; var poll = null; var session = null; var disposed = false; var switching = 0; var actionActive = false; var lifecycle = 0; var resumeVersion = 0;
+    function draftKey() { return storageKey(context) + "-draft-" + (sessionId || "new"); }
+    function pendingKey() { return draftKey() + "-sending"; }
+    function readPending() {
       try {
-        if (!sessionId) {
-          var created = await post(projectPath(context, "/explorations"), {
-            originBookId: context.bookId || null,
-            sourceSnapshotId: context.sourceSnapshotId || null,
-            originChapterId: context.bookId ? currentChapterId() : null,
-            originReadingPosition: window.scrollY,
-          });
-          sessionId = created.session.id;
-          sessionStorage.setItem(storageKey(context), sessionId);
-        }
-        var result = await post(
-          projectPath(context, "/explorations/" + encodeURIComponent(sessionId) + "/messages"),
-          { prompt: question },
-        );
-        if (pending.parentNode) pending.remove();
-        renderMessage(root, { id: "local-question", role: "user", content: question }, handlers());
-        renderMessage(root, result.assistantMessage, handlers());
-        var form = formRoot(root);
-        if (form) form.querySelector("textarea").value = "";
-        setBusy(root, false, result.assistantMessage.status === "failed" ? "这次回答失败了，可以重试。" : "");
-      } catch (error) {
-        if (pending.parentNode) pending.remove();
-        showError(root, error);
-      }
+        var value = JSON.parse(readLocal(pendingKey()) || "null");
+        return value && typeof value.question === "string" && Array.isArray(value.beforeIds) ? value : null;
+      } catch (error) { return null; }
     }
-
-    async function retryMessage(messageId) {
-      if (!context.projectId || !sessionId) return showLocalOnly(root);
-      setBusy(root, true, "正在重试这次回答…");
-      try {
-        var result = await post(
-          projectPath(context, "/explorations/" + encodeURIComponent(sessionId) + "/messages/" + encodeURIComponent(messageId) + "/retry"),
-          {},
-        );
-        var session = await request(projectPath(context, "/explorations/" + encodeURIComponent(sessionId)));
-        renderSession(root, session.session, handlers());
-        setBusy(root, false, result.assistantMessage.status === "failed" ? "仍未成功，可以稍后再试。" : "");
-      } catch (error) {
-        showError(root, error);
-      }
+    var pendingSend = readPending();
+    function clearSentDraft(question) {
+      // A recovered answer must not erase a different, unsent follow-up draft.
+      if (textarea.value.trim() === question) { textarea.value = ""; writeLocal(draftKey(), ""); }
     }
-
-    async function growIntoBook(messageId) {
-      if (!context.projectId || !sessionId) return showLocalOnly(root);
-      setBusy(root, true, "正在把这次探索整理成一本小书…");
-      try {
-        var result = await post(
-          projectPath(context, "/explorations/" + encodeURIComponent(sessionId) + "/books"),
-          { answerMessageId: messageId, parentBookId: context.bookId || null },
-        );
-        var url = result.book.url || (
-          "/projects/" + encodeURIComponent(context.projectId) + "/books/" + encodeURIComponent(result.book.id) + "/"
-        );
-        window.location.assign(url);
-      } catch (error) {
-        showError(root, error);
-      }
+    function updateSessionUrl() {
+      var url = new URL(window.location.href);
+      if (sessionId) url.searchParams.set("exploration", sessionId);
+      else url.searchParams.delete("exploration");
+      window.history.replaceState(null, "", url);
     }
-
-    var form = formRoot(root);
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-      sendMessage(form.querySelector("textarea").value);
-    });
-
-    if (sessionId) {
-      resumeSession().catch(function (error) {
-        // 会话过期/被删是常态，丢掉这个 id 让下一次提问新建会话即可，别锁死表单
-        sessionId = null;
-        sessionStorage.removeItem(storageKey(context));
-        showError(root, error);
+    function saveDraft() { if (!writeLocal(draftKey(), textarea.value)) setStatus("草稿暂时只留在当前页，浏览器没有允许本地保存。", true); }
+    function setStatus(message, isError) { status.textContent = message || ""; status.classList.toggle("is-error", Boolean(isError)); }
+    function setBusy(value, message) {
+      busy = value; textarea.disabled = value;
+      root.querySelectorAll("button").forEach(function (button) { if (!button.hasAttribute("data-explore-source")) button.disabled = value; });
+      form.querySelector("[type=submit]").textContent = value ? "正在整理…" : session && session.messages.length ? "继续追问" : "开始探索";
+      if (message !== undefined) setStatus(message);
+    }
+    function rememberSession() { writeLocal(storageKey(context), sessionId || ""); }
+    function appendSources(item, refs) {
+      if (!Array.isArray(refs) || !refs.length) return;
+      var details = document.createElement("details"); details.className = "shelf-explore-sources"; item.appendChild(details);
+      textNode(details, "summary", "参考源码"); var list = document.createElement("ul"); details.appendChild(list);
+      refs.forEach(function (ref) {
+        var li = document.createElement("li");
+        var label = ref.path + ":" + ref.startLine + "–" + ref.endLine;
+        var snapshotId = session && session.sourceSnapshotId;
+        if (snapshotId && window.ShelfSource && typeof window.ShelfSource.open === "function") {
+          var button = textNode(li, "button", label, "shelf-explore-source");
+          button.type = "button"; button.setAttribute("data-explore-source", ""); button.title = "在源码面板中查看";
+          button.addEventListener("click", function () { return window.ShelfSource.open({ path: ref.path, startLine: ref.startLine, endLine: ref.endLine, sourceSnapshotId: snapshotId }); });
+        } else textNode(li, "code", label);
+        list.appendChild(li);
       });
     }
-    return { sendMessage: sendMessage, growIntoBook: growIntoBook, retryMessage: retryMessage };
+    function renderMessage(message) {
+      var item = document.createElement("article"); item.className = "shelf-explore-message shelf-explore-message--" + (message.role === "user" ? "user" : "assistant");
+      textNode(item, "p", message.role === "user" ? "你的问题" : "探索回答", "shelf-explore-message-role");
+      var content = textNode(item, "div", "", "shelf-explore-message-content");
+      if (message.role === "assistant" && message.content && window.ShelfMarkdown) content.innerHTML = window.ShelfMarkdown.render(message.content);
+      else content.textContent = message.content || (message.status === "pending" ? "正在结合源码整理回答…" : "这次回答没有完成。");
+      if (message.role === "assistant") {
+        appendSources(item, message.sourceRefs);
+        var actions = document.createElement("div"); actions.className = "shelf-explore-message-actions";
+        if (message.status === "failed") {
+          textNode(item, "p", message.error || "回答中断，问题已经保留。", "shelf-explore-message-error");
+          var retry = textNode(actions, "button", "重试这次回答"); retry.type = "button"; retry.addEventListener("click", function () { retryMessage(message.id); });
+        }
+        if (message.status === "complete") {
+          var grow = textNode(actions, "button", "让这个问题长成一本书", "shelf-explore-grow"); grow.type = "button"; grow.addEventListener("click", function () { growIntoBook(message.id); });
+        }
+        if (actions.childNodes.length) item.appendChild(actions);
+      }
+      history.appendChild(item);
+    }
+    function renderSession(value, options) {
+      options = options || {};
+      session = value; history.replaceChildren(); (value.messages || []).forEach(renderMessage);
+      var question = (value.messages || []).find(function (message) { return message.role === "user"; });
+      root.querySelector("[data-explore-title]").textContent = question ? question.content : "新的探索";
+      var receipt = pendingSend || readPending();
+      var accepted = receipt && (receipt.accepted || value.messages.some(function (message) {
+        return message.role === "user" && message.content === receipt.question && receipt.beforeIds.indexOf(message.id) < 0;
+      }));
+      if (accepted) { clearSentDraft(receipt.question); pendingSend = null; writeLocal(pendingKey(), ""); }
+      var waiting = value.messages.some(function (message) { return message.status === "pending"; });
+      setBusy(waiting || actionActive, waiting ? "问题已保存，正在整理回答。可以先回到正文阅读。" : actionActive ? undefined : "");
+      if (options.notice && !accepted) setStatus(options.notice, true);
+      else if (accepted && options.recover && !waiting) setStatus("已找回这次回答，无需重复发送。");
+      else if (receipt && !accepted && !waiting) setStatus("发送结果还未确认，草稿已保留；恢复连接后会重新核对。", true);
+      if (waiting || (receipt && !accepted)) schedulePoll(); else clearTimeout(poll);
+      return { accepted: Boolean(accepted), waiting: waiting };
+    }
+    function schedulePoll() {
+      clearTimeout(poll); if (disposed || !sessionId) return;
+      poll = setTimeout(function () { resumeSession().catch(function () { setStatus("连接暂时中断，恢复后会找回这次回答。", true); schedulePoll(); }); }, 2000);
+    }
+    async function resumeSession(options) {
+      if (!sessionId || !context.projectId) return;
+      var expected = sessionId; var epoch = lifecycle; var version = ++resumeVersion;
+      var result = await request(projectPath(context, "/explorations/" + encodeURIComponent(expected)), { signal: AbortSignal.timeout(15000) });
+      if (expected !== sessionId || disposed || epoch !== lifecycle || version !== resumeVersion) return;
+      var resultState = renderSession(result.session, options); rememberSession(); return resultState;
+    }
+    async function openSession(id) {
+      if (busy || !/^[a-z0-9-]+$/.test(id)) return; saveDraft(); switching++; var version = switching; clearTimeout(poll);
+      setBusy(true, "正在找回这次探索…");
+      try {
+        var result = await request(projectPath(context, "/explorations/" + encodeURIComponent(id)), { signal: AbortSignal.timeout(15000) });
+        if (version !== switching || disposed) return;
+        sessionId = id; pendingSend = readPending(); rememberSession(); updateSessionUrl();
+        textarea.value = readLocal(draftKey()) || "";
+        renderSession(result.session); sessionsBox.hidden = true; root.querySelector("[data-explore-list]").setAttribute("aria-expanded", "false");
+      }
+      catch (error) { if (version === switching) { setBusy(false); setStatus("暂时无法读取这次探索，历史记录仍保留。", true); } }
+    }
+    async function loadSessions() {
+      sessionsBox.hidden = !sessionsBox.hidden; root.querySelector("[data-explore-list]").setAttribute("aria-expanded", String(!sessionsBox.hidden));
+      if (sessionsBox.hidden) return;
+      sessionsBox.textContent = "正在读取历史…";
+      try {
+        var result = await request(projectPath(context, "/explorations"), { signal: AbortSignal.timeout(15000) }); sessionsBox.replaceChildren();
+        var entries = (result.sessions || []).filter(function (entry) { return entry.messages && entry.messages.length; });
+        if (!entries.length) textNode(sessionsBox, "p", "还没有探索记录。第一个问题会从这里开始。");
+        entries.forEach(function (entry) {
+          var first = entry.messages.find(function (message) { return message.role === "user"; });
+          var button = textNode(sessionsBox, "button", first ? first.content : "探索记录"); button.type = "button";
+          if (entry.id === sessionId) button.setAttribute("aria-current", "true");
+          button.addEventListener("click", function () { openSession(entry.id); });
+        });
+      } catch (error) { sessionsBox.textContent = "历史暂时无法读取。连接恢复后可再次打开。"; }
+    }
+    async function sendMessage(prompt) {
+      var question = String(prompt || "").trim(); if (!question || busy) return;
+      if (!context.projectId) return setStatus("本地运行后才能探索项目。", true);
+      if (pendingSend && sessionId) {
+        var previousQuestion = pendingSend.question;
+        setBusy(true, "正在核对上次发送的结果…");
+        try {
+          var checked = await resumeSession({ recover: true });
+          if (busy || (checked && checked.accepted && question === previousQuestion)) return;
+        } catch (error) { setBusy(false); return setStatus("还不能确认上次是否送达，草稿已保留。请恢复连接后再试。", true); }
+      }
+      var epoch = lifecycle;
+      saveDraft(); actionActive = true; setBusy(true, "正在结合项目源码整理回答…");
+      renderMessage({ role: "user", content: question }); renderMessage({ role: "assistant", status: "pending" });
+      try {
+        if (!sessionId) {
+          var previousDraftKey = draftKey();
+          var created = await post(projectPath(context, "/explorations"), { originBookId: context.bookId || null, sourceSnapshotId: context.sourceSnapshotId || null, originChapterId: currentChapterId(), originReadingPosition: window.scrollY });
+          if (disposed || epoch !== lifecycle) return;
+          sessionId = created.session.id; session = created.session; rememberSession(); updateSessionUrl();
+          if (writeLocal(draftKey(), textarea.value)) writeLocal(previousDraftKey, "");
+        }
+        pendingSend = { question: question, beforeIds: (session && session.messages || []).map(function (message) { return message.id; }), createdAt: Date.now() };
+        writeLocal(pendingKey(), JSON.stringify(pendingSend));
+        await post(projectPath(context, "/explorations/" + encodeURIComponent(sessionId) + "/messages"), { prompt: question });
+        if (disposed || epoch !== lifecycle) return;
+        if (pendingSend) { pendingSend.accepted = true; writeLocal(pendingKey(), JSON.stringify(pendingSend)); }
+        clearSentDraft(question); actionActive = false; await resumeSession();
+      } catch (error) {
+        if (disposed || epoch !== lifecycle) return;
+        var notice = (error.message || "连接中断") + "；问题草稿已保留。";
+        setStatus(notice, true);
+        if (sessionId) {
+          var recovered = await resumeSession({ notice: notice, recover: true }).catch(function () { schedulePoll(); });
+          if (recovered && !recovered.accepted && error.status) { pendingSend = null; writeLocal(pendingKey(), ""); if (!recovered.waiting) clearTimeout(poll); }
+        }
+        else { history.replaceChildren(); if (session) renderSession(session); }
+      } finally {
+        if (epoch === lifecycle) {
+          actionActive = false;
+          if (!disposed) setBusy(Boolean(session && session.messages.some(function (message) { return message.status === "pending"; })));
+        }
+      }
+    }
+    async function retryMessage(messageId) {
+      if (busy || !sessionId) return; var epoch = lifecycle; actionActive = true; setBusy(true, "正在重试这次回答…");
+      try {
+        await post(projectPath(context, "/explorations/" + encodeURIComponent(sessionId) + "/messages/" + encodeURIComponent(messageId) + "/retry"));
+        if (disposed || epoch !== lifecycle) return;
+        actionActive = false; await resumeSession();
+      }
+      catch (error) {
+        if (disposed || epoch !== lifecycle) return;
+        setStatus(error.message, true);
+        await resumeSession({ notice: error.message, recover: true }).catch(function () { schedulePoll(); });
+      } finally {
+        if (epoch === lifecycle) {
+          actionActive = false;
+          if (!disposed) setBusy(Boolean(session && session.messages.some(function (message) { return message.status === "pending"; })));
+        }
+      }
+    }
+    async function growIntoBook(messageId) {
+      if (busy || !sessionId) return; var epoch = lifecycle; actionActive = true; setBusy(true, "正在整理小书，完成后将打开阅读…");
+      try {
+        var result = await post(projectPath(context, "/explorations/" + encodeURIComponent(sessionId) + "/books"), { answerMessageId: messageId, parentBookId: context.bookId || null });
+        if (!disposed && epoch === lifecycle) window.location.assign("/projects/" + encodeURIComponent(context.projectId) + "/books/" + encodeURIComponent(result.book.id) + "/");
+      } catch (error) { if (disposed || epoch !== lifecycle) return; actionActive = false; setBusy(false); setStatus(error.message, true); }
+    }
+    textarea.value = readLocal(draftKey()) || "";
+    textarea.addEventListener("input", saveDraft);
+    textarea.addEventListener("keydown", function (event) { if (event.key === "Enter" && !event.shiftKey && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); sendMessage(textarea.value); } });
+    form.addEventListener("submit", function (event) { event.preventDefault(); sendMessage(textarea.value); });
+    root.querySelector("[data-explore-list]").addEventListener("click", loadSessions);
+    root.querySelector("[data-explore-new]").addEventListener("click", function () {
+      if (busy) return; saveDraft(); clearTimeout(poll); sessionId = null; session = null; pendingSend = readPending(); rememberSession(); history.replaceChildren();
+      root.querySelector("[data-explore-title]").textContent = "新的探索"; textarea.value = readLocal(draftKey()) || ""; setBusy(false, "");
+      updateSessionUrl(); textarea.focus();
+    });
+    window.addEventListener("pagehide", function () { saveDraft(); disposed = true; actionActive = false; lifecycle++; switching++; clearTimeout(poll); });
+    window.addEventListener("pageshow", function () { disposed = false; if (sessionId) resumeSession().catch(function () {}); });
+    window.addEventListener("online", function () { if (sessionId) resumeSession().catch(function () {}); });
+    if (sessionId) {
+      setBusy(true, "正在找回上次探索…");
+      resumeSession().catch(function (error) {
+        setBusy(false);
+        if (error.status === 404) {
+          var orphanDraft = textarea.value;
+          sessionId = null; pendingSend = null; rememberSession(); updateSessionUrl();
+          textarea.value = orphanDraft || readLocal(draftKey()) || ""; saveDraft();
+          setStatus("这次探索暂时不可用，草稿已保留，可以从新问题继续。", true);
+        }
+        else setStatus("暂时无法读取上次探索。请检查本地服务，再打开探索历史。", true);
+      });
+    }
+    if (!context.projectId) setStatus("本地运行后才能探索项目。", true);
+    if (window.location.hash === "#shelf-explore" || (requested && !window.location.hash)) {
+      window.requestAnimationFrame(function () { if (!disposed) root.scrollIntoView({ block: "start", behavior: "auto" }); });
+    }
+    return { sendMessage: sendMessage, growIntoBook: growIntoBook, retryMessage: retryMessage, openSession: openSession };
   }
-
   window.ShelfExplore = { mount: mount };
-  var bookRoot = document.querySelector("[data-shelf-explore]");
-  if (bookRoot && window.SHELF_CONTEXT) mount({ root: bookRoot });
+  var root = document.querySelector("[data-shelf-explore]");
+  if (root && window.SHELF_CONTEXT) window.ShelfExplore.current = mount({ root: root });
 }());

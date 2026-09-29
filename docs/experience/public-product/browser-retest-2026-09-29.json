@@ -1,0 +1,47 @@
+{
+  "date": "2026-09-29",
+  "authorization": "用egolite测试就好了",
+  "tool": "Ego Lite，原TaskSpace 6，没有使用其他浏览器或原生应用控制",
+  "priorBlock": "原空间读取及后续操作成功，之前的执行额度限制已解除",
+  "environment": {
+    "homepage": "http://127.0.0.1:8911/",
+    "fixture": "http://localhost:55157/",
+    "delayedDocumentProxy": "http://localhost:61266/",
+    "owner": "github-900002",
+    "syntheticBooksBefore": 120,
+    "syntheticBooksAfter": 122,
+    "publicExamplesAfter": 3,
+    "actualUpstreamModelCalls": 0
+  },
+  "browserChecks": [
+    {"case": "悬停滚动修复", "result": "passed", "viewport": "1470×836", "before": {"top": 561.4296875, "bottom": 820, "scrollY": 6419.5}, "after": {"top": 561.4296875, "bottom": 820, "scrollY": 6166.5}, "details": "原生滚轮滚动后预览保持完整可见和open，项目入口链接焦点保留，无横向溢出。"},
+    {"case": "窄屏错误恢复", "result": "passed", "viewport": "390×600", "actionRect": {"top": 513.6015625, "bottom": 552, "left": 48, "right": 342}, "details": "长标题离线加载的返回/重试动作完整在视口内；中文错误说明；通过实际鼠标点击返回按钮关闭承接层并恢复book:perf-120焦点。网络随后恢复。"},
+    {"case": "慢网第二次请求取消", "result": "passed", "details": "使用原8秒Document GET延迟；点击书卡1200ms后程序调用真实返回按钮handler，承接层移除。9500ms后仍为/#library，焦点book:perf-119。取消复现为程序DOM按钮触发，不冒充物理点击。"},
+    {"case": "取消后再打开及慢网承接", "result": "passed", "details": "实际点击perf-118后成功打开，导航responseStart约8022.1ms，旧页pagehide时承接层仍open且标题为perf-118，最终读本身份一致。此证据证明DOM承接与导航，不能替代逐帧动效录像。"},
+    {"case": "公共资料入口", "result": "passed", "viewport": "390×844", "details": "个人资料管理显示120个当前账户项目，不显示本机模型诊断；页面宽度390。"},
+    {"case": "收起和放回", "result": "passed", "details": "实际按钮操作perf-118，服务端回读archived=true后false，bookCount始终1，界面结果正确。"},
+    {"case": "导出", "result": "passed", "artifact": "/private/tmp/shelf-perf118-browser-export.json", "details": "实际点击导出触发浏览器下载并保存；project-backup包含perf-118，6文件，整体及逐文件checksum均通过。"},
+    {"case": "恢复冲突", "result": "passed", "details": "实际文件输入选取上述导出并确认恢复，报告项目已存在且只新增，不覆盖；选择文件保留，仍为120项目。"},
+    {"case": "恢复新项目及阅读", "result": "passed", "artifact": "/private/tmp/shelf-ui-restore-20260929.json", "details": "独立合成备份通过实际文件输入和恢复按钮进入账户；projectId=restore-ui-20260929，名称恢复流程验收（合成样本），1书、总项目121，文件输入清空。书架检索唯一命中，打开后h1与SHELF_CONTEXT项目身份一致。"},
+    {"case": "窄屏标题溢出修复", "result": "passed", "details": "新发现原notes.css把副标题强制nowrap，恢复样本390视口scrollWidth408；仅在既有窄屏媒体查询中允许书名与副标题换行，不修改原书DOM。回读scrollWidth390、标题完整。三本真实案例也均390/390，大模型进化馆保留11张SVG。", "evidence": "reader-narrow-2026-09-29.json"},
+    {"case": "真实生成阶段图形", "result": "passed", "details": "隔离GitHub源码与6秒受控模型，阅读目的core；服务端writing、form generationStage=writing、aria-current=writing一致，等待动效仅landing-generation-wait且周期3200ms，无假百分比或伪造目录。", "projectId": "p-4dae21de4e814af6", "generationId": "d4a2faa1-4738-4439-a435-776f3d0ec100"},
+    {"case": "刷新后完成入架", "result": "passed", "details": "writing期间刷新，随后自动/#library，import dialog关闭、新书is-new-book、焦点book:p-4dae21de4e814af6；API与localStorage回读同generationId、core、ready、1本主书。刷新后第一瞬间DOM尚未恢复，未把该瞬间当作writing对话框已可见的证据。"},
+    {"case": "交付额度", "result": "passed", "details": "受控账户主书used=1/reserved=0/remaining=2，今日模型计数1/100；恢复备份不占生成交付额度。没有真实模型费用。"},
+    {"case": "官网终态", "result": "passed", "viewport": "1280×860", "details": "用户原8911页面无编辑草稿/打开对话框；CTA为把我的项目变成书，公开案例3个，横向溢出false，运行中动画0。截图已保存并人工查看。"}
+  ],
+  "performanceBoundary": {
+    "evidence": "search-timing-2026-09-29.json",
+    "details": "122本元数据下，搜索075/性能样本/清空的事件分发及同步布局约9.2/11.2/18.9ms；120条结果可达，观察窗口无long task。RAF样本在16ms与约1000ms间交替，不能据此声称可靠帧率、60fps或端到端输入延迟通过。"
+  },
+  "checks": {"rootTests": "329/329，0失败、0跳过", "output": "test-results-2026-09-29.txt", "syntaxAndDiff": "passed", "cssAfterTests": "最后仅调整notes.css窄屏标题规则，另以恢复样本和三本真实案例浏览器回读验证，无新增JS逻辑"},
+  "screenshotsReviewed": [
+    "screenshots/settings-restore-2026-09-29.png",
+    "screenshots/restored-reader-narrow-fixed-2026-09-29.png",
+    "screenshots/generation-writing-2026-09-29.png",
+    "screenshots/pupkit-narrow-2026-09-29.png",
+    "screenshots/learn-claude-code-narrow-2026-09-29.png",
+    "screenshots/llm-evolution-course-narrow-2026-09-29.png",
+    "screenshots/home-final-2026-09-29.png"
+  ],
+  "remaining": ["真实设备的原生目录选择、中文输入法和触屏", "用户对视觉和动效强度的判断", "可靠前台帧性能样本", "真实模型内容质量仍受之前实际复测记录中的边界限制", "真实OAuth、域名与部署按用户约定后置"]
+}

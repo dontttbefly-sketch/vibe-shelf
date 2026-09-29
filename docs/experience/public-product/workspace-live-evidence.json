@@ -1,0 +1,763 @@
+{
+  "kind": "workspace-live-api-acceptance",
+  "startedAt": "2026-09-29T04:53:49.054Z",
+  "root": "/private/tmp/shelf-workspace-live-20260929",
+  "origin": "http://127.0.0.1:8913",
+  "owner": "github-900001",
+  "calls": [
+    {
+      "route": "/api/account",
+      "status": 200,
+      "milliseconds": 24
+    },
+    {
+      "route": "/api/projects/workspace-live-local",
+      "status": 404,
+      "milliseconds": 4
+    },
+    {
+      "route": "/api/projects/import",
+      "status": 201,
+      "milliseconds": 21
+    },
+    {
+      "route": "/api/projects/workspace-live-local",
+      "status": 200,
+      "milliseconds": 4
+    },
+    {
+      "route": "/api/projects/workspace-live-local/snapshots/s-mum7bqs5-72e4198f/files",
+      "status": 200,
+      "milliseconds": 1
+    },
+    {
+      "route": "/api/projects/workspace-live-local/snapshots/s-mum7bqs5-72e4198f/file?path=README.md",
+      "status": 200,
+      "milliseconds": 1
+    },
+    {
+      "route": "/api/projects/workspace-live-local/snapshots/s-mum7bqs5-72e4198f/file?path=src%2Fqueue.js",
+      "status": 200,
+      "milliseconds": 1
+    },
+    {
+      "route": "/projects/workspace-live-local/books/main/",
+      "status": 200,
+      "milliseconds": 3
+    },
+    {
+      "route": "/api/projects/workspace-live-local/preview",
+      "status": 200,
+      "milliseconds": 3
+    },
+    {
+      "route": "/api/projects/workspace-live-github",
+      "status": 404,
+      "milliseconds": 1
+    },
+    {
+      "route": "/api/projects/import-github",
+      "status": 201,
+      "milliseconds": 2365
+    },
+    {
+      "route": "/api/projects/workspace-live-github",
+      "status": 200,
+      "milliseconds": 5
+    },
+    {
+      "route": "/api/projects/workspace-live-github/snapshots/s-mum7d1hv-12361589/files",
+      "status": 200,
+      "milliseconds": 3
+    },
+    {
+      "route": "/api/projects/workspace-live-github/snapshots/s-mum7d1hv-12361589/file?path=README.md",
+      "status": 200,
+      "milliseconds": 3
+    },
+    {
+      "route": "/api/projects/workspace-live-github/snapshots/s-mum7d1hv-12361589/file?path=index.html",
+      "status": 200,
+      "milliseconds": 2
+    },
+    {
+      "route": "/api/projects/workspace-live-github/snapshots/s-mum7d1hv-12361589/file?path=styles.css",
+      "status": 200,
+      "milliseconds": 2
+    },
+    {
+      "route": "/projects/workspace-live-github/books/main/",
+      "status": 200,
+      "milliseconds": 4
+    },
+    {
+      "route": "/api/projects/workspace-live-github/preview",
+      "status": 200,
+      "milliseconds": 4
+    },
+    {
+      "route": "/api/projects/workspace-live-local/books/main/notes",
+      "status": 200,
+      "milliseconds": 7
+    },
+    {
+      "route": "/api/projects/workspace-live-local/books/main/notes",
+      "status": 200,
+      "milliseconds": 3
+    },
+    {
+      "route": "/api/projects/workspace-live-local/books/main/notes",
+      "status": 200,
+      "milliseconds": 6
+    },
+    {
+      "route": "/api/account",
+      "status": 200,
+      "milliseconds": 1
+    },
+    {
+      "route": "/api/account",
+      "status": 200,
+      "milliseconds": 277
+    },
+    {
+      "route": "/api/projects/workspace-live-local",
+      "status": 200,
+      "milliseconds": 23
+    },
+    {
+      "route": "/api/projects/workspace-live-local",
+      "status": 200,
+      "milliseconds": 6
+    },
+    {
+      "route": "/api/projects/workspace-live-local/snapshots/s-mum7bqs5-72e4198f/files",
+      "status": 200,
+      "milliseconds": 8
+    },
+    {
+      "route": "/api/projects/workspace-live-local/snapshots/s-mum7bqs5-72e4198f/file?path=README.md",
+      "status": 200,
+      "milliseconds": 6
+    },
+    {
+      "route": "/api/projects/workspace-live-local/snapshots/s-mum7bqs5-72e4198f/file?path=src%2Fqueue.js",
+      "status": 200,
+      "milliseconds": 10
+    },
+    {
+      "route": "/projects/workspace-live-local/books/main/",
+      "status": 200,
+      "milliseconds": 14
+    },
+    {
+      "route": "/api/projects/workspace-live-local/preview",
+      "status": 200,
+      "milliseconds": 25
+    },
+    {
+      "route": "/api/projects/workspace-live-github",
+      "status": 200,
+      "milliseconds": 9
+    },
+    {
+      "route": "/api/projects/workspace-live-github",
+      "status": 200,
+      "milliseconds": 8
+    },
+    {
+      "route": "/api/projects/workspace-live-github/snapshots/s-mum7d1hv-12361589/files",
+      "status": 200,
+      "milliseconds": 13
+    },
+    {
+      "route": "/api/projects/workspace-live-github/snapshots/s-mum7d1hv-12361589/file?path=README.md",
+      "status": 200,
+      "milliseconds": 6
+    },
+    {
+      "route": "/api/projects/workspace-live-github/snapshots/s-mum7d1hv-12361589/file?path=index.html",
+      "status": 200,
+      "milliseconds": 7
+    },
+    {
+      "route": "/api/projects/workspace-live-github/snapshots/s-mum7d1hv-12361589/file?path=styles.css",
+      "status": 200,
+      "milliseconds": 9
+    },
+    {
+      "route": "/projects/workspace-live-github/books/main/",
+      "status": 200,
+      "milliseconds": 14
+    },
+    {
+      "route": "/api/projects/workspace-live-github/preview",
+      "status": 200,
+      "milliseconds": 26
+    },
+    {
+      "route": "/api/projects/workspace-live-local/books/main/notes",
+      "status": 200,
+      "milliseconds": 14
+    },
+    {
+      "route": "/api/projects/workspace-live-local/books/main/notes",
+      "status": 200,
+      "milliseconds": 8
+    },
+    {
+      "route": "/api/account",
+      "status": 200,
+      "milliseconds": 13
+    }
+  ],
+  "projects": [
+    {
+      "projectId": "workspace-live-local",
+      "inputKind": "synthetic-local",
+      "observedStages": [
+        {
+          "state": "generating:writing",
+          "at": "2026-09-29T04:54:01.319Z",
+          "sinceImportMs": 30
+        },
+        {
+          "state": "ready:",
+          "at": "2026-09-29T04:54:59.465Z",
+          "sinceImportMs": 58175
+        }
+      ],
+      "importAttemptedAt": "2026-09-29T04:54:01.290Z",
+      "importResponse": {
+        "projectId": "workspace-live-local",
+        "snapshotId": "s-mum7bqs5-72e4198f",
+        "reused": false
+      },
+      "generation": {
+        "generationId": "411d39fd-dec8-4b77-89b4-d5bc68c914ec",
+        "status": "ready",
+        "stage": null,
+        "error": null,
+        "bookId": "main",
+        "sourceCoverage": {
+          "included": 2,
+          "includedBytes": 470,
+          "skippedTooLarge": 0,
+          "skippedOverBudget": 0,
+          "skippedUnreadable": 0
+        },
+        "startedAt": 1790657641305,
+        "readingIntent": "handoff",
+        "updatedAt": 1790657697604,
+        "skinWarnings": null
+      },
+      "snapshot": {
+        "snapshotId": "s-mum7bqs5-72e4198f",
+        "files": [
+          {
+            "path": "README.md",
+            "bytes": 180,
+            "sha256": "fe5bfd040fffd2028199f63b5432bfd09f61080ec760f45be4f2839390d9c02e",
+            "apiMatchesDisk": true,
+            "matchesSubmittedSource": true
+          },
+          {
+            "path": "src/queue.js",
+            "bytes": 290,
+            "sha256": "5569e45fb09636b5a77bcd058914b60f8ff7d40fc13b52bc7b0cb74e4bcbea6d",
+            "apiMatchesDisk": true,
+            "matchesSubmittedSource": true
+          }
+        ],
+        "importSource": {
+          "type": "local",
+          "fingerprint": "71258d93034e009cc70808f6831c621dfb1805835d5588943412de9b263805cc"
+        }
+      },
+      "book": {
+        "bytes": 23935,
+        "sha256": "d4cd19978af5c04f1db77a36e9d08a32b62d570d7629cc347df95235e3259585",
+        "references": [
+          {
+            "path": "src/queue.js",
+            "line": 1,
+            "existsInSnapshot": true,
+            "lineInRange": true
+          }
+        ],
+        "artifacts": {
+          "html": "/private/tmp/shelf-workspace-live-20260929/workspace-live-local-delivered.html",
+          "text": "/private/tmp/shelf-workspace-live-20260929/workspace-live-local-delivered.txt"
+        },
+        "sourceSnapshotId": "s-mum7bqs5-72e4198f"
+      },
+      "preview": {
+        "projectId": "workspace-live-local",
+        "title": "Pocket Queue · 工作台真实验收 · 项目主书",
+        "readingUrl": "/projects/workspace-live-local/books/main/",
+        "ready": true,
+        "status": "ready",
+        "generationStatus": "ready",
+        "updatedAt": 1790657697604,
+        "bookCount": 1,
+        "styleFingerprint": {
+          "colors": [
+            "#ebe7d2",
+            "#dfd9bf",
+            "#2b2f37",
+            "#5a5e66",
+            "#d8d2b7",
+            "#1e2128",
+            "#b9ad8c",
+            "#cdc4a5",
+            "#8d3a30",
+            "#b8695d",
+            "#c7974a"
+          ],
+          "fonts": [
+            "\"Iowan Old Style\", \"Charter\", \"Sitka Text\", \"PT Serif\", \"Cambria\", serif",
+            "\"Iowan Old Style\", \"Charter\", serif",
+            "\"Menlo\", \"SF Mono\", monospace",
+            "\"Menlo\", \"SF Mono\", \"DejaVu Sans Mono\", monospace",
+            "\"Menlo\", \"SF Mono\", \"DejaVu Sans Mono\", \"Liberation Mono\", monospace"
+          ]
+        },
+        "books": [],
+        "booksTruncated": false,
+        "summary": "一个内存 FIFO 队列的源码导读，为接手修改而准备",
+        "chapters": [
+          {
+            "id": "ch1",
+            "title": "项目是什么，怎么运转",
+            "href": "/projects/workspace-live-local/books/main/#ch1"
+          },
+          {
+            "id": "ch2",
+            "title": "文件组织与运行入口",
+            "href": "/projects/workspace-live-local/books/main/#ch2"
+          },
+          {
+            "id": "ch3",
+            "title": "工厂函数与闭包：实例互不干扰的关键",
+            "href": "/projects/workspace-live-local/books/main/#ch3"
+          },
+          {
+            "id": "ch4",
+            "title": "三个方法的逐行解读",
+            "href": "/projects/workspace-live-local/books/main/#ch4"
+          },
+          {
+            "id": "ch5",
+            "title": "接手修改时的真实注意点",
+            "href": "/projects/workspace-live-local/books/main/#ch5"
+          }
+        ],
+        "chaptersTruncated": false,
+        "previewStatus": "ready"
+      },
+      "verifiedAt": "2026-09-29T04:58:01.598Z",
+      "reusedOnLatestRun": true,
+      "sourceBehavior": {
+        "operation": "enqueue A, enqueue B, dequeue x3, size, independent queue size",
+        "result": [
+          1,
+          2,
+          "A",
+          "B",
+          null,
+          0,
+          0
+        ],
+        "matches": true
+      }
+    },
+    {
+      "projectId": "workspace-live-github",
+      "inputKind": "real-public-github",
+      "observedStages": [
+        {
+          "state": "generating:writing",
+          "at": "2026-09-29T04:55:01.853Z",
+          "sinceImportMs": 2367
+        },
+        {
+          "state": "ready:",
+          "at": "2026-09-29T04:57:00.176Z",
+          "sinceImportMs": 120690
+        }
+      ],
+      "importAttemptedAt": "2026-09-29T04:54:59.486Z",
+      "importResponse": {
+        "projectId": "workspace-live-github",
+        "snapshotId": "s-mum7d1hv-12361589",
+        "reused": false
+      },
+      "generation": {
+        "generationId": "c3d48630-7395-4085-92cb-c0b82e44969a",
+        "status": "ready",
+        "stage": null,
+        "error": null,
+        "bookId": "main",
+        "sourceCoverage": {
+          "included": 3,
+          "includedBytes": 1391,
+          "skippedTooLarge": 0,
+          "skippedOverBudget": 0,
+          "skippedUnreadable": 0
+        },
+        "startedAt": 1790657701845,
+        "readingIntent": "overview",
+        "updatedAt": 1790657818701,
+        "skinWarnings": null
+      },
+      "snapshot": {
+        "snapshotId": "s-mum7d1hv-12361589",
+        "files": [
+          {
+            "path": "README.md",
+            "bytes": 780,
+            "sha256": "f93aba3ff091ee0b498ae165ff08453620f9802fc6098662e0b9ce57b7273e6d",
+            "apiMatchesDisk": true
+          },
+          {
+            "path": "index.html",
+            "bytes": 355,
+            "sha256": "2b3919976ed3c3d176da250161d0d1c71052d518c4e56d63bcc57343e0e754e9",
+            "apiMatchesDisk": true
+          },
+          {
+            "path": "styles.css",
+            "bytes": 256,
+            "sha256": "027fb1facae93029fe75a530edcebfeccaa0be787b066e818ea474080bf59a7c",
+            "apiMatchesDisk": true
+          }
+        ],
+        "importSource": {
+          "type": "github",
+          "repo": "octocat/spoon-knife",
+          "sourceCommit": "d0dd1f61b33d64e29d8bc1372a94ef6a2fee76a9",
+          "sourceTreeSha": "d7cee29eaada459ba458a63ad983a89915c6a10a"
+        }
+      },
+      "book": {
+        "bytes": 18217,
+        "sha256": "e09d64d181a3cf738dd6dc7561b77a9bc08043cfe2b1c41f5059bb933fa9ca91",
+        "references": [
+          {
+            "path": "index.html",
+            "line": 1,
+            "existsInSnapshot": true,
+            "lineInRange": true
+          },
+          {
+            "path": "styles.css",
+            "line": 1,
+            "existsInSnapshot": true,
+            "lineInRange": true
+          }
+        ],
+        "artifacts": {
+          "html": "/private/tmp/shelf-workspace-live-20260929/workspace-live-github-delivered.html",
+          "text": "/private/tmp/shelf-workspace-live-20260929/workspace-live-github-delivered.txt"
+        },
+        "sourceSnapshotId": "s-mum7d1hv-12361589"
+      },
+      "preview": {
+        "projectId": "workspace-live-github",
+        "title": "Spoon-Knife · 工作台真实验收 · 项目主书",
+        "readingUrl": "/projects/workspace-live-github/books/main/",
+        "ready": true,
+        "status": "ready",
+        "generationStatus": "ready",
+        "updatedAt": 1790657818701,
+        "bookCount": 1,
+        "styleFingerprint": {
+          "colors": [
+            "#eef1f3",
+            "#f7f9fa",
+            "#1c2536",
+            "#5e6a78",
+            "#dce2e8",
+            "#c4ccd4",
+            "#2a6e8f",
+            "#1f4d67",
+            "#d0e1ea",
+            "#4a6a5a"
+          ],
+          "fonts": [
+            "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, sans-serif",
+            "ui-monospace, \"Cascadia Code\", \"Fira Code\", \"IBM Plex Mono\", monospace"
+          ]
+        },
+        "books": [],
+        "booksTruncated": false,
+        "summary": "GitHub 经典分叉示例 · 三件套源码导读",
+        "chapters": [
+          {
+            "id": "ch1",
+            "title": "这是什么项目",
+            "href": "/projects/workspace-live-github/books/main/#ch1"
+          },
+          {
+            "id": "ch2",
+            "title": "入口页面 index.html",
+            "href": "/projects/workspace-live-github/books/main/#ch2"
+          },
+          {
+            "id": "ch3",
+            "title": "样式表 styles.css",
+            "href": "/projects/workspace-live-github/books/main/#ch3"
+          },
+          {
+            "id": "ch4",
+            "title": "一次真实的\"运行\"路径",
+            "href": "/projects/workspace-live-github/books/main/#ch4"
+          }
+        ],
+        "chaptersTruncated": false,
+        "previewStatus": "ready"
+      },
+      "verifiedAt": "2026-09-29T04:58:01.724Z",
+      "reusedOnLatestRun": true
+    }
+  ],
+  "status": "passed-api-checks",
+  "initialUsage": {
+    "period": "2026-09",
+    "generation": {
+      "limit": 3,
+      "used": 0,
+      "reserved": 0,
+      "remaining": 3
+    },
+    "model": {
+      "period": "2026-09-29",
+      "limit": 100,
+      "used": 0,
+      "remaining": 100
+    }
+  },
+  "noteReadback": {
+    "projectId": "workspace-live-local",
+    "bookId": "main",
+    "id": "workspace-live-persistence-note",
+    "matches": true,
+    "origin": "synthetic-manual-no-model-call"
+  },
+  "finalUsage": {
+    "period": "2026-09",
+    "generation": {
+      "limit": 3,
+      "used": 2,
+      "reserved": 0,
+      "remaining": 1
+    },
+    "model": {
+      "period": "2026-09-29",
+      "limit": 100,
+      "used": 2,
+      "remaining": 98
+    }
+  },
+  "completedAt": "2026-09-29T04:58:01.767Z",
+  "repeatRun": {
+    "reusedExistingProjectIds": [
+      "workspace-live-local",
+      "workspace-live-github"
+    ],
+    "additionalGenerationRequests": 0,
+    "generationUsedBefore": 2,
+    "generationUsedAfter": 2,
+    "modelUsedBefore": 2,
+    "modelUsedAfter": 2
+  },
+  "sampleReview": {
+    "method": "Read both delivered books against every imported source file; execute only the fixed synthetic queue after submitted bytes match the snapshot.",
+    "scope": "Source correspondence and prose sample review; no browser visual or frame-rate claim.",
+    "local": {
+      "projectId": "workspace-live-local",
+      "verified": [
+        "FIFO order, enqueue returning the new length, empty dequeue returning null and independent closure state match src/queue.js.",
+        "The complete queue code block is anchored to src/queue.js line 1; all snapshot API bytes match submitted inputs and disk SHA-256.",
+        "The book identifies proposed peek, capacity and TypeScript additions as suggestions rather than existing implementation."
+      ],
+      "limitations": [
+        "The claim that converting the implementation to a class necessarily exposes the internal array is too broad; a class can retain encapsulation with private fields or another private-state mechanism.",
+        "The README description says approximately 30 characters, which is not a verified count and understates the provided text."
+      ]
+    },
+    "github": {
+      "projectId": "workspace-live-github",
+      "verified": [
+        "README purpose (fork and pull-request practice), index.html title/link/image/text structure and all three CSS rules correspond to the imported pinned GitHub snapshot.",
+        "Image width 384px, paragraph width 400px, 50px vertical margins and 30px monospace text match styles.css.",
+        "The book explicitly states that forkit.gif is referenced but its binary contents were not supplied; the two anchored HTML/CSS code blocks resolve into the actual snapshot."
+      ],
+      "limitations": [
+        "Later prose calls the three text files all runtime materials, despite the earlier acknowledged forkit.gif dependency; that conclusion exceeds the provided snapshot.",
+        "The final-render description assumes a light background and an octocat animation without access to the image binary or an explicit background style.",
+        "The introductory claim that GitHub has maintained the repository long term is not established by the imported three source files."
+      ]
+    },
+    "conclusion": "Both real API deliveries, source snapshots, references, persistence and exact usage passed; sampled core explanations match source, with the listed prose overstatements retained as content-quality limitations. No corrective generation was triggered."
+  },
+  "restartPersistence": {
+    "status": "passed",
+    "root": "/private/tmp/shelf-workspace-live-20260929",
+    "origin": "http://127.0.0.1:8913",
+    "startedAt": "2026-09-29T05:04:24.232Z",
+    "originalSessionReadback": true,
+    "before": {
+      "generations": {
+        "workspace-live-local": {
+          "status": "ready",
+          "generationId": "411d39fd-dec8-4b77-89b4-d5bc68c914ec"
+        },
+        "workspace-live-github": {
+          "status": "ready",
+          "generationId": "c3d48630-7395-4085-92cb-c0b82e44969a"
+        }
+      },
+      "usage": {
+        "period": "2026-09",
+        "generation": {
+          "limit": 3,
+          "used": 2,
+          "reserved": 0,
+          "remaining": 1
+        },
+        "model": {
+          "period": "2026-09-29",
+          "limit": 100,
+          "used": 2,
+          "remaining": 98
+        }
+      }
+    },
+    "originalRuntime": {
+      "app": "vibe-shelf",
+      "dataDir": "/private/tmp/shelf-workspace-live-20260929",
+      "port": 8913,
+      "pid": 55681,
+      "identity": "0334e0b2-c23d-4b09-956a-9647e418189e",
+      "command": "node scripts/preview-public-product.mjs --live --port 8913"
+    },
+    "beforeManifest": "/private/tmp/shelf-workspace-live-20260929/restart-users-before.json",
+    "userFiles": 286,
+    "oldServiceStopped": true,
+    "restartedRuntime": {
+      "app": "vibe-shelf",
+      "dataDir": "/private/tmp/shelf-workspace-live-20260929",
+      "port": 8913,
+      "pid": 58872,
+      "identity": "8f340efa-0f29-4117-a76c-44c724164e28",
+      "command": "/usr/local/bin/node scripts/preview-public-product.mjs --live --port 8913"
+    },
+    "afterRestartManifest": "/private/tmp/shelf-workspace-live-20260929/restart-users-after-start.json",
+    "changedOnRestart": [],
+    "after": {
+      "generations": {
+        "workspace-live-local": {
+          "status": "ready",
+          "generationId": "411d39fd-dec8-4b77-89b4-d5bc68c914ec"
+        },
+        "workspace-live-github": {
+          "status": "ready",
+          "generationId": "c3d48630-7395-4085-92cb-c0b82e44969a"
+        }
+      },
+      "usage": {
+        "period": "2026-09",
+        "generation": {
+          "limit": 3,
+          "used": 2,
+          "reserved": 0,
+          "remaining": 1
+        },
+        "model": {
+          "period": "2026-09-29",
+          "limit": 100,
+          "used": 2,
+          "remaining": 98
+        }
+      }
+    },
+    "books": [
+      {
+        "projectId": "pupkit",
+        "title": "PUPKIT 前端代码解剖课",
+        "bookCount": 1,
+        "readable": true,
+        "htmlBytes": 444592
+      },
+      {
+        "projectId": "learn-claude-code",
+        "title": "Claude Code 实现课 · 项目主书",
+        "bookCount": 1,
+        "readable": true,
+        "htmlBytes": 46492
+      },
+      {
+        "projectId": "llm-evolution-course",
+        "title": "大模型进化馆 · 写给 AI 产品经理的架构课",
+        "bookCount": 1,
+        "readable": true,
+        "htmlBytes": 131124
+      },
+      {
+        "projectId": "workspace-live-local",
+        "title": "Pocket Queue · 工作台真实验收 · 项目主书",
+        "bookCount": 1,
+        "readable": true,
+        "htmlBytes": 23935
+      },
+      {
+        "projectId": "workspace-live-github",
+        "title": "Spoon-Knife · 工作台真实验收 · 项目主书",
+        "bookCount": 1,
+        "readable": true,
+        "htmlBytes": 18217
+      }
+    ],
+    "noteReadback": {
+      "id": "workspace-live-persistence-note",
+      "matches": true
+    },
+    "changedByReadback": [
+      "users/github-900001/data/projects/workspace-live-local/books/main/book.json",
+      "users/github-900001/data/projects/workspace-live-local/project.json",
+      "users/github-900001/data/projects.json"
+    ],
+    "readbackMutationExplanation": "GET book notes updates only the book/project lastOpenedAt and projects index; all source, book HTML, notes and usage hashes remain unchanged.",
+    "final": {
+      "generations": {
+        "workspace-live-local": {
+          "status": "ready",
+          "generationId": "411d39fd-dec8-4b77-89b4-d5bc68c914ec"
+        },
+        "workspace-live-github": {
+          "status": "ready",
+          "generationId": "c3d48630-7395-4085-92cb-c0b82e44969a"
+        }
+      },
+      "usage": {
+        "period": "2026-09",
+        "generation": {
+          "limit": 3,
+          "used": 2,
+          "reserved": 0,
+          "remaining": 1
+        },
+        "model": {
+          "period": "2026-09-29",
+          "limit": 100,
+          "used": 2,
+          "remaining": 98
+        }
+      }
+    },
+    "finalServiceStopped": true,
+    "changedOnFinalStop": [],
+    "completedAt": "2026-09-29T05:04:24.800Z"
+  }
+}

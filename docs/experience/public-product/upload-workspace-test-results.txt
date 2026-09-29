@@ -1,0 +1,437 @@
+✔ server rejects static traversal and preserves legacy note CRUD (79.141541ms)
+✔ malformed JSON receives a client error instead of a server error (17.205875ms)
+✔ legacy explanation and follow-up routes keep their response shape (12.07375ms)
+✔ global search route returns a parsed search result (7.357542ms)
+✔ compiler injects project context and relative reader assets (11.402167ms)
+✔ exploration source satisfies the book DOM contract and escapes raw HTML (1.976958ms)
+[source-link] 快照不可读，跳过源码锚定：snapshot not found
+[source-link] 快照不可读，跳过源码锚定：snapshot not found
+[source-link] 快照不可读，跳过源码锚定：snapshot not found
+✔ the same answer grows into exactly one exploration book (19.577791ms)
+✔ notes are isolated by project and book (3.244667ms)
+✔ a failed child-book compilation leaves no visible book (6.786167ms)
+✔ build CLI writes a project-scoped book and preserves the shelf homepage (116.639ms)
+✔ retrieval ranks matching source chunks (1.46725ms)
+✔ retrieval uses a deterministic path and line tie-breaker (2.338834ms)
+✔ a broad question gets a stable project orientation (0.799417ms)
+✔ chinese questions reach the matching file instead of the readme fallback (1.88025ms)
+✔ english identifiers and paths still match as whole words (0.245ms)
+✔ exploration prompt includes prior question and answer without repeating the current question (1.601708ms)
+✔ exploration history has a fixed total budget and retains the latest completed exchange (0.45775ms)
+✔ retrying an earlier question excludes failed drafts and later conversation from its history (0.20425ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ a real second exploration request forwards the saved conversation to the controlled model (177.582291ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ concurrent exploration questions are explicitly rejected while the active answer is preserved (392.230916ms)
+ℹ concurrent response=409; stored messages=["第一个问题","第一条完整回答"]
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ a new server instance marks an orphaned exploration answer failed and retries the same message (648.265375ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ a duplicate retry receives 409 while the first retry is actively running (350.991042ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+[skin-tokens] Continuity 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ a new server instance recovers an orphaned main-book generation instead of permanently rejecting retry (179.888125ms)
+[skin-tokens] Continuity 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ live main-book generation remains generating and rejects a duplicate start (747.425125ms)
+✔ import preview respects byte budget for Chinese source text and counts omitted files (28.696125ms)
+✔ import preview explains file-count exclusions rather than silently dropping the tail (9.765833ms)
+✔ import preview excludes dependencies and binaries without hiding a valid source file (1.118167ms)
+✔ directory drop reads every directory batch and preserves nested relative paths (2.498917ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ failed answers remain retryable and approved answers grow one child book (311.243584ms)
+✔ exploration client separates ordinary send from explicit book growth (4.484584ms)
+✔ switching a deep-linked exploration updates its URL and keeps other navigation parameters (81.616125ms)
+✔ an accepted answer recovered after a dropped HTTP response clears only the sent draft (5.46125ms)
+✔ a rejected send keeps the draft and its actionable error after session refresh (8.840833ms)
+✔ a failed history switch retains the previous session as the send target (4.5215ms)
+✔ the dynamically mounted exploration honors the initial deep-link position (1.846833ms)
+✔ reloading during a request keeps the question recoverable without sending it twice (11.948875ms)
+✔ double book-growth activation sends one request with the same answer identity (5.2555ms)
+✔ source references pass their own snapshot and line range to the shared source drawer (10.381583ms)
+✔ recovering an accepted question preserves a different unsent follow-up draft (17.947333ms)
+✔ an earlier identical question is not mistaken for acknowledgement of a rejected new send (3.076625ms)
+✔ normal send settles its waiting feedback and keeps the form usable (2.723708ms)
+✔ a book result arriving after leaving and returning does not hijack navigation or lock the form (52.032208ms)
+✔ retrying book growth after a dropped response reuses the same answer and parent identity (30.523417ms)
+✔ IME Enter does not send and an explicit chapter hash is not overridden (5.881167ms)
+✔ first generation follows real stages and waits for the newly rendered book before highlighting (25.658791ms)
+✔ an import that is already ready on its first response completes the same visible journey (0.979292ms)
+✔ revealing a new book asks the catalog to include its project after clearing filters without changing the user sort (0.801417ms)
+✔ refreshing the generation route delivers an already finished task from the restored workspace (2.685958ms)
+✔ the restored generation workspace follows its actual unfinished task without fabricating completed stages (8.4765ms)
+✔ the active task entry returns to the generation workspace without a dialog or a second import (3.387291ms)
+✔ after leaving generation for home or library only a notification appears until the user reveals the book (3.489792ms)
+✔ delivery keys deduplicate one generation but allow a later generation even when previous state was ready (1.40725ms)
+✔ revisiting the library with a persisted ready task does not announce that old delivery again (0.806167ms)
+✔ resetting for a new upload retires old events and hides the stale task button (0.977959ms)
+✔ the explicit import-reset event also clears the old task button and queued arrival (0.976125ms)
+✔ an older generation on the same project cannot navigate away from the newer generation workspace (1.369167ms)
+✔ a pending arrival highlight cannot steal focus from a new upload or a book the user opens (2.435041ms)
+✔ completion in a hidden tab or while opening another book only notifies and preserves the current workspace (1.85225ms)
+✔ generation artwork accepts a first writing stage directly and advances only from trusted service stages (1.665334ms)
+✔ retired generation events cannot change the current artwork stage (1.674625ms)
+✔ the hero records completion only after its final annotation animation, without changing application state (0.975459ms)
+✔ parseGithubRepo accepts owner/name and full urls (4.195916ms)
+✔ fetchGithubRepoFiles keeps text files and skips binaries and big files (65.754125ms)
+✔ a 404 file is not retried (retrying only burns the api quota) (1.168958ms)
+✔ a branch advance during import cannot mix a newer raw file into the selected tree (1.124917ms)
+✔ invalid commit metadata fails before any tree or raw file can be fetched (1.205ms)
+✔ a mismatched tree is rejected instead of attributing its files to the selected commit (0.9545ms)
+✔ IDs and imported paths reject traversal (5.185875ms)
+✔ atomic JSON writes replace one complete document (4.376334ms)
+✔ invalid import creates no project directory (4.340125ms)
+✔ duplicate source paths are rejected before a project is written (2.098375ms)
+✔ refresh adds a new immutable snapshot (19.605209ms)
+✔ each snapshot persists bounded line references (8.27975ms)
+✔ checked-in project manifests remain visible when the local index is absent (6.498042ms)
+✔ legacy reader return hash opens the library immediately on initial navigation (25.60725ms)
+✔ a returning account keeps its OAuth import draft even when its previous flow was ready (35.723083ms)
+✔ a direct upload route immediately enters the workspace and resolves sign-in inside it (11.110875ms)
+✔ the upload CTA enters immediately, deduplicates repeated clicks and restores its source scroll and focus (7.778084ms)
+✔ generation replaces the upload route and direct generation refresh opens the workspace (20.794334ms)
+✔ reopening a task from the library returns to that visit instead of its earlier home origin (6.182375ms)
+✔ the workspace skip link preserves both upload and generation views (8.538916ms)
+✔ sign-in carries the library return context through a full-page OAuth round trip (6.820625ms)
+✔ refreshing an upload retains its library return destination and scroll position through history state (12.6595ms)
+✔ local preview account access uses the inline local account step and preserves the pending draft (3.128834ms)
+✔ an already authenticated account lets the original native submit run synchronously (1.955291ms)
+✔ an unresolved account replays native submit on a later task after authorization (18.114667ms)
+✔ repeated submits while account access is unresolved replay only one authorized submission (23.301416ms)
+✔ a denied pending submission remains in the inline access step without losing the draft (25.758ms)
+✔ account panel exposes personal-data management to signed-in users while preserving local settings and hiding guest controls (42.053209ms)
+✔ the hero tells one ordered source-to-pages-to-cover story within 1.2–1.8 seconds (2.333667ms)
+✔ hero motion and the quiet writing indicator animate only composited properties (1.813166ms)
+✔ each real stage has a distinct paper arrangement and reduced motion shows stable final geometry (0.614667ms)
+✔ status redacts credentials; connectivity check uses the existing configuration (362.438584ms)
+✔ model check errors never expose upstream text or a secret (70.649917ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ backup roundtrip keeps snapshots, books, compiled pages, notes, exploration and legacy data (1415.166833ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ restore rejects tampering and traversal before writing any project (800.873458ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ restore rolls back published data when publishing the reading page fails (383.173542ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ archive is reversible and export is a complete single-project backup (175.036417ms)
+[skin-tokens] repo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ github retries reuse a client import id only for the same repository (261.363209ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ local retries reuse an import only when its name and normalized file contents match (79.982208ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ restore validates file size, duplicate paths and structural completeness independently of checksum (321.715958ms)
+✔ a new server rolls back an interrupted restore before serving the library (12.832709ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ backup preserves both the current snapshot and the older snapshot referenced by the main book (488.490417ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ backup and restore reject symlinks, including dangling destination links, without removing them (236.481084ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ deleted-note tombstones survive backup and keep a stale offline note from reappearing after restore (472.43125ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ backup preserves user snapshot env files exactly while application configuration stays excluded (1541.182708ms)
+✔ startup honors .env PORT and environment override without loading model settings (8.561375ms)
+✔ OS lock is exclusive across canonical paths and releases without deleting its inode (101.335042ms)
+✔ ready probe rejects unrelated servers, wrong libraries, partial replies and error responses (288.698916ms)
+✔ a running library is reused across requested ports without a second writer (2882.969208ms)
+✔ simultaneous starts elect one owner, and SIGKILL leaves no stale lock (1596.481667ms)
+✔ occupied port produces a useful error, does not reuse the wrong app and leaves its process intact (1929.653916ms)
+✔ browser launch passes the verified URL as an argument and reports open failure (0.702583ms)
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ import without a main book starts a background generation and lands a main book (543.419875ms)
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ failed generation keeps the project and a retry can land the main book (785.602459ms)
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ regenerating replaces the main book instead of duplicating it (829.839375ms)
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ generating twice at the same time is rejected (138.451375ms)
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ files beyond the prompt budget stay out of the request and are reported (500.826083ms)
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ main book generation asks for a generation-sized timeout, not the interactive one (104.565167ms)
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ opening a book touches lastOpenedAt and the shelf sorts by it (197.537417ms)
+[skin-tokens] Demo 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 1/1（歧义放弃 0）
+✔ verbatim code blocks get anchored to snapshot files at compile time (139.308583ms)
+✔ a model HTML shell without readable chapters is not published as a completed book (119.774416ms)
+[source-link] 快照不可读，跳过源码锚定：snapshot not found
+[source-link] 快照不可读，跳过源码锚定：snapshot not found
+✔ extractStyleFingerprint collects colors and fonts from the style block (68.77425ms)
+✔ extractStyleFingerprint returns null without a meaningful style block (0.717375ms)
+✔ main book prompt fixes the skeleton and lists used styles to avoid (1.11775ms)
+✔ registerMainBook persists the style fingerprint into book.json (46.732334ms)
+✔ main book prompt asks for path-only citations against a file list (0.370667ms)
+✔ lintSkinTokens warns when the skin misses semantic tokens (0.575583ms)
+✔ PUPKIT migration is idempotent and retains existing notes (7240.935334ms)
+✔ every request carries an abort signal so a hung model cannot block forever (7.809917ms)
+✔ reasoning_split only goes to MiniMax endpoints (6.432666ms)
+✔ a length-truncated answer fails loudly instead of shipping half a book (10.632083ms)
+✔ a missing model config reports model-unavailable instead of a generic 500 (1.780708ms)
+✔ HTTP 401 errors give safe guidance without echoing the model response (24.136583ms)
+✔ HTTP 403 errors give safe guidance without echoing the model response (15.059125ms)
+✔ HTTP 400 errors give safe guidance without echoing the model response (5.086959ms)
+✔ HTTP 404 errors give safe guidance without echoing the model response (14.958542ms)
+✔ HTTP 413 errors give safe guidance without echoing the model response (5.978917ms)
+✔ HTTP 429 errors give safe guidance without echoing the model response (2012.602292ms)
+✔ HTTP 503 errors give safe guidance without echoing the model response (2013.480708ms)
+✔ HTTP 302 errors give safe guidance without echoing the model response (2.537709ms)
+✔ network failures never expose the underlying exception message (2.518167ms)
+✔ interrupted response bodies never expose the stream exception message (3.83725ms)
+✔ timeout errors retain their timeout classification and safe retry guidance (4.740708ms)
+✔ retryable transport failures still retry before returning a safe error (2006.928542ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ ordinary API errors and persisted exploration/generation failures keep upstream diagnostics private (1430.8155ms)
+✔ two tabs editing the same revision cannot overwrite the accepted draft (228.320792ms)
+✔ old records migrate once and unversioned stale clients cannot bypass conflict checking (10.226208ms)
+✔ a lost response may retry the same content without creating a false conflict (6.776375ms)
+✔ stale delete is rejected and deleted notes cannot resurrect through pending retries (177.38575ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ HTTP notes opt into revisions, reject stale writes/deletes, and preserve legacy response shape (1420.895ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ import creates a project, a main book, and isolated note endpoints (1222.308458ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ published book directory URLs serve the reader HTML (289.665959ms)
+✔ invalid main-book HTML leaves no imported project (25.66325ms)
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ manual source refresh creates a new snapshot without changing the main book (230.783792ms)
+✔ homepage is the only project entry before opening the main book (241.67225ms)
+✔ homepage puts an interactive project launcher before the secondary shelf (13.245ms)
+✔ book reader returns to the unified shelf instead of a project page (0.922333ms)
+✔ opening a project book gives immediate motion feedback before navigation (0.918375ms)
+✔ reader keeps the shelf return as a quiet secondary control (129.745917ms)
+✔ project docs describe the book-first project flow (2.271709ms)
+✔ site supports a persisted dark theme across shelf and reader pages (15.223667ms)
+✔ theme toggle is painted after it is mounted (20.125458ms)
+✔ dark reader theme covers the native book header chrome (7.200166ms)
+✔ reader body clears the unified topbar (1.880292ms)
+✔ dark reader theme also skins annotation popovers (5.777042ms)
+✔ reader keeps follow-up inside the annotation bubble only (7.411833ms)
+✔ preview mode parsing keeps controlled default, live, and performance mutually explicit (65.711375ms)
+✔ live runtime locks one canonical persistent root and releases across restarts (229.513291ms)
+✔ migration backs up and hash verifies auth, source, books and usage without changing the old copy (300.829417ms)
+✔ migration refuses an existing destination and keeps both libraries untouched (48.362ms)
+✔ migration refuses active generation, usage reservations and pending exploration (94.802375ms)
+✔ migration refuses symlinks and performance identities; live root cannot be publicly served (74.136833ms)
+✔ local acceptance harness preserves the three real books and offers explicit same-origin test login without generation (5687.858583ms)
+✔ performance acceptance keeps its 120 synthetic books separate from real books (3460.862333ms)
+✔ live preview migrates existing sessions and books, then preserves changes across restart without model requests (2592.380792ms)
+✔ synchronous public bootstrap namespaces all storage methods and preserves original local data (110.844834ms)
+✔ unavailable browser storage cannot report in-memory writes as durable success (23.6975ms)
+✔ bootstrap binds API fetches to the page account, preserves headers, and never leaks the owner header cross-origin (17.096291ms)
+✔ OAuth draft handoff copies only explicit lightweight fields once, without moving guest notes (4.013583ms)
+✔ reading sanitizer reconstructs only safe elements and source attributes (4.813416ms)
+✔ malformed quoted markup is escaped in full, including nested image, style and form tokens (0.828958ms)
+✔ public renderer preserves ordinary child selectors and scroll behavior while refusing network-bearing skins (3.468083ms)
+✔ static SVG keeps diagram geometry, labels and validated local marker and clip references (40.747292ms)
+✔ SVG sanitizer rejects active elements, namespace tricks, external and ambiguous fragment references (7.144792ms)
+✔ SVG reconstructs balanced static markup and escapes malformed quoted tails without namespace breakout (1.536125ms)
+✔ all 11 real evolution-course diagrams preserve every static element, label and presentation attribute (63.316292ms)
+✔ public guests see only three explicit examples; missing OAuth configuration is honestly unavailable (435.191209ms)
+✔ OAuth uses state, PKCE, one-use challenge, secure cookie and revalidated numeric identity without persisting provider token (240.976333ms)
+✔ login rate does not trust forwarded headers unless a loopback proxy is explicitly configured (215.573ms)
+[skin-tokens] Owned 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+[skin-tokens] Owned 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ two accounts can use the same project id without sharing source, notes, books or backups; mutation requires Origin (1266.321625ms)
+[skin-tokens] First 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ generation quota reserves pending work, settles actual book delivery once, preserves idempotent imports, and releases failure (956.85075ms)
+✔ all model endpoints share per-user daily call budget, sessions survive restart and logout invalidates them (264.123084ms)
+[skin-tokens] Own 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+[skin-tokens] Own 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ an old account A page cannot read, write, generate or log out account B after another tab switches accounts (1067.24475ms)
+✔ a disconnected GitHub import releases its reservation when the server-side import fails (84.9015ms)
+[skin-tokens] Unsafe 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[book-safety] Unsafe 主书含可疑标签：<iframe>（发布到 Pages 前先人工确认）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ private reader strips model executable markup and only grants nonces to trusted runtime scripts (168.035583ms)
+[skin-tokens] Chain 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ public main book, source-backed notes, exploration retry and idempotent child book stay private and share truthful usage (235.322625ms)
+[skin-tokens] personal 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+[skin-tokens] other 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ public personal-data archive, export, backup and restore use only the authenticated tenant and preserve conflicts (243.558417ms)
+✔ restart releases orphaned generation, marks retryable failure, and settles a delivered book once (71.433875ms)
+✔ old ready book or missing delivery cannot consume a crashed new reservation (27.07375ms)
+✔ generation identity distinguishes a new delivered run even when its timestamps equal the previous run (12.873917ms)
+✔ shared model wrapper enforces two in-flight calls and counts failed attempts toward daily limit (7.700292ms)
+✔ reader supports a project/book context without removing legacy fallback (2.854208ms)
+✔ reader includes the matured single-page annotation interactions (1.875667ms)
+✔ reader allows long code selections to open annotation entry (1.503375ms)
+✔ reader keeps processing selections sharp and legible (5.747541ms)
+✔ reader follow-up uses an inline bottom composer and applies changes without diff review (1.391792ms)
+✔ reader follow-up folds changes into the note body instead of a diff card (32.626041ms)
+✔ reader token diff marks the exact words that changed (77.313917ms)
+✔ reader follow-up thinking shows a Claude-style shimmer (32.817917ms)
+✔ reader follow-up composer and inline change marks have the requested visual language (3.384042ms)
+✔ reader follow-up composer badges the selected text with a clipped label (3.348083ms)
+✔ tokenDiff cleans up fragmented chinese diffs (4.442708ms)
+✔ tokenDiff keeps del-before-add reading order (0.750167ms)
+✔ tokenDiff falls back to whole-block diff beyond token limit (1.0895ms)
+✔ markMd wraps ops with paired control marks (2.539667ms)
+✔ clipSelection reveals exactly three chars plus ellipsis (0.517917ms)
+✔ matchFilesByText distinguishes full-path hits from ambiguous basenames (0.443666ms)
+✔ makeSrcRefRe matches paths with or without line numbers (1.246833ms)
+✔ resolveSourcePath only resolves unique hits (0.913292ms)
+✔ an old book completion cannot overwrite a newer import started in another tab (16.326834ms)
+✔ a matching generating task merges the latest fields, and settled tasks are never overwritten (1.935792ms)
+✔ late completion from an earlier generation never overwrites or announces the newer job on the same project (6.557417ms)
+✔ response generation identity must match the watched task, with legacy support only when both lack IDs (6.199125ms)
+✔ pagehide cancels an in-flight request and rejects its late result; pageshow resumes exactly once (37.852709ms)
+✔ pagehide while response JSON is pending also invalidates completion and can survive repeated back/forward (2.572416ms)
+✔ an initial scheduled check is paused before navigation and restarted on bfcache return (0.84575ms)
+✔ a timeout aborts the request, retries after 5 seconds and ignores a late old result (0.999208ms)
+✔ storage failure never turns a completed task into repeated notifications (0.452833ms)
+✔ failed status requests leave the task intact and recover without touching reader position (15.490333ms)
+✔ actual model answer keeps its indented fenced code and following prose separate (56.432792ms)
+✔ growing the same answer into a book preserves its displayed structure (4.479459ms)
+✔ adjacent paragraphs, lists, nested lists, tables and quoted blocks keep their boundaries (2.197833ms)
+✔ model text cannot turn language names or markdown links into executable markup (12.887292ms)
+✔ pending edited note wins over same-id stale server note (108.428292ms)
+✔ 409 retains a visible local conflict and never auto-retries it (35.299917ms)
+✔ two offline windows retain both same-id drafts for explicit recovery (69.87275ms)
+✔ successful retry removes identical recovery copies without inventing a conflict (64.465625ms)
+✔ acknowledgement of old revision does not clear newer pending revision (53.287792ms)
+✔ unavailable browser storage never reports a durable save (31.31925ms)
+✔ same-note writes are serialized and stale responses preserve latest local draft (351.523875ms)
+✔ delayed follow-up cannot mutate a different note after switching (16.518917ms)
+✔ IME composition Enter is not a send action (2.686959ms)
+✔ shared source opener refuses a different snapshot before looking up a file (28.533375ms)
+✔ shared source opener validates unique file and real line range before opening drawer (19.290958ms)
+✔ temporary source-list failure remains retryable instead of caching an empty snapshot (3.008791ms)
+✔ reading positions belong to the project and book (9.07825ms)
+✔ explicit chapter and exploration destinations take precedence over saved scroll (0.516791ms)
+✔ project links are constructed from IDs, never server-provided URLs (0.798208ms)
+✔ exploration links return to original book with the agreed deep link (0.51325ms)
+✔ small book source names the question paired with its originating answer (0.577417ms)
+✔ reading record validation rejects invalid positions and unrelated identities (0.42975ms)
+✔ mounted library renders source links as safe text and Escape returns focus (19.816542ms)
+✔ mounted reader restores the saved position and writes the shared continue-reading record (2.533208ms)
+✔ mounted reader never overrides an explicit exploration destination (6.813041ms)
+[skin-tokens] Purpose 主书缺 token: --paper, --ink, --code-bg, --code-ink, --line（夜间模式会漏底色）
+[source-link] 代码块锚定 0/0（歧义放弃 0）
+✔ reading purpose reaches actual model requests, persists into book and survives a retry (1605.941ms)
+✔ invalid reading purpose is rejected before creating source or consuming a model call (178.653417ms)
+✔ repository root is the project-books app, not a nested legacy wrapper (2.871833ms)
+✔ successful restore stays successful and notifies the shelf if list refresh fails (77.681875ms)
+✔ successful archive stays successful and notifies the shelf if list refresh fails (10.822959ms)
+✔ slower prior backup selection cannot replace the latest preview or restored payload (9.70425ms)
+✔ backup selection is disabled during an active restore and retains the submitted file (8.4345ms)
+✔ lost restore response states uncertainty, preserves the backup, and rereads the shelf (30.846334ms)
+✔ confirmed restore rejection stays distinct from an unknown network outcome (61.135958ms)
+✔ public personal-data management is reachable and supports archive, return, export, backup and restore without local diagnostics (435.121583ms)
+✔ public guests cannot open personal-data controls and account changes stop further management requests (18.764833ms)
+✔ import transport preserves HTTP status and error kind for recovery decisions (16.423833ms)
+✔ different source with a reused import ID is not reported as successful response recovery (12.004958ms)
+✔ generation-running remains eligible to find the actual active project (108.183083ms)
+✔ saved source without a generation file offers starting the original project (10.009875ms)
+✔ pending generation starts the existing project rather than importing again (10.860625ms)
+✔ an idle project card starts its saved source without creating another project (45.126292ms)
+✔ unfinished project name and GitHub source are restored after a page reload (199.900541ms)
+✔ local folder draft keeps only lightweight input and clearly requires reselection after reload (6.2055ms)
+✔ saved generation flow takes priority over an older import draft and clears that draft (7.517958ms)
+✔ import another project clears the previous draft without recreating it (13.437416ms)
+✔ a confirmed import clears input draft and next reload resumes its existing book (22.154792ms)
+✔ unavailable browser storage explains current-page-only input without blocking import (6.259375ms)
+✔ search distinguishes pending projects from readable books and still reaches child book titles (16.8265ms)
+✔ large shelves bound rendered covers and search all metadata beyond the visible page (167.568958ms)
+✔ an empty recent-reading filter still explains how to start (8.854125ms)
+✔ unchanged background polls keep existing book nodes, and real changes update the shelf (7.351ms)
+✔ an obviously invalid GitHub address is rejected before any import request and keeps the input (9.413833ms)
+✔ local validation failure never recovers an unrelated previous import as its result (2.6065ms)
+✔ definite quota and authorization rejections preserve the existing retry target and server message (236.894334ms)
+✔ a rejected retry message survives a poll of the same failed generation (2.634084ms)
+✔ overlapping generation readbacks apply only the newest request (16.175833ms)
+✔ reset invalidates pending success and failure readbacks and notifies generation UI (96.427ms)
+✔ same project id with a new flow or new generation does not accept an old readback (3.83225ms)
+✔ an old import response cannot overwrite a reset form or unlock a newer submission (3.418666ms)
+✔ new book reveal expands a name-sorted shelf to include its 75th book without changing sort (229.274833ms)
+✔ new book reveal waits for a catalog response that actually contains the target (55.974875ms)
+[source-link] 代码块锚定 0/1（歧义放弃 0）
+✔ shelf list adds real book metadata only on request without reading any source HTML (396.269833ms)
+[source-link] 代码块锚定 0/1（歧义放弃 0）
+✔ preview returns real plain text, chapter links and exploration origins without changing reading history (179.730375ms)
+[source-link] 代码块锚定 0/1（歧义放弃 0）
+✔ script lookalike closing tags cannot leak script text into a preview paragraph (90.442834ms)
+[source-link] 代码块锚定 0/1（歧义放弃 0）
+✔ preview uses visible prose when no subtitle exists and bounds long summaries and chapter lists (64.671709ms)
+[source-link] 代码块锚定 0/1（歧义放弃 0）
+✔ missing or oversized previews degrade without disabling the book; paths and absent projects cannot expose files (69.345375ms)
+[source-link] 代码块锚定 0/1（歧义放弃 0）
+✔ saved projects without a main book have an explicit empty preview and no invented cover (44.075709ms)
+✔ explicit preview main navigation closes preview and carries the current book and shelf state (537.574208ms)
+✔ explicit preview chapter navigation closes preview and carries the current book and shelf state (85.008583ms)
+✔ explicit preview small navigation closes preview and carries the current book and shelf state (12.833834ms)
+✔ modified and new-tab preview links preserve native navigation and the open preview (123.18825ms)
+✔ hover preview chapters share the cover transition and dismiss the expanded preview first (10.607958ms)
+✔ reduced-motion preview navigation still stores the current shelf state and closes the dialog (17.765167ms)
+✔ cancelling preview navigation returns focus to the currently previewed book and ignores late loading (31.29175ms)
+✔ previewing beyond the displayed page retains enough catalog entries to restore the selected book (26.806458ms)
+✔ a late response cannot replace the next book or reopen a closed preview (3.04625ms)
+✔ simultaneous requests and repeated visits reuse the same version; updates and expiry reload (0.967833ms)
+✔ failures and mismatched project payloads are not cached as successful previews (116.031375ms)
+✔ book links use validated IDs and encode chapter IDs instead of trusting response URLs (0.738416ms)
+✔ fingerprints yield readable covers and never carry arbitrary CSS or fonts (9.890042ms)
+✔ example previews and personal projects with the same ID never share a URL or cached payload (0.794833ms)
+✔ passing over a book never opens or fetches a preview; dwelling opens once after 180ms (2.667042ms)
+✔ pointer can cross the preview bridge during leave grace without closing or refetching (0.488542ms)
+✔ keyboard previews immediately and keeps ownership after pointer leaves (0.253334ms)
+✔ Escape suppresses reopening until focus and pointer really leave (1.035584ms)
+✔ destroy cancels an unopened timer and prevents detached cards from reopening (0.754875ms)
+✔ a fetch that resolves after closing never repaints; reopening gets a new session (1.374167ms)
+✔ reading copy uses validated saved chapters, never inferred percentages or another book's record (0.546583ms)
+✔ mounted keyboard preview remains inside the viewport after the reproduced wheel displacement and resize (17.714625ms)
+✔ mounted loading preview grows without flipping away from a pointer already inside it (2.987125ms)
+✔ mounted oversized preview has a keyboard-scrollable viewport region and destroys queued geometry work (4.367459ms)
+✔ opening accepts only a same-origin book and retains explicit chapter destinations (10.999ms)
+✔ duplicate opens are gated, cancelled fetches cannot navigate a later selection (13.248208ms)
+✔ mounted reduced-motion opening resets after bfcache return so a second book actually navigates (90.366708ms)
+✔ cancelling a mounted opening ignores a late response and only the new selected book navigates (22.33275ms)
+✔ cancelling after response headers also prevents a late response body from navigating (7.544583ms)
+✔ mounted return restores captured page limits before locating the saved book and scrolling (6.227167ms)
+✔ returning to the shelf cancels a document navigation already issued after a successful prefetch (2.9385ms)
+✔ a stale opening cancel button cannot stop a later document navigation (20.987583ms)
+✔ cancel before document navigation and bfcache lifecycle cleanup never stop unrelated loading (5.27475ms)
+✔ a timeout from an aborted prefetch cannot abort the next opening controller (3.794083ms)
+✔ network failure leaves a readable recovery message and a working retry for the same book (4.290459ms)
+✔ anchors a verbatim code block to its file and start line (6.617583ms)
+✔ decodes html entities before matching (0.817375ms)
+✔ leaves blocks with an existing data-file attribute untouched (0.315625ms)
+✔ does not anchor rewritten snippets (0.534417ms)
+✔ drops weak anchors below the run threshold (0.316666ms)
+✔ disambiguates identical boilerplate by the nearest preceding citation (1.966ms)
+✔ prefers code files over docs and chinese docs over other languages (0.585083ms)
+✔ source drawer docks beside the article on wide screens (9.092291ms)
+✔ source drawer animates with composite-only properties (6.580125ms)
+✔ source drawer links back to the chapters that cite it (4.330292ms)
+✔ hover preview of source refs is a passive card (3.379458ms)
+✔ reader resolves source refs through the shared core rules (3.075167ms)
+✔ reduced motion enters and leaves with a short opacity fade and no paper layers (23.21575ms)
+✔ a queued completion from a cancelled entry cannot remove the new entry or take focus (13.582875ms)
+✔ a suspended animation clock cannot leave the workspace obscured after the deadline (4.103583ms)
+✔ the project leaf keeps its rotation throughout reveal and after animation cleanup (8.298583ms)
+ℹ tests 349
+ℹ suites 0
+ℹ pass 349
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15052.505084
