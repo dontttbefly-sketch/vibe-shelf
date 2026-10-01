@@ -9,6 +9,10 @@ import { fileURLToPath } from "node:url";
 
 const repo = fileURLToPath(new URL("../", import.meta.url));
 const realProjectIds = ["pupkit", "learn-claude-code", "llm-evolution-course"];
+// These acceptance runs copy the real local books. Only PUPKIT is in Git, so a
+// clean checkout (CI) skips them instead of failing on data it cannot have.
+const localBooks = realProjectIds.every(id => fs.existsSync(path.join(repo, "data", "projects", id, "project.json")))
+  ? {} : { skip: "needs the local example books in data/projects (only PUPKIT is committed)" };
 
 function fileHashes(root) {
   const hashes = {};
@@ -45,7 +49,7 @@ async function startPreview(t, args = [], environment = {}) {
   return { ...fixture, stop: async () => { if (child.exitCode === null) child.kill("SIGTERM"); await stopped; }, get output() { return output; }, get errors() { return errors; } };
 }
 
-test("local acceptance harness preserves the three real books and offers explicit same-origin test login without generation", { timeout: 15000 }, async t => {
+test("local acceptance harness preserves the three real books and offers explicit same-origin test login without generation", { timeout: 15000, ...localBooks }, async t => {
   const originals = realProjectIds.flatMap(id => ["data", "public"].map(area => ({
     id, area, hashes: fileHashes(path.join(repo, area, "projects", id)),
   })));
@@ -98,7 +102,7 @@ test("local acceptance harness preserves the three real books and offers explici
   assert.ok(!fixture.output.includes("shelf-session=")); assert.equal(fixture.errors, "");
 });
 
-test("performance acceptance keeps its 120 synthetic books separate from real books", { timeout: 15000 }, async t => {
+test("performance acceptance keeps its 120 synthetic books separate from real books", { timeout: 15000, ...localBooks }, async t => {
   const fixture = await startPreview(t, ["--performance"]);
   const stored = JSON.parse(fs.readFileSync(fixture.cookieFile, "utf8"));
   const headers = { Cookie: stored.cookies.map(cookie => `${cookie.name}=${cookie.value}`).join("; "), "x-shelf-owner": "github-900002" };
@@ -115,7 +119,7 @@ test("performance acceptance keeps its 120 synthetic books separate from real bo
   assert.equal(fixture.errors, "");
 });
 
-test("live preview migrates existing sessions and books, then preserves changes across restart without model requests", { timeout: 15000 }, async t => {
+test("live preview migrates existing sessions and books, then preserves changes across restart without model requests", { timeout: 15000, ...localBooks }, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "shelf-live-preview-test-"));
   // Every model setting is explicitly overridden: this test cannot use .env
   // credentials, and startup/reading/archive never call complete().
