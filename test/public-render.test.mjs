@@ -60,10 +60,10 @@ test("bootstrap binds API fetches to the page account, preserves headers, and ne
 
 test("OAuth draft handoff copies only explicit lightweight fields once, without moving guest notes", () => {
   const local = storage(), session = storage(), guest = open("guest", local, session);
-  guest.sessionStorage.setItem("shelf-login-import-draft", JSON.stringify({ name: "Project", repo: "o/r", readingIntent: "core", sourceType: "github", files: ["private source"] }));
+  guest.sessionStorage.setItem("shelf-login-import-draft", JSON.stringify({ name: "Project", repo: "o/r", readingIntent: "core", readingFocus: "讲清调度", sourceType: "github", files: ["private source"] }));
   guest.sessionStorage.setItem("shelf-notes-p-main", "guest notes");
   const user = open("github-1", local, session);
-  assert.deepEqual(JSON.parse(user.sessionStorage.getItem("shelf-login-import-draft")), { name: "Project", repo: "o/r", readingIntent: "core", sourceType: "github" });
+  assert.deepEqual(JSON.parse(user.sessionStorage.getItem("shelf-login-import-draft")), { name: "Project", repo: "o/r", readingIntent: "core", readingFocus: "讲清调度", sourceType: "github" });
   assert.equal(guest.sessionStorage.getItem("shelf-login-import-draft"), null);
   assert.equal(user.sessionStorage.getItem("shelf-notes-p-main"), null);
   assert.equal(guest.sessionStorage.getItem("shelf-notes-p-main"), "guest notes");
