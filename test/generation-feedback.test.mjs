@@ -37,7 +37,8 @@ function mountedFeedback({ hash = '#library', stored = null, visibility = 'visib
   body.dataset.pageView = hash === '#generate' ? 'generate' : hash === '#upload' ? 'upload' : 'library';
   workspace.hidden = !['upload', 'generate'].includes(body.dataset.pageView);
   const steps = Array.from({ length: 4 }, () => new Element('li'));
-  form.querySelectorAll = selector => selector === '[data-generation-step]' ? steps : [];
+  // The stages sit on the book's facing page, outside the form.
+  workspace.querySelectorAll = selector => selector === '[data-generation-step]' ? steps : [];
   filter.addEventListener('click', () => history.push('filter-all'));
   search.addEventListener('input', () => history.push('search-reset'));
   const doc = {

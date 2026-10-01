@@ -6,7 +6,8 @@ import vm from 'node:vm';
 const source = fs.readFileSync(new URL('../public/landing.js', import.meta.url), 'utf8');
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-function page({ hash = '', account = { mode: 'local' }, bridge = null, savedFlow = 'idle', deferredAccount = null, historyState = null } = {}) {
+function page({ hash = '', account = { mode: 'local' }, bridge = null, savedFlow = 'idle', deferredAccount = null, historyState = null, host = 'localhost' } = {}) {
+  const fetched = [];
   const nodes = new Map(), docHandlers = {}, windowHandlers = {}, historyEntries = [], focused = [];
   const session = new Map(bridge ? [['shelf-login-import-draft', JSON.stringify(bridge)]] : []);
   let currentSource = 'local', flow = savedFlow, resets = 0, submissions = 0, firingSubmission = false;
@@ -33,8 +34,7 @@ function page({ hash = '', account = { mode: 'local' }, bridge = null, savedFlow
   const form = node('[data-project-import]');
   form.dataset.launcherState = savedFlow;
   const workspace = node('[data-upload-workspace]'); workspace.tagName = 'MAIN'; workspace.hidden = true;
-  form.elements = { name: node('input-name'), repo: node('input-repo'), readingIntent: node('input-intent') };
-  form.elements.readingIntent.value = 'overview';
+  form.elements = { name: node('input-name'), repo: node('input-repo'), readingFocus: node('input-focus') };
   form.requestSubmit = submitter => {
     if (firingSubmission) return; // Native firing-submission-events guard.
     firingSubmission = true;
@@ -52,12 +52,12 @@ function page({ hash = '', account = { mode: 'local' }, bridge = null, savedFlow
   function reset() {
     resets++; flow = 'idle'; currentSource = 'local';
     form.dataset.launcherState = 'idle';
-    form.elements.name.value = ''; form.elements.repo.value = ''; form.elements.readingIntent.value = 'overview';
+    form.elements.name.value = ''; form.elements.repo.value = ''; form.elements.readingFocus.value = '';
     window.dispatchEvent({ type: 'shelf-import-reset' });
   }
   node('[data-new-import]').addEventListener('click', reset);
   const trigger = node('[data-import-open]'); trigger.importTrigger = true;
-  const location = { href: 'http://localhost/' + hash, origin: 'http://localhost', pathname: '/', search: '', hash };
+  const location = { href: 'http://' + host + '/' + hash, origin: 'http://' + host, hostname: host, pathname: '/', search: '', hash };
   function writeHistory(kind, state, next) {
     location.href = new URL(next, location.href).href;
     location.hash = new URL(location.href).hash;
@@ -90,12 +90,14 @@ function page({ hash = '', account = { mode: 'local' }, bridge = null, savedFlow
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options?.detail; } },
     sessionStorage: { getItem: key => session.get(key) || null, setItem: (key, value) => session.set(key, value), removeItem: key => session.delete(key) },
     fetch: async url => {
+      fetched.push(url);
+      if (url === 'static-demo.json') return { ok: true, json: async () => ({ projects: [] }) };
       if (url === '/api/account') return { ok: true, json: async () => deferredAccount ? await deferredAccount : account };
       if (url === '/api/examples') return { ok: true, json: async () => ({ projects: [] }) };
       throw new Error('Unexpected URL ' + url);
     },
   });
-  return { node, form, workspace, trigger, window, document, session, history, historyEntries, focused, resets: () => resets, submissions: () => submissions, source: () => currentSource,
+  return { node, form, workspace, trigger, window, document, session, history, historyEntries, focused, fetched, resets: () => resets, submissions: () => submissions, source: () => currentSource,
     route(hash) { location.hash = hash; (windowHandlers.hashchange || []).forEach(fn => fn()); } };
 }
 
@@ -110,7 +112,7 @@ test('legacy reader return hash opens the library immediately on initial navigat
 test('a returning account keeps its OAuth import draft even when its previous flow was ready', async () => {
   const app = page({
     account: { mode: 'public', authenticated: true, user: { name: 'Reader', login: 'reader' } }, savedFlow: 'ready',
-    bridge: { name: 'New project', repo: 'owner/new-project', readingIntent: 'core', sourceType: 'github' },
+    bridge: { name: 'New project', repo: 'owner/new-project', readingFocus: '讲清调度器怎么选下一个任务', sourceType: 'github' },
   });
   await settle(); await settle();
   assert.equal(app.resets(), 1);
@@ -121,7 +123,7 @@ test('a returning account keeps its OAuth import draft even when its previous fl
   assert.equal(app.node('[data-account-dialog]').open, false);
   assert.equal(app.form.elements.name.value, 'New project');
   assert.equal(app.form.elements.repo.value, 'owner/new-project');
-  assert.equal(app.form.elements.readingIntent.value, 'core');
+  assert.equal(app.form.elements.readingFocus.value, '讲清调度器怎么选下一个任务', 'the written focus survives the sign-in round trip');
   assert.equal(app.source(), 'github');
   assert.equal(app.session.has('shelf-login-import-draft'), false);
 });
@@ -219,8 +221,10 @@ test('sign-in carries the library return context through a full-page OAuth round
   guest.window.scrollY = 730;
   guest.trigger.click();
   guest.form.elements.name.value = 'OAuth draft';
+  guest.form.elements.readingFocus.value = '先讲清全貌';
   guest.node('[data-upload-signin]').click();
   const bridge = JSON.parse(guest.session.get('shelf-login-import-draft'));
+  assert.equal(bridge.readingFocus, '先讲清全貌');
   assert.equal(bridge.returnView, 'library');
   assert.equal(bridge.libraryScroll, 730);
   const signedIn = page({ hash: '#upload', account: { mode: 'public', authenticated: true, user: { login: 'reader' } }, bridge });
@@ -323,4 +327,17 @@ test('account panel exposes personal-data management to signed-in users while pr
     assert.equal(app.node('[data-account-settings]').hidden, !shown);
     assert.equal(app.node('[data-account-settings-label]').textContent, label);
   }
+});
+
+test('on GitHub Pages the workspace can be tried but generating is turned away with a notice', async () => {
+  const app = page({ hash: '#upload', host: 'dontttbefly-sketch.github.io' });
+  await settle(); await settle();
+  assert.equal(app.fetched.includes('/api/account'), false, 'a static host has no account service to ask');
+  assert.equal(app.fetched.includes('static-demo.json'), true, 'examples come from the published snapshot');
+  assert.equal(app.form.hidden, false, 'the whole composer can be tried');
+  assert.equal(app.node('[data-upload-access]').hidden, true);
+  assert.equal(app.node('[data-account-label]').textContent, '静态演示');
+  app.form.requestSubmit(app.node('[type=submit]'));
+  assert.equal(app.submissions(), 0, 'no import request is attempted');
+  assert.match(app.node('[data-import-status]').textContent, /静态演示.*本地运行/);
 });

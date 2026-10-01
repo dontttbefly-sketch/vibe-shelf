@@ -20,8 +20,25 @@
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   var navigationEpoch = 0;
   var exampleIds = ["pupkit", "learn-claude-code", "llm-evolution-course"];
+  // GitHub Pages serves this page with no server behind it: the workspace can be
+  // tried in full, generating needs a local run, and the examples come from a
+  // snapshot published with the site.
+  var staticDemo = Boolean(window.location && /\.github\.io$/i.test(window.location.hostname || ""));
+  var staticNotice = "这是 GitHub Pages 上的静态演示，不能生成。把仓库 clone 到本地运行，就能为自己的项目写一本书。";
   var exampleLabels = { pupkit: "前端项目", "learn-claude-code": "Agent 工程", "llm-evolution-course": "AI 架构课程" };
   var exampleGlyphs = { pupkit: "P.", "learn-claude-code": "⌘", "llm-evolution-course": "智" };
+  // The right page is the title page of the book being made: the project name
+  // and the reader's own focus are set on it as they are typed, nothing invented.
+  var identity = {};
+  var headings = {
+    access: ['你的阅读空间', '让这本书，有自己的归处。', '登录后，把项目、书和阅读时的每一个疑问，留在你的书架。'],
+    idle: ['新建项目书', '下一本，写你的项目。', '放进项目，再写下你最想读懂的地方。'],
+    pending: ['项目已保存', '这一本，随时可以开写。', '源码已经保存，点“开始生成主书”继续。'],
+    generating: ['正在成为你的书', '理解，正在成形。', '阶段随实际任务更新。写书需要一些时间，可以先逛书架。'],
+    ready: ['已成书', '这本书，写好了。', '从第一章开始读，疑问留在页边。'],
+    failed: ['生成中断', '这次没写完。', '项目和侧重点都还在，可以直接重试。'],
+  };
+  var bookNotes = { idle: '放好项目就能开始', pending: '项目已保存，随时可以开始', generating: '', ready: '已成书，可以开始读了', failed: '这次没写完，可以重试' };
 
   function q(selector) { return document.querySelector(selector); }
   function text(selector, value) { var node = q(selector); if (node) node.textContent = value; }
@@ -33,8 +50,11 @@
     return node;
   }
   function safePath(value, fallback) {
-    try { var url = new URL(value, window.location.origin); if (url.origin === window.location.origin && /^\/(?:examples|projects)\//.test(url.pathname)) return url.pathname + url.search + url.hash; }
-    catch (error) {}
+    try {
+      // Links stay on this site and under its own base path (/vibe-shelf/ on Pages).
+      var url = new URL(value, window.location.href), base = new URL(".", window.location.href).pathname;
+      if (url.origin === window.location.origin && url.pathname.indexOf(base) === 0 && /^(?:examples|projects)\//.test(url.pathname.slice(base.length))) return url.pathname + url.search + url.hash;
+    } catch (error) {}
     return fallback;
   }
   async function json(url) {
@@ -150,6 +170,7 @@
   document.querySelectorAll('[data-import-dismiss]').forEach(function (node) { node.addEventListener('click', function () { showLibrary({ focus: true }); }); });
   window.addEventListener('shelf-import-reset', function () {
     if (workspace) workspace.dataset.phase = 'idle';
+    renderHeading(); renderTitlePage();
     if (isWorkspace(document.body.dataset.pageView)) { writeRoute('#upload', true); switchView('upload'); }
   });
 
@@ -178,6 +199,14 @@
       text('[data-account-label]', '本机体验');
       text('[data-account-description]', state.preview.live ? '当前使用真实模型。项目和阅读资料持久保存在这台设备。' : '当前是流程验收环境，生成使用受控示例。');
       text('[data-storage-note]', state.preview.live ? '资料保存在本机 · 生成将调用已配置的模型服务' : '流程验收模式 · 生成使用受控示例');
+    }
+    if (state.mode === "static") {
+      text("[data-account-label]", "静态演示");
+      text("[data-account-title]", "这是一份静态演示");
+      text("[data-account-description]", "首页、开书动效、上传页和示例书都可以试；生成项目书与 AI 回答需要把仓库 clone 到本地运行。");
+      text("[data-account-footnote]", "静态演示不保存账户，也不会上传你选择的文件。");
+      text("[data-storage-note]", "静态演示 · 不会上传文件；生成需要在本地运行");
+      text("[data-footer-space]", "静态演示 · 本地运行可以生成自己的书");
     }
     renderUploadAccess();
     if (signedIn && state.user) {
@@ -210,6 +239,7 @@
     return state;
   }
   async function loadAccount() {
+    if (staticDemo) { account = { mode: "static", authenticated: false }; return renderAccount(); }
     try {
       var result = await json("/api/account");
       if (!result || (result.mode !== "public" && result.mode !== "local")) throw new Error("账户响应无效");
@@ -229,6 +259,7 @@
     accountTrigger = trigger || document.activeElement;
     if (!accountDialog.open) accountDialog.showModal();
   }
+  function isDemo() { return Boolean(account && account.mode === "static"); }
   function canGenerate() {
     return !window.SHELF_ACCOUNT_CHANGED && account && (account.mode === "local" || account.mode === "public" && account.authenticated);
   }
@@ -243,13 +274,15 @@
   }
   function renderUploadAccess() {
     var state = account || { mode: 'loading' };
-    var allowed = canGenerate(), preview = state.preview && state.preview.local;
+    // The static demo shows the whole workspace; only its submission is turned away.
+    var allowed = canGenerate() || isDemo(), preview = state.preview && state.preview.local;
     if (form) form.hidden = !allowed;
     visible('[data-upload-access]', !allowed);
     visible('[data-upload-signin]', !allowed && !preview && Boolean(state.login && state.login.configured));
     visible('[data-upload-local-login]', !allowed && Boolean(preview));
     visible('[data-upload-retry]', !allowed && state.mode === 'unavailable');
     text('[data-upload-access-status]', allowed ? '' : state.mode === 'loading' ? '正在连接你的空间…' : state.mode === 'unavailable' ? '暂时连不上你的空间。连接恢复后可以继续，已有输入会保留。' : preview ? state.preview.live ? '使用本机账户继续。生成会调用已配置的真实模型，资料保存在这台设备。' : '使用本机体验账户继续，先试试项目成书的完整过程。' : state.login && state.login.configured ? '先登录，为你的项目和阅读记录留一个位置。' : state.login && state.login.reason || '本站暂未配置 GitHub 登录，可以先阅读已有案例。');
+    renderHeading();
   }
   document.querySelectorAll("[data-account-open]").forEach(function (node) { node.addEventListener("click", function () { openAccount(node); refreshAccount(); }); });
   q("[data-account-close]").addEventListener("click", function () { accountDialog.close(); });
@@ -262,7 +295,7 @@
   function saveLoginDraft() {
     if (!pendingImport || !form) return;
     var selected = form.querySelector("[data-source-choice][aria-pressed=true]");
-    var draft = { name: form.elements.name.value, repo: form.elements.repo.value, readingIntent: form.elements.readingIntent.value || "overview", sourceType: selected ? selected.dataset.sourceChoice : "local", returnView: returnView, homeScroll: homeScroll, libraryScroll: libraryScroll };
+    var draft = { name: form.elements.name.value, repo: form.elements.repo.value, readingFocus: form.elements.readingFocus ? form.elements.readingFocus.value : "", sourceType: selected ? selected.dataset.sourceChoice : "local", returnView: returnView, homeScroll: homeScroll, libraryScroll: libraryScroll };
     try { sessionStorage.setItem("shelf-login-import-draft", JSON.stringify(draft)); } catch (error) {}
   }
   q('[data-account-signin]').addEventListener('click', saveLoginDraft);
@@ -285,6 +318,11 @@
     showUpload({ trigger: trigger, animate: event.detail !== 0 });
   }, true);
   if (form) document.addEventListener("submit", async function (event) {
+    if (event.target === form && isDemo()) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      text("[data-import-status]", staticNotice);
+      return;
+    }
     if (event.target !== form || replaying || canGenerate()) return;
     event.preventDefault(); event.stopImmediatePropagation();
     if (accessPending) return;
@@ -342,7 +380,8 @@
     list.setAttribute("aria-busy", "true");
     try {
       var data, isPublic = true;
-      try { data = await json("/api/examples"); }
+      if (staticDemo) data = await json("static-demo.json");
+      else try { data = await json("/api/examples"); }
       catch (error) {
         if (error.status !== 404) throw error;
         if (window.SHELF_ACCOUNT_CONTEXT && window.SHELF_ACCOUNT_CONTEXT.mode === "public") throw error;
@@ -352,7 +391,7 @@
       if (!projects.length) throw new Error("案例暂未发布");
       var entries = await Promise.all(projects.map(async function (project, index) {
         try {
-          var preview = await json((isPublic ? "/api/examples/" : "/api/projects/") + project.id + "/preview");
+          var preview = staticDemo ? project.preview : await json((isPublic ? "/api/examples/" : "/api/projects/") + project.id + "/preview");
           if (!preview.ready || preview.projectId !== project.id) return null;
           return buildExample(project, preview, index, isPublic);
         } catch (error) { return null; }
@@ -380,20 +419,67 @@
     if (sourceButton) sourceButton.click();
     if (typeof draft.repo === "string") { form.elements.repo.value = draft.repo; form.elements.repo.dispatchEvent(new Event("input", { bubbles: true })); }
     if (typeof draft.name === "string") { form.elements.name.value = draft.name; form.elements.name.dispatchEvent(new Event("input", { bubbles: true })); }
-    if (["overview", "core", "handoff"].includes(draft.readingIntent)) { form.elements.readingIntent.value = draft.readingIntent; form.querySelector('[name="readingIntent"]:checked').dispatchEvent(new Event("change", { bubbles: true })); }
+    if (typeof draft.readingFocus === "string" && form.elements.readingFocus) { form.elements.readingFocus.value = draft.readingFocus.slice(0, 500); form.elements.readingFocus.dispatchEvent(new Event("input", { bubbles: true })); }
     returnView = draft.returnView === 'library' ? 'library' : 'home';
     homeScroll = Number.isFinite(draft.homeScroll) ? draft.homeScroll : homeScroll;
     libraryScroll = Number.isFinite(draft.libraryScroll) ? draft.libraryScroll : libraryScroll;
     writeRoute('#upload', true); switchView('upload', { focus: true });
     try { sessionStorage.removeItem("shelf-login-import-draft"); } catch (error) {}
   }
-  function updateIdentity(detail) {
-    text('[data-upload-project-name]', detail.name || '你的下一本书');
-    text('[data-upload-project-source]', detail.source === 'github' ? 'GitHub 仓库' : '本地项目');
-    text('[data-upload-project-summary]', detail.summary || (detail.source === 'github' && detail.repo ? detail.repo + ' · 生成时读取仓库源码' : detail.folderName && !detail.fileCount ? '请重新选择项目文件夹以读取源码' : '带来源码，从这里翻开。'));
-    if (workspace) workspace.dataset.hasProject = String(Boolean(detail.name));
+  function phase() { return workspace && workspace.dataset.phase || 'idle'; }
+  // Long project names break after _ - . / rather than between any two letters.
+  function breakable(node, value) {
+    var part = '';
+    node.replaceChildren();
+    Array.from(value).forEach(function (char) {
+      part += char;
+      if ('_-./'.indexOf(char) === -1) return;
+      node.appendChild(document.createTextNode(part)); node.appendChild(document.createElement('wbr')); part = '';
+    });
+    if (part) node.appendChild(document.createTextNode(part));
   }
-  window.addEventListener('shelf-import-identity', function (event) { updateIdentity(event.detail); });
+  function lengthClass(value, long, xlong) { var length = Array.from(value).length; return length > xlong ? 'xlong' : length > long ? 'long' : 'short'; }
+  function renderTitlePage() {
+    var name = (identity.name || '').trim();
+    var nameNode = q('[data-upload-project-name]');
+    if (nameNode) {
+      if (name) breakable(nameNode, name); else nameNode.textContent = '你的项目';
+      nameNode.dataset.empty = String(!name);
+      nameNode.dataset.length = lengthClass(name, 12, 24);
+    }
+    // The focus is the subtitle. shelf.js restores it by assignment, so read the live value.
+    var focus = form && form.elements.readingFocus ? form.elements.readingFocus.value.trim() : '';
+    var focusNode = q('[data-upload-focus-line]');
+    if (focusNode) {
+      focusNode.textContent = focus || '先看清全貌。';
+      focusNode.dataset.empty = String(!focus);
+      focusNode.dataset.length = lengthClass(focus, 18, 54);
+    }
+    if (workspace) workspace.dataset.hasProject = String(Boolean(name));
+    // The contents fill in from what is really there; nothing is marked done ahead of it.
+    var current = phase(), saved = current !== 'idle';
+    var source = identity.source === 'github' ? (identity.repo ? 'GitHub · ' + identity.repo : '') : identity.fileCount ? identity.folderName + ' · ' + identity.fileCount + ' 个文本文件' : '';
+    contentsRow('source', saved || Boolean(source), source || (saved ? '源码已保存' : '选文件夹，或填 GitHub 地址'));
+    contentsRow('focus', Boolean(focus), focus ? '已写 ' + Array.from(focus).length + ' 字' : '可不填，不填就先讲清全貌');
+    var note = current in bookNotes ? bookNotes[current] : bookNotes.idle;
+    contentsRow('book', current === 'ready', current === 'idle' && source ? '可以开始了' : note);
+  }
+  function contentsRow(name, done, detail) {
+    var row = q('[data-contents-row="' + name + '"]');
+    if (row) row.dataset.done = String(done);
+    text('[data-contents-row="' + name + '"] [data-contents-detail]', detail);
+  }
+  function renderHeading() {
+    var copy = headings[!canGenerate() && !isDemo() ? 'access' : phase()] || headings.idle;
+    text('[data-upload-kicker]', copy[0]);
+    text('[data-upload-heading]', copy[1]);
+    text('[data-upload-lede]', copy[2]);
+  }
+  window.addEventListener('shelf-import-identity', function (event) { identity = event.detail || {}; renderTitlePage(); });
+  window.addEventListener('shelf-generation-state', function () { renderTitlePage(); renderHeading(); });
+  if (form) form.addEventListener('input', function (event) { if (event.target && event.target.name === 'readingFocus') renderTitlePage(); });
+  // iOS applies :active press styles only once a touch listener exists.
+  document.addEventListener('touchstart', function () {}, { passive: true });
   renderUploadAccess();
   refreshAccount().then(restoreLoginDraft);
   window.dispatchEvent(new CustomEvent('shelf-workspace-ready'));

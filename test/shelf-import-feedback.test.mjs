@@ -10,7 +10,7 @@ function submitHarness(kind) {
   const statuses = [];
   const buttons = [];
   const context = vm.createContext({
-    busy: false, flowReadSequence: 0, submissionSequence: 0, projects: [], updateFlow: async () => calls.push(['flow-refresh']), preparedFiles: [{ path: 'new.js', content: 'B' }], source: 'local',
+    busy: false, flowReadSequence: 0, submissionSequence: 0, projects: [], updateFlow: async () => calls.push(['flow-refresh']), preparedFiles: [{ path: 'new.js', content: 'B' }], source: 'local', folderName: 'new-folder',
     flow: { projectId: 'p-old', name: 'Same Name', source: 'local', repo: '', status: 'importing' },
     form: { elements: { name: { value: 'Same Name', focus() {} }, repo: { value: '', focus() {} } }, addEventListener: (_name, fn) => { submit = fn; } },
     makeProjectId: () => 'p-new', saveFlow() {}, lockFields: locked => calls.push(['lock', locked]),
@@ -53,9 +53,10 @@ test('generation-running remains eligible to find the actual active project', as
 
 test('saved source without a generation file offers starting the original project', () => {
   const buttons = [], notices = [], nodes = {};
+  const form = { querySelector: selector => nodes[selector] || (nodes[selector] = {}) };
   const c = vm.createContext({
     flow: { projectId: 'p-idle', status: 'importing' }, saveFlow() {}, clearImportDraft() {}, lockFields() {},
-    form: { querySelector: selector => nodes[selector] || (nodes[selector] = {}) }, stageCopy: {},
+    form, part: selector => form.querySelector(selector), stageCopy: {},
     setButton: (...args) => buttons.push(args), setStatus: text => notices.push(text),
   });
   vm.runInContext(source().match(/  function showFlow\([^]*?\n  \}/)[0], c);
@@ -318,7 +319,7 @@ test('a rejected retry message survives a poll of the same failed generation', (
   const notices = [];
   const c = vm.createContext({
     flow: { projectId: 'p-old', status: 'failed', generationId: 'old', requestError: { message: '额度不足，请稍后重试', generationId: 'old' } },
-    form: { querySelector: () => ({}) }, saveFlow() {}, clearImportDraft() {}, lockFields() {}, setButton() {}, setStatus: message => notices.push(message),
+    form: { querySelector: () => ({}) }, part: () => ({}), saveFlow() {}, clearImportDraft() {}, lockFields() {}, setButton() {}, setStatus: message => notices.push(message),
   });
   vm.runInContext(source().match(/  function showFlow\([^]*?\n  \}/)[0], c);
   c.showFlow({ id: 'p-old' }, { status: 'failed', generationId: 'old', error: '上一轮的模型错误' });
@@ -336,7 +337,7 @@ function flowReadHarness() {
     request: () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
     showFlow: (project, generation) => shown.push({ project, generation }), setStatus: message => notices.push(message),
     saveFlow() {}, clearImportDraft() {}, lockFields() {}, setSource() {}, setButton() {},
-    form: { querySelector: () => ({}), reset() {}, elements: { name: { focus() {} } } },
+    form: { querySelector: () => ({}), reset() {}, elements: { name: { focus() {} } } }, part: () => ({}),
     window: { dispatchEvent: event => events.push(event) }, CustomEvent: class { constructor(type) { this.type = type; } },
   });
   vm.runInContext(source().match(/  async function updateFlow\([^]*?\n  \}/)[0], c);

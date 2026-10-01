@@ -1,17 +1,56 @@
-/* The upload journey occupies an open book spread, not a surface above a page. */
+/* The upload journey is one open book on a desk. The landing's hero book flies
+   here and opens: its cover turns into the left page, where the reader writes —
+   attach a project, say what to focus on, generate — and the right page is the
+   title page of the book being made, whose contents fill in as it happens.
+   Pages keep the hero book's proportions, so the flight is a plain scale. */
 .upload-workspace {
-  --upload-gutter: clamp(28px, 5vw, 80px);
+  --leaf-h: clamp(480px, min(100svh - 184px, (100vw - 120px) / 1.512), 700px);
+  --leaf-w: calc(var(--leaf-h) * .756);
+  --leaf: var(--paper);
+  --desk: var(--paper-soft);
+  --field: var(--paper-strong);
+  --fold: rgba(21, 27, 30, .07);
+  --lift: rgba(21, 27, 30, .36);
+  --glass: rgba(255, 255, 255, .44);
+  --glass-edge: rgba(255, 255, 255, .85);
+  --glow-clay: rgba(206, 123, 81, .36);
+  --glow-mist: rgba(150, 190, 176, .46);
+  --pad: clamp(30px, calc(var(--leaf-w) * .11), 60px);
   position: relative;
   z-index: 2;
+  display: grid;
+  place-items: center;
   min-height: calc(100svh - 88px);
+  padding: 44px 24px 52px;
+  border-top: 1px solid var(--line);
   isolation: isolate;
-  background: var(--paper);
 }
+html[data-theme="dark"] .upload-workspace { --leaf: var(--paper-strong); --desk: var(--paper); --field: var(--paper); --fold: rgba(0, 0, 0, .3); --lift: rgba(0, 0, 0, .62); --glass: rgba(38, 37, 33, .55); --glass-edge: rgba(255, 255, 255, .07); --glow-clay: rgba(230, 164, 124, .16); --glow-mist: rgba(120, 160, 146, .16); }
+.upload-desk-surface {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(34% 44% at 14% 22%, rgba(206, 123, 81, .12), transparent 70%),
+    radial-gradient(40% 48% at 88% 84%, rgba(150, 190, 176, .22), transparent 72%),
+    radial-gradient(110% 85% at 50% 42%, transparent 50%, rgba(21, 27, 30, .04)),
+    var(--desk);
+  pointer-events: none;
+}
+html[data-theme="dark"] .upload-desk-surface {
+  background:
+    radial-gradient(34% 44% at 14% 22%, rgba(230, 164, 124, .07), transparent 70%),
+    radial-gradient(40% 48% at 88% 84%, rgba(120, 160, 146, .07), transparent 72%),
+    radial-gradient(110% 85% at 50% 42%, transparent 50%, rgba(0, 0, 0, .28)),
+    var(--desk);
+}
+/* The bar stays above every moving layer and paints edge to edge. */
 body:is([data-page-view="upload"], [data-page-view="generate"], [data-workspace-motion]) .shelf-topbar {
   position: relative;
   z-index: 30;
-  border-bottom: 1px solid var(--line);
   background: var(--paper);
+  box-shadow: 0 0 0 100vmax var(--paper);
+  clip-path: inset(0 -100vmax);
 }
 body:is([data-page-view="upload"], [data-page-view="generate"]) :is(.landing-nav, .landing-nav-import, .shelf-footer) { display: none; }
 .upload-back {
@@ -29,219 +68,264 @@ body:is([data-page-view="upload"], [data-page-view="generate"]) :is(.landing-nav
 .upload-back svg { width: 20px; height: 20px; transition: transform 180ms var(--ease); }
 .upload-back:hover { color: var(--ink); }
 .upload-back:hover svg { transform: translateX(-3px); }
-.upload-page-turn {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  pointer-events: none;
-  transform-origin: 0 0;
-  background: var(--paper);
-  box-shadow: -22px 8px 72px rgba(21, 27, 30, .13);
-}
-.upload-page-turn::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent 44%, rgba(21, 27, 30, .035) 44.6%, rgba(21, 27, 30, .11) 45%, rgba(255, 255, 255, .7) 45.25%, transparent 46.3%);
-}
-.upload-spread {
-  display: grid;
-  grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
-  min-height: calc(100svh - 88px);
-  width: min(1440px, 100%);
-  margin-inline: auto;
-}
-.upload-story {
+body[data-workspace-motion="enter"] .upload-back { animation: upload-back-arrive 220ms var(--ease) 300ms both; }
+
+/* Motion layers stay under the topbar (z 30). Entering, the old page copy lies
+   beneath the workspace, whose desk fades in over it while the book flies. */
+:is(.upload-motion-copy, .upload-motion-book, .upload-motion-note) { position: fixed; margin: 0; pointer-events: none; }
+.upload-motion-copy { z-index: 1; }
+/* Clones are still pictures: only the motion script moves them. */
+.upload-motion-copy, .upload-motion-copy *, .upload-motion-book *, .upload-motion-note * { animation: none !important; transition: none !important; }
+.upload-motion-book { z-index: 4; transform-origin: 50% 50%; }
+.upload-motion-cover { position: absolute; inset: 0; transform-origin: 0 50%; backface-visibility: hidden; }
+.upload-motion-cover > .landing-hero-book { top: 0; left: 0; transform-origin: 0 0; }
+.upload-motion-shade { position: absolute; inset: 0; border-radius: 3px 7px 7px 3px; background: #151b1e; opacity: 0; }
+.upload-motion-note { z-index: 5; transform-origin: 50% 50%; }
+.upload-motion-note > .landing-margin-note { top: 0; left: 0; transform: none; }
+
+/* The open book. Each page darkens toward the spine; one more sheet shows at the fore-edge. */
+.upload-book { position: relative; display: grid; grid-template-columns: repeat(2, var(--leaf-w)); }
+.upload-verso, .upload-recto {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   min-width: 0;
-  padding: 48px var(--upload-gutter) 25px;
-  background: linear-gradient(90deg, var(--paper-soft), var(--paper) 28%, var(--paper) 91%, rgba(205, 200, 189, .13) 99%, rgba(205, 200, 189, .32));
-  border-right: 1px solid var(--line-strong);
+  min-height: var(--leaf-h);
+  padding: var(--pad);
+  background: var(--leaf);
+  backface-visibility: hidden;
+  container-type: inline-size;
 }
-.upload-story::after {
-  content: "";
-  position: absolute;
-  inset: 0 -9px 0 auto;
-  width: 8px;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgba(21, 27, 30, .045), transparent);
+.upload-verso {
+  justify-content: center;
+  transform-origin: 100% 50%;
+  border-radius: 7px 2px 2px 7px;
+  background: linear-gradient(to left, var(--fold), transparent 14%), var(--leaf);
+  box-shadow: 0 0 0 1px var(--line), -3px 2px 0 -1px var(--leaf), -3px 2px 0 0 var(--line), 0 30px 48px -34px var(--lift);
 }
-.upload-story-kicker { margin-bottom: 13px; color: var(--clay-deep); font-size: 12px; }
-.upload-story-heading h1 { font: 500 clamp(40px, 4.05vw, 62px)/1.2 var(--font-display); letter-spacing: -.055em; }
-.upload-story-heading h1:focus { outline: none; }
-.upload-story-description { margin-top: 18px; font-size: 12px; color: var(--muted); }
-.upload-project-leaf {
+.upload-recto {
+  border-radius: 2px 7px 7px 2px;
+  background: linear-gradient(to right, var(--fold), transparent 12%), var(--leaf);
+  box-shadow: 0 0 0 1px var(--line), 3px 2px 0 -1px var(--leaf), 3px 2px 0 0 var(--line), 0 30px 48px -34px var(--lift);
+}
+/* Light falling off a turning leaf; only the opening motion raises it. */
+.upload-leaf-shade { position: absolute; inset: 0; z-index: 3; border-radius: inherit; opacity: 0; pointer-events: none; }
+.upload-verso > .upload-leaf-shade { background: linear-gradient(to left, rgba(21, 27, 30, .42), rgba(21, 27, 30, .12)); }
+.upload-recto > .upload-leaf-shade { background: linear-gradient(to right, rgba(21, 27, 30, .4), transparent 75%); }
+
+/* Frosted glass: a translucent pane over a soft glow, so the colour behind it
+   shows through blurred. The pages turn in 3D while opening, so the blur waits
+   until the book lies still; over smooth glows the swap cannot be seen. */
+.upload-composer, .upload-contents-body {
   position: relative;
-  width: min(280px, 100%);
-  margin: 39px auto 30px;
-  transform: rotate(-3deg);
-  transition: transform 280ms cubic-bezier(.23, 1, .32, 1);
+  border: 1px solid var(--glass-edge);
+  border-radius: 14px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, .08) 46%, transparent), var(--glass);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line-strong) 45%, transparent), 0 1px 2px rgba(21, 27, 30, .03), 0 22px 44px -30px rgba(21, 27, 30, .34);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
 }
-.upload-leaf-stack { position: absolute; inset: 0; pointer-events: none; }
-.upload-leaf-stack i { position: absolute; inset: 0; border: 1px solid var(--line-strong); background: var(--paper); border-radius: 1px 3px 3px 1px; }
-.upload-leaf-stack i:first-child { transform: translate(8px, 3px) rotate(5deg); }
-.upload-leaf-stack i:last-child { transform: translate(4px, 2px) rotate(2.5deg); }
-.upload-leaf-content {
-  position: relative;
-  min-height: 280px;
-  padding: 23px 27px 27px 33px;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: 1px 3px 3px 1px;
-  box-shadow: 6px 12px 20px -17px rgba(21, 27, 30, .3);
-}
-.upload-leaf-content::before { content: ""; position: absolute; inset: 0 auto 0 8px; width: 1px; background: var(--line); }
-.upload-leaf-label { display: block; color: var(--muted); font-size: 10px; }
-.upload-leaf-mark { display: block; width: 74px; margin: 11px 0 7px; color: var(--clay); }
-.upload-leaf-mark svg { display: block; width: 100%; stroke: currentColor; stroke-width: 1.25; }
-.upload-leaf-content h2 { min-height: 60px; margin: 8px 0 14px; font: 500 27px/1.35 var(--font-display); letter-spacing: -.035em; overflow-wrap: anywhere; }
-.upload-project-source { max-width: 100%; color: var(--clay-deep); font-size: 10px; overflow-wrap: anywhere; }
-.upload-project-summary { margin-top: 15px; padding-top: 13px; border-top: 1px solid var(--line); font-size: 10px; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
-.upload-leaf-corner { position: absolute; top: 22px; right: 22px; color: var(--clay-deep); font: 15px/1 var(--font-display); }
-.upload-story .shelf-reading-journey { align-self: stretch; justify-content: space-between; gap: 18px; margin-top: auto; padding-top: 17px; font-size: 10px; }
-.upload-story .shelf-reading-journey li+li::before { content: ""; margin: 0; }
-.upload-workbench {
+html[data-theme="dark"] :is(.upload-composer, .upload-contents-body) { background: linear-gradient(140deg, rgba(255, 255, 255, .06), transparent 46%), var(--glass); }
+body[data-workspace-motion] :is(.upload-composer, .upload-contents-body) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* Left page: where the reader writes. */
+.upload-heading { margin-bottom: clamp(24px, 8cqi, 40px); }
+.upload-kicker { margin-bottom: 12px; color: var(--clay-deep); font-size: 12px; letter-spacing: .08em; }
+.upload-heading h1 { font: 500 clamp(28px, 8cqi, 40px)/1.26 var(--font-display); letter-spacing: -.045em; }
+.upload-heading h1:focus { outline: none; }
+.upload-lede { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+.upload-lede:empty { display: none; }
+.upload-form, .upload-access { width: 100%; min-width: 0; }
+.upload-form { position: relative; isolation: isolate; }
+.upload-form::before, .upload-form::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; }
+.upload-form::before { top: -34px; right: -26px; width: 58%; height: 150px; background: radial-gradient(closest-side, var(--glow-clay), transparent); }
+.upload-form::after { top: 96px; left: -34px; width: 50%; height: 140px; background: radial-gradient(closest-side, var(--glow-mist), transparent); }
+
+/* One composer: the project rides on top as an attachment, the focus is
+   written below it, and the bar carries the two ways to bring a project. */
+.upload-composer { display: flex; flex-direction: column; container-type: inline-size; transition: border-color 160ms ease-out, box-shadow 200ms var(--ease); }
+.upload-composer:focus-within { border-color: color-mix(in srgb, var(--clay) 70%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay) 14%, transparent), 0 22px 44px -30px rgba(21, 27, 30, .34); }
+.upload-attachment {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
   min-width: 0;
-  padding: 45px clamp(30px, 5.3vw, 85px) 50px;
+  margin: 12px 12px 0;
+  padding: 7px 6px 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--line-strong) 55%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--paper-strong) 72%, transparent);
 }
-.upload-form, .upload-access { width: 100%; max-width: 560px; min-width: 0; }
-.upload-form-heading { margin-bottom: 28px; }
-.upload-form-heading h2 { font: 500 32px/1.35 var(--font-display); letter-spacing: -.035em; }
-.upload-form-heading p { margin-top: 8px; font-size: 12px; color: var(--muted); }
-.upload-workspace .shelf-source-tabs { gap: 0; padding: 0; margin-bottom: 20px; border-bottom: 1px solid var(--line-strong); background: none; border-radius: 0; }
-.upload-workspace .shelf-source-tabs button { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 49px; padding: 9px 4px 15px; border-radius: 0; font-size: 13px; }
-.upload-workspace .shelf-source-tabs button svg { width: 20px; height: 20px; }
-.upload-workspace .shelf-source-tabs button::after { content: ""; position: absolute; inset: auto 0 -1px; height: 2px; background: var(--clay-deep); transform: scaleX(0); transition: transform 220ms var(--ease); }
-.upload-workspace .shelf-source-tabs button[aria-pressed="true"] { background: none; box-shadow: none; color: var(--clay-deep); }
-.upload-workspace .shelf-source-tabs button[aria-pressed="true"]::after { transform: scaleX(1); }
-.upload-workspace .shelf-source-panel { margin-bottom: 24px; }
-.upload-workspace .shelf-folder-control { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 5px 14px; min-height: 139px; padding: 21px 24px; border: 1px dashed var(--line-strong); border-radius: 3px; background: var(--paper-soft); transition: transform 180ms var(--ease); }
-.upload-folder-symbol { grid-row: 1 / span 2; align-self: center; color: var(--clay-deep); }
-.upload-folder-symbol svg { display: block; width: 40px; height: 40px; }
-.upload-folder-copy { align-self: end; min-width: 0; }
-.upload-workspace .shelf-folder-control strong { font-size: 13px; }
-.upload-workspace .shelf-folder-control small { font-size: 10px; line-height: 1.7; margin-top: 4px; }
-.upload-workspace .shelf-source-action { grid-column: 2; font-size: 11px; text-decoration: underline; text-underline-offset: 4px; }
-.upload-workspace .shelf-folder-control.is-dragging, .upload-workspace .shelf-folder-control[data-drag-over="true"] { transform: scale(1.018); outline: 2px solid var(--clay); outline-offset: 3px; }
-.upload-workspace .shelf-field-label { margin-bottom: 8px; font-size: 12px; color: var(--ink-soft); }
-.upload-workspace :is(.shelf-import-name, .shelf-repo-input) { height: 48px; border-radius: 4px; background: transparent; padding-inline: 13px; font-size: 13px; }
-.upload-workspace .shelf-field-help { margin-top: 10px; font-size: 11px; }
-.upload-workspace .landing-reading-intent { margin-top: 26px; }
-.upload-workspace .landing-reading-intent legend { margin-bottom: 12px; color: var(--ink-soft); font-size: 12px; }
-.upload-workspace .landing-intent-options { gap: 11px; }
-.upload-workspace .landing-intent-options input + span { position: relative; align-items: flex-start; justify-content: center; min-height: 67px; padding: 9px 8px 11px; border: 0; border-bottom: 1px solid var(--line-strong); border-radius: 0; }
-.upload-workspace .landing-intent-options input:checked + span { background: var(--clay-pale); border-bottom: 2px solid var(--clay-deep); padding-bottom: 10px; color: var(--clay-deep); }
-.upload-workspace .landing-intent-options strong { font-size: 12px; }
-.upload-workspace .landing-intent-options small { margin-top: 5px; font-size: 10px; }
-.upload-workspace .shelf-import-submit { min-height: 51px; height: auto; margin-top: 26px; justify-content: space-between; padding: 13px 20px; border-radius: 4px; font-size: 14px; }
-.upload-workspace .shelf-import-submit > span:first-child { flex: 1; text-align: left; }
-.upload-workspace .shelf-import-submit .shelf-submit-arrow { font-size: 21px; font-weight: 400; }
-.upload-workspace .shelf-import-summary { font-size: 11px; margin-top: 13px; }
+.upload-attachment[data-empty="true"] { display: none; }
+.upload-attachment > svg { flex: none; width: 20px; height: 20px; color: var(--clay-deep); }
+.upload-attachment-copy { display: flex; flex: 1; align-items: baseline; gap: 10px; min-width: 0; }
+.upload-attachment-copy strong { overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.upload-attachment-copy small { overflow: hidden; color: var(--muted); font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
+.upload-attachment-copy small:empty { display: none; }
+.upload-repo-input { flex: 1; min-width: 0; height: 30px; padding: 0; border: 0; outline: none; background: none; color: var(--ink); font: 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.upload-repo-input::placeholder { color: var(--faint); font-family: var(--font-body); }
+.upload-attachment-clear { display: grid; flex: none; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.upload-attachment-clear svg { width: 18px; height: 18px; }
+.upload-focus {
+  display: block;
+  width: 100%;
+  min-height: calc(1.8em * 3 + 36px);
+  max-height: calc(1.8em * 8 + 36px);
+  padding: 18px 20px;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--ink);
+  font: 14px/1.8 var(--font-body);
+  field-sizing: content;
+}
+.upload-focus::placeholder { color: var(--faint); }
+.upload-focus:disabled { opacity: 1; color: var(--ink-soft); -webkit-text-fill-color: var(--ink-soft); cursor: default; }
+.upload-focus:disabled:placeholder-shown { display: none; }
+.upload-composer-bar { display: flex; align-items: center; gap: 4px; padding: 8px 10px 10px; border-top: 1px solid color-mix(in srgb, var(--line-strong) 40%, transparent); }
+.upload-tool {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out;
+}
+.upload-tool svg { width: 18px; height: 18px; }
+.upload-tool input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.upload-tool:focus-within { outline: 2px solid var(--clay); outline-offset: 2px; }
+.upload-tool[aria-pressed="true"] { background: color-mix(in srgb, var(--clay-pale) 80%, transparent); color: var(--clay-deep); }
+.upload-tool:disabled, .upload-tool:has(input:disabled) { opacity: .45; cursor: default; }
+.upload-drop-hint { margin-left: auto; padding-right: 6px; color: var(--faint); font-size: 11px; white-space: nowrap; }
+@container (max-width: 360px) { .upload-drop-hint { display: none; } }
+.upload-drop-veil { position: absolute; inset: -1px; z-index: 2; display: grid; place-items: center; border: 1.5px dashed var(--clay); border-radius: inherit; background: color-mix(in srgb, var(--clay-pale) 92%, transparent); color: var(--clay-deep); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 160ms ease-out; }
+.upload-composer.is-dragging .upload-drop-veil { opacity: 1; }
+/* Generating is the same outlined clay action as the landing's: the decision
+   is still the reader's, it just does not need a filled slab to be found. */
+.upload-workspace .upload-send { display: flex; width: 100%; min-height: 54px; margin-top: 18px; font-size: 14px; }
+.upload-send:disabled { opacity: .5; cursor: default; }
+.upload-send:disabled::before { transform: scaleX(0); }
+/* Once submitted, the composer is the record of what was asked: sources and removal leave. */
+.upload-form:not([data-launcher-state="idle"]) :is(.upload-tool, .upload-drop-hint, .upload-attachment-clear) { display: none; }
+.upload-form:not([data-launcher-state="idle"]) .upload-composer-bar { display: none; }
+.upload-attachment-clear:disabled { opacity: .45; cursor: default; }
+.upload-workspace[data-phase="generating"] .upload-send { display: none; }
 .upload-workspace .shelf-import-status { margin-top: 14px; font-size: 12px; }
-.upload-workspace .shelf-import-secondary { gap: 24px; margin-top: 20px; justify-content: flex-start; }
-.upload-workspace .shelf-import-secondary button { min-height: 44px; padding: 8px 0; font-size: 12px; text-decoration: underline; text-underline-offset: 5px; }
-.upload-workspace .shelf-local-note { font-size: 10px; line-height: 1.8; margin-top: 13px; text-align: left; }
-.upload-form-kicker { color: var(--clay-deep); margin-bottom: 19px; font-size: 12px; }
-.upload-access h2 { font: 500 clamp(31px, 3vw, 43px)/1.35 var(--font-display); letter-spacing: -.04em; }
-.upload-access-description { max-width: 355px; margin-top: 22px; color: var(--muted); font-size: 13px; line-height: 1.9; }
-.upload-access-actions { margin-top: 35px; }
-.upload-signin { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 52px; padding: 12px 18px; border: 0; border-radius: 4px; background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 550; transition: transform 180ms var(--ease), opacity 180ms ease-out; }
+.upload-workspace .shelf-import-secondary { justify-content: flex-start; gap: 22px; margin-top: 10px; }
+.upload-workspace .shelf-import-secondary button { min-height: 36px; padding: 6px 0; font-size: 12px; text-decoration: underline; text-underline-offset: 4px; }
+.upload-workspace .shelf-local-note { margin-top: 14px; color: var(--faint); font-size: 11px; line-height: 1.7; text-align: left; }
+.upload-access-actions { margin-top: 4px; }
+.upload-signin { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 52px; padding: 12px 18px; border: 0; border-radius: 8px; background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 550; transition: transform 180ms var(--ease), opacity 180ms ease-out; }
 .upload-signin svg { width: 21px; height: 21px; }
 .upload-signin:active { transform: scale(.98); }
-.upload-reconnect { min-height: 44px; border: 0; border-bottom: 1px solid var(--clay); padding: 8px 0; color: var(--clay-deep); background: none; font-size: 13px; }
-.upload-access-status { color: var(--muted); font-size: 12px; margin-top: 15px; line-height: 1.8; }
+.upload-reconnect { min-height: 44px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--clay); background: none; color: var(--clay-deep); font-size: 13px; }
+.upload-access-status { margin-top: 15px; color: var(--muted); font-size: 12px; line-height: 1.8; }
 .upload-access-status:empty { display: none; }
-.upload-workspace:is([data-phase="pending"], [data-phase="generating"], [data-phase="ready"]) [data-upload-fields] { display: none; }
-.upload-workspace[data-phase="generating"] .shelf-import-submit { display: none; }
-.upload-workspace:is([data-phase="pending"], [data-phase="generating"], [data-phase="ready"]) .upload-project-leaf { transform: rotate(0); }
-.upload-workspace .shelf-generating { margin-top: 0; }
-.upload-generation-heading > p { margin-bottom: 14px; font-size: 12px; color: var(--clay-deep); }
-.upload-generation-heading h2 { font: 500 clamp(32px, 3vw, 43px)/1.35 var(--font-display); letter-spacing: -.04em; }
-.upload-workspace .landing-generation-art { height: 182px; margin: 17px 0 10px; }
-.upload-workspace .landing-generation-art > span { width: 88px; height: 119px; border-radius: 1px 4px 4px 1px; }
-.upload-workspace .landing-generation-art > span::before { inset: 22px 15px; background: linear-gradient(var(--clay), var(--clay)) 0 0 / 19px 3px no-repeat, linear-gradient(var(--line-strong), var(--line-strong)) 0 24px / 100% 1px no-repeat, linear-gradient(var(--line-strong), var(--line-strong)) 0 37px / 70% 1px no-repeat, linear-gradient(var(--line-strong), var(--line-strong)) 0 50px / 86% 1px no-repeat; }
-.upload-workspace .landing-generation-art > i { font-size: 35px; }
-.upload-workspace .landing-generation-steps { margin: 0 0 24px; gap: 12px; }
-.upload-workspace .landing-generation-steps li { gap: 9px; font-size: 11px; }
-.upload-workspace .landing-generation-steps li > span { width: 30px; height: 30px; font-size: 10px; }
-.upload-workspace .shelf-generating-stage { font-size: 13px; text-align: left; }
-.upload-workspace .landing-generation-note { margin-top: 11px; font-size: 11px; line-height: 1.8; text-align: left; }
+
+/* Right page: the title page of the book being made, set like the hero book's
+   cover, and its contents — three steps that fill in from what really happened. */
+.upload-recto::before { content: ""; position: absolute; right: 12%; bottom: 13%; width: 56%; height: 34%; border-radius: 50%; background: radial-gradient(closest-side, var(--glow-mist), transparent); pointer-events: none; }
+.upload-recto > * { position: relative; }
+.upload-recto > .upload-leaf-shade { position: absolute; }
+.upload-titlepage-top { display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font: 10px/1.2 ui-monospace, SFMono-Regular, monospace; letter-spacing: .14em; }
+.upload-titlepage-top > span:last-child { color: var(--clay-deep); font-family: var(--font-body); letter-spacing: .08em; }
+.upload-titlepage-title { margin-top: 10cqi; font: 500 clamp(32px, 10cqi, 48px)/1.18 var(--font-display); letter-spacing: -.05em; overflow-wrap: anywhere; }
+.upload-titlepage-title > span { display: block; }
+.upload-titlepage-title > span[data-empty="true"] { color: var(--faint); }
+.upload-titlepage-title > span[data-length="long"] { font-size: .8em; letter-spacing: -.04em; }
+.upload-titlepage-title > span[data-length="xlong"] { font-size: .64em; letter-spacing: -.03em; line-height: 1.26; }
+/* The reader's own focus is the subtitle; longer words set smaller. */
+.upload-titlepage-title > em { display: -webkit-box; margin-top: .45em; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: var(--clay-deep); font-size: .56em; font-style: normal; line-height: 1.36; letter-spacing: -.03em; white-space: pre-line; }
+.upload-titlepage-title > em[data-length="long"] { -webkit-line-clamp: 4; font-size: .42em; line-height: 1.55; letter-spacing: -.01em; }
+.upload-titlepage-title > em[data-length="xlong"] { -webkit-line-clamp: 5; font-size: .34em; line-height: 1.65; letter-spacing: 0; }
+.upload-titlepage-title > em[data-empty="true"] { color: color-mix(in srgb, var(--clay-deep) 55%, var(--leaf)); }
+.upload-contents-body { margin-top: auto; padding: 18px 22px 8px; }
+.upload-contents-label { color: var(--muted); font-size: 11px; letter-spacing: .2em; }
+.upload-contents-list { margin: 6px 0 0; padding: 0; list-style: none; }
+.upload-contents-list > li { display: grid; grid-template-columns: 26px minmax(0, 1fr) 20px; align-items: center; column-gap: 12px; padding: 13px 0; border-top: 1px solid color-mix(in srgb, var(--line-strong) 45%, transparent); }
+.upload-contents-list > li:first-child { border-top: 0; }
+.upload-contents-no { color: var(--faint); font: 11px/1 ui-monospace, SFMono-Regular, monospace; letter-spacing: .04em; transition: color 200ms ease-out; }
+.upload-contents-copy { min-width: 0; }
+.upload-contents-copy strong { display: block; color: var(--ink-soft); font-size: 14px; font-weight: 550; }
+.upload-contents-copy small:empty { display: none; }
+.upload-contents-copy small { display: block; margin-top: 4px; overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.upload-contents-mark { position: relative; width: 18px; height: 18px; border: 1.5px solid var(--line-strong); border-radius: 50%; transition: background-color 200ms ease-out, border-color 200ms ease-out; }
+li[data-done="true"] .upload-contents-no { color: var(--clay-deep); }
+li[data-done="true"] .upload-contents-copy strong { color: var(--ink); }
+li[data-done="true"] .upload-contents-mark { border-color: var(--clay); background: var(--clay) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fffdf7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 8.5 2.6 2.5L12 5.5'/%3E%3C/svg%3E") center / 12px no-repeat; }
+/* A long write stays visibly alive: the current step breathes, nothing guesses a percentage. */
+.upload-workspace[data-phase="generating"] [data-contents-row="book"] .upload-contents-mark { border-color: var(--clay); }
+.upload-workspace[data-phase="generating"] [data-contents-row="book"] .upload-contents-mark::after { content: ""; position: absolute; inset: -4px; border: 1px solid var(--clay); border-radius: 50%; opacity: 0; animation: upload-step-breathe 2400ms ease-out infinite; }
+/* The stages are one slim bar in four segments under the third line; the current one pulses. */
+.upload-progress { grid-column: 2 / -1; margin-top: 12px; }
+.upload-progress .landing-generation-steps { gap: 6px; margin: 0 0 10px; }
+.upload-progress .landing-generation-steps li { align-items: stretch; gap: 7px; font-size: 11px; text-align: left; }
+.upload-progress .landing-generation-steps li > span { width: 100%; height: 3px; border: 0; border-radius: 3px; background: color-mix(in srgb, var(--line-strong) 70%, transparent); font-size: 0; }
+.upload-progress .landing-generation-steps li.is-complete > span { background: var(--clay); }
+.upload-progress .landing-generation-steps li[aria-current="step"] > span { background: var(--clay); }
+.upload-workspace[data-phase="generating"] .upload-progress li[aria-current="step"] > span { animation: upload-step-pulse 1400ms ease-in-out infinite alternate; }
+.upload-progress .shelf-generating-stage { margin-top: 0; color: var(--muted); font-size: 12px; text-align: left; }
+.upload-colophon { align-self: flex-end; margin-top: 18px; color: var(--clay-deep); font: 16px/1 var(--font-display); }
+
+@keyframes upload-back-arrive { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes upload-step-breathe { 0% { opacity: .55; transform: scale(.82); } 70%, 100% { opacity: 0; transform: scale(1.35); } }
+@keyframes upload-step-pulse { from { opacity: .35; } to { opacity: 1; } }
+/* The generate arrow points ahead, so its loop runs out to the right and back in. */
+@keyframes upload-arrow-loop {
+  0% { transform: translateX(0); animation-timing-function: cubic-bezier(.5, 0, .75, 0); }
+  45% { transform: translateX(16px); }
+  45.1% { transform: translateX(-16px); animation-timing-function: cubic-bezier(.22, 1, .36, 1); }
+  100% { transform: translateX(0); }
+}
 @media (hover: hover) and (pointer: fine) {
-  .upload-workspace .shelf-folder-control:hover { border-color: var(--clay); }
+  .upload-tool:not(:disabled):not(:has(input:disabled)):hover { background: color-mix(in srgb, var(--paper-strong) 70%, transparent); color: var(--ink); }
+  .upload-tool[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--clay-pale) 80%, transparent); color: var(--clay-deep); }
+  .upload-attachment-clear:not(:disabled):hover { background: rgba(21, 27, 30, .06); color: var(--ink); }
+  html[data-theme="dark"] .upload-attachment-clear:not(:disabled):hover { background: rgba(255, 255, 255, .06); }
+  .upload-send:not(:disabled):hover .landing-primary-arrow svg { animation-name: upload-arrow-loop; }
+  .upload-send:disabled:hover::before { transform: scaleX(0); }
+  .upload-send:disabled .landing-primary-arrow svg { animation: none; }
   .upload-signin:hover { opacity: .9; }
 }
-@media (min-width: 1500px) {
-  .upload-spread { border-inline: 1px solid var(--line); }
-}
-@media (max-width: 1000px) {
-  .upload-workspace { --upload-gutter: 33px; }
-  .upload-workbench { padding-inline: 32px; }
-  .upload-story-heading h1 { font-size: 45px; }
-  .upload-project-leaf { width: 235px; }
-  .upload-leaf-content { min-height: 268px; padding-inline: 27px 22px; }
+/* Too narrow for a spread: the writing page is laid on the desk and the title
+   page follows below it. */
+@media (max-width: 860px) {
+  .upload-workspace { place-items: start center; padding: 22px 16px 36px; }
+  .upload-book { grid-template-columns: minmax(0, 560px); row-gap: 14px; width: 100%; justify-content: center; }
+  /* Still the hero book's proportions, so the cover flies in unstretched; content may lengthen it. */
+  .upload-verso { min-height: auto; aspect-ratio: .756; padding: 28px 22px 24px; border-radius: 8px; justify-content: flex-start; }
+  .upload-recto { min-height: auto; padding: 24px 22px 20px; border-radius: 8px; }
+  /* Stacked, there is no spine for the pages to darken toward. */
+  .upload-verso, .upload-recto { background: var(--leaf); }
+  .upload-titlepage-title { margin-top: 18px; font-size: 30px; }
+  .upload-contents-body { margin-top: 22px; }
+  .upload-colophon { display: none; }
 }
 @media (max-width: 760px) {
-  .upload-workspace, .upload-spread { min-height: calc(100svh - 73px); }
+  .upload-workspace { min-height: calc(100svh - 73px); }
   body:is([data-page-view="upload"], [data-page-view="generate"]) .shelf-topbar { gap: 4px; }
   .upload-back { margin-left: 10px; padding-inline: 5px; gap: 3px; }
-  .upload-spread { display: block; }
-  .upload-story { display: block; padding: 26px 25px 21px; border-right: 0; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, var(--paper-soft), var(--paper) 45%); }
-  .upload-story::after { display: none; }
-  .upload-story-kicker { margin-bottom: 8px; font-size: 10px; }
-  .upload-story-heading h1 { font-size: 31px; line-height: 1.35; letter-spacing: -.045em; }
-  .upload-story-heading h1 br { display: none; }
-  .upload-story-description { margin-top: 6px; font-size: 11px; }
-  .upload-project-leaf { width: 100%; margin: 21px 0 0; transform: none; }
-  .upload-leaf-stack, .upload-leaf-label, .upload-leaf-mark, .upload-leaf-corner, .upload-leaf-content::before { display: none; }
-  .upload-leaf-content { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 15px; padding: 0 0 0 12px; min-height: 0; border: 0; border-left: 2px solid var(--clay); border-radius: 0; background: none; box-shadow: none; }
-  .upload-leaf-content h2 { min-height: 0; margin: 0; font: 500 14px/1.6 var(--font-body); letter-spacing: 0; }
-  .upload-leaf-content h2 br { display: none; }
-  .upload-project-source { align-self: center; font-size: 10px; max-width: 120px; }
-  .upload-project-summary { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; font-size: 10px; }
-  .upload-project-summary br { display: none; }
-  .upload-story .shelf-reading-journey { display: none; }
-  .upload-workbench { display: block; padding: 26px 25px 38px; }
-  .upload-form, .upload-access { margin-inline: auto; }
-  .upload-form-heading { margin-bottom: 19px; }
-  .upload-form-heading h2 { font-size: 25px; }
-  .upload-form-heading p { margin-top: 5px; font-size: 11px; }
-  .upload-workspace .shelf-source-tabs { margin-bottom: 16px; }
-  .upload-workspace .shelf-source-tabs button { font-size: 12px; min-height: 47px; padding-bottom: 12px; }
-  .upload-workspace .shelf-folder-control { min-height: 121px; padding: 17px; grid-template-columns: 32px minmax(0, 1fr); gap: 5px 11px; }
-  .upload-folder-symbol svg { width: 32px; height: 32px; }
-  .upload-workspace .shelf-folder-control strong { font-size: 12px; }
-  .upload-workspace .shelf-source-panel { margin-bottom: 21px; }
-  .upload-workspace .shelf-field-help { font-size: 10px; }
-  .upload-workspace .landing-reading-intent { margin-top: 23px; }
-  .upload-workspace .landing-intent-options { gap: 6px; }
-  .upload-workspace .landing-intent-options input + span { padding-inline: 6px; }
-  .upload-workspace .landing-intent-options strong { font-size: 11px; }
-  .upload-workspace .landing-intent-options small { font-size: 9px; }
-  .upload-workspace .shelf-import-submit { margin-top: 23px; }
-  .upload-access { padding-block: 12px 30px; }
-  .upload-access h2 { font-size: 33px; }
-  .upload-access-description { margin-top: 17px; font-size: 12px; }
-  .upload-access-actions { margin-top: 27px; }
-  .upload-generation-heading h2 { font-size: 34px; }
-  .upload-workspace .landing-generation-art { height: 156px; margin-top: 10px; }
-  .upload-workspace .landing-generation-steps { gap: 7px; }
+  .upload-heading h1 { font-size: 26px; }
 }
 @media (max-width: 380px) {
   .upload-back { margin-left: 3px; }
   body:is([data-page-view="upload"], [data-page-view="generate"]) .landing-account-open { padding-inline: 9px; font-size: 10px; }
-  .upload-story, .upload-workbench { padding-inline: 20px; }
-  .upload-story-heading h1 { font-size: 28px; }
+  .upload-verso, .upload-recto { padding-inline: 18px; }
+  .upload-heading h1 { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .upload-workspace *, .upload-back svg { transition-duration: 100ms !important; }
-  .upload-project-leaf { transform: none; }
-  .upload-workspace .landing-generation-art::after { animation: none; }
-  .upload-back:hover svg, .upload-workspace .shelf-folder-control.is-dragging { transform: none; }
+  body[data-workspace-motion] .upload-back { animation: none; }
+  .upload-back:hover svg { transform: none; }
+  .upload-workspace[data-phase="generating"] [data-contents-row="book"] .upload-contents-mark::after { animation: none; opacity: .5; }
+  .upload-workspace[data-phase="generating"] .upload-progress li[aria-current="step"] > span { animation: none; }
 }

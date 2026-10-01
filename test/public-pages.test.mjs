@@ -10,8 +10,11 @@ test("homepage is the only project entry before opening the main book", () => {
 
   assert.match(homepage, /data-project-import/);
   assert.match(homepage, /data-primary-start/);
-  assert.match(homepage, /data-source-choice="local"/);
+  // One composer: a folder picker, a GitHub toggle and the written focus.
+  assert.match(homepage, /<input name="folder" type="file" webkitdirectory/);
   assert.match(homepage, /data-source-choice="github"/);
+  assert.match(homepage, /<textarea[^>]*name="readingFocus"[^>]*maxlength="500"/);
+  assert.doesNotMatch(homepage, /name="readingIntent"/, 'the three reading-intent cards are gone');
   assert.match(homepage, /data-github-import/);
   assert.ok(homepage.indexOf("data-primary-start") < homepage.indexOf("data-project-list"));
   assert.match(homepage, /import-files\.js/);
@@ -28,7 +31,7 @@ test("homepage puts an interactive project launcher before the secondary shelf",
 
   assert.match(homepage, /data-project-launcher/);
   assert.match(homepage, /data-launcher-name/);
-  assert.match(homepage, /data-reading-journey/);
+  assert.match(homepage, /data-contents-row="source"[\s\S]*data-contents-row="focus"[\s\S]*data-contents-row="book"/, 'the facing page lists the three steps of making the book');
   assert.ok(homepage.indexOf("data-project-launcher") < homepage.indexOf("data-project-list"));
   assert.match(styles, /\.shelf-launcher:focus-within/);
   assert.match(styles, /@keyframes shelf-launcher-arrive/);

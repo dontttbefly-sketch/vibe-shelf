@@ -24,6 +24,8 @@
   var DRAFT_KEY = "shelf-import-draft";
   var folderName = "";
   var draftStorageFailed = false;
+  // GitHub Pages has no server: the shelf stays empty instead of retrying forever.
+  var staticDemo = Boolean(window.location && /\.github\.io$/i.test(window.location.hostname || ""));
   var stageCopy = { reading: "正在归集项目源码…", writing: "正在组织内容、撰写章节…", compiling: "正在编排书页、核验源码引用…" };
 
   function readStored(key) { try { return JSON.parse(localStorage.getItem(key) || "null"); } catch (error) { return null; } }
@@ -35,7 +37,7 @@
   function saveImportDraft() {
     // 文件内容与文件句柄不写浏览器存储；刷新后由用户重新授权选择目录。
     var draft = { name: form.elements.name.value, repo: form.elements.repo.value, source: source, folderName: folderName };
-    if (form.elements.readingIntent) draft.readingIntent = form.elements.readingIntent.value;
+    if (form.elements.readingFocus) draft.readingFocus = form.elements.readingFocus.value;
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); draftStorageFailed = false; }
     catch (error) { draftStorageFailed = true; }
     showDraftHint();
@@ -44,10 +46,10 @@
   function restoreImportDraft() {
     var draft = readStored(DRAFT_KEY);
     if (!draft || typeof draft.name !== "string" || typeof draft.repo !== "string" || typeof draft.folderName !== "string" || (draft.source !== "local" && draft.source !== "github")) return;
-    form.elements.name.value = draft.name; form.elements.name.dataset.suggested = "false";
-    if (form.elements.readingIntent) form.elements.readingIntent.value = draft.readingIntent || "overview";
-    form.elements.repo.value = draft.repo; folderName = draft.folderName; setSource(draft.source);
-    if (folderName) form.querySelector("[data-folder-label]").textContent = folderName;
+    // The name is derived from the folder or repository, so a restored one may still follow it.
+    form.elements.name.value = draft.name; form.elements.name.dataset.suggested = "true";
+    if (form.elements.readingFocus && typeof draft.readingFocus === "string") form.elements.readingFocus.value = draft.readingFocus;
+    form.elements.repo.value = draft.repo; folderName = draft.folderName; setSource(draft.source); renderFolder();
     showDraftHint();
   }
   function makeProjectId() { return "p-" + (window.crypto && crypto.randomUUID ? crypto.randomUUID().replaceAll("-", "").slice(0, 16) : Date.now().toString(36) + Math.random().toString(36).slice(2, 9)); }
@@ -69,6 +71,8 @@
     node.textContent = (text || "") + (warn ? (text ? " " : "") + "浏览器无法保存导入草稿，输入仅保留在当前页；刷新前请先导入。" : "");
     node.dataset.state = type || (warn ? "error" : "");
   }
+  // Generation progress is drawn on the facing page of the book, outside the form.
+  function part(selector) { return form.querySelector(selector) || document.querySelector(selector); }
   function setButton(text, disabled) { var button = form.querySelector("[type=submit]"); button.querySelector("span").textContent = text; button.disabled = Boolean(disabled); }
   function mainBookUrl(project) { return (project.isExample ? "/examples/" : "/projects/") + encodeURIComponent(typeof project === "string" ? project : project.id) + "/books/" + encodeURIComponent(project.mainBookId || "main") + "/"; }
   function playBookOpenTransition(trigger, url) {
@@ -84,10 +88,15 @@
     form.querySelectorAll("[data-source-choice]").forEach(function (node) { node.setAttribute("aria-pressed", String(node.dataset.sourceChoice === source)); });
     showSummary();
   }
+  function renderFolder() {
+    var chip = form.querySelector("[data-local-source]");
+    if (chip && chip.dataset) chip.dataset.empty = String(!folderName);
+    form.querySelector("[data-folder-label]").textContent = folderName;
+  }
   function showSummary() {
     var node = form.querySelector("[data-import-summary]");
     if (source !== "local" || !preparedFiles) { node.textContent = ""; updateProjectIdentity(); return; }
-    node.textContent = "将导入 " + preparedFiles.length + " 个文本文件" + (preparedFiles.skipped ? " · 已排除 " + preparedFiles.skipped + " 个文件" : "") + (preparedFiles.truncated ? " · 已达到导入上限，其余文件未包含" : "");
+    node.textContent = preparedFiles.length + " 个文本文件" + (preparedFiles.skipped ? " · 跳过 " + preparedFiles.skipped + " 个" : "") + (preparedFiles.truncated ? " · 已到导入上限" : "");
     updateProjectIdentity();
   }
   function updateProjectIdentity() {
@@ -97,7 +106,7 @@
       fileCount: preparedFiles ? preparedFiles.length : 0,
     } }));
   }
-  function lockFields(locked) { form.querySelectorAll("input,select,[data-source-choice]").forEach(function (node) { node.disabled = locked; }); }
+  function lockFields(locked) { form.querySelectorAll("input,select,textarea,[data-source-choice],[data-source-clear]").forEach(function (node) { node.disabled = locked; }); }
   function showFlow(project, generation) {
     if (!flow || project.id !== flow.projectId) return;
     var state = generation.status === "idle" ? (project.bookCount ? "ready" : "pending") : generation.status;
@@ -109,10 +118,10 @@
     clearImportDraft();
     lockFields(true);
     form.querySelector("[data-import-secondary]").hidden = false;
-    form.querySelector("[data-generating]").hidden = state !== "generating";
+    part("[data-generating]").hidden = state !== "generating";
     if (state === "generating") {
       setButton("正在生成主书", true);
-      form.querySelector("[data-generating-stage]").textContent = stageCopy[generation.stage] || "主书正在生成…";
+      part("[data-generating-stage]").textContent = stageCopy[generation.stage] || "主书正在生成…";
       setStatus("项目已保存。可以先读其他书，回来后会显示最新进度。", "loading");
     } else if (state === "ready") {
       setButton("打开项目主书", false);
@@ -167,9 +176,10 @@
     if (state === "generating") {
       var progressAction = addText(card, "button", "正在写成主书 · 查看进度", "shelf-book-state shelf-card-retry"); progressAction.type = "button";
       progressAction.addEventListener("click", function () {
-        flow = { projectId: project.id, name: project.name, readingIntent: project.readingIntent || "overview", status: "generating" };
+        flow = { projectId: project.id, name: project.name, readingFocus: project.readingFocus || "", status: "generating" };
         saveFlow(); form.elements.name.value = project.name;
-        if (form.elements.readingIntent) form.elements.readingIntent.value = flow.readingIntent;
+        if (form.elements.readingFocus) form.elements.readingFocus.value = flow.readingFocus;
+        folderName = project.name; renderFolder();
         window.ShelfLanding?.showGeneration({ focus: true }); updateFlow(); updateProjectIdentity();
       });
     }
@@ -326,6 +336,7 @@
   }
   async function loadProjects() {
     clearTimeout(pollTimer);
+    if (staticDemo) { projects = []; renderProjects(); window.dispatchEvent(new CustomEvent("shelf-projects-loaded", { detail: projects })); return; }
     try {
       var data = await request("/api/projects?view=shelf", { signal: AbortSignal.timeout(10000) });
       projects = data.projects || [];
@@ -345,9 +356,10 @@
   function resetImport() {
     flowReadSequence++; submissionSequence++;
     readingFiles++; preparedFiles = null; folderName = ""; flow = null; busy = false; saveFlow(); clearImportDraft(); form.reset(); lockFields(false); setSource("local");
-    form.querySelector("[data-folder-label]").textContent = "选择项目源码文件夹";
-    form.querySelector("[data-generating]").hidden = true; form.querySelector("[data-import-secondary]").hidden = true;
-    setStatus(""); setButton("生成项目书", false); form.elements.name.focus();
+    var chip = form.querySelector("[data-local-source]"); if (chip.dataset) chip.dataset.empty = "true";
+    form.querySelector("[data-folder-label]").textContent = "";
+    part("[data-generating]").hidden = true; form.querySelector("[data-import-secondary]").hidden = true;
+    setStatus(""); setButton("生成项目书", false); (form.elements.readingFocus || form.elements.name).focus();
     window.dispatchEvent(new CustomEvent("shelf-import-reset"));
   }
   if (!form) return;
@@ -363,8 +375,7 @@
     var sequence = ++readingFiles; preparedFiles = null;
     if (!files.length) { showSummary(); showDraftHint(); return; }
     var directory = (files[0].webkitRelativePath || files[0].name).split("/")[0];
-    folderName = directory;
-    form.querySelector("[data-folder-label]").textContent = directory;
+    folderName = directory; setSource("local"); renderFolder();
     if (!form.elements.name.value || form.elements.name.dataset.suggested === "true") { form.elements.name.value = directory; form.elements.name.dataset.suggested = "true"; }
     saveImportDraft();
     setButton("正在检查文件…", true); setStatus("正在检查可导入的源码…", "loading");
@@ -390,7 +401,17 @@
       catch (error) { if (dropSequence === readingFiles) { setStatus(error.message, 'error'); setButton('生成项目书', false); } }
     });
   }
-  if (form.elements.readingIntent) form.querySelectorAll('[name="readingIntent"]').forEach(function (choice) { choice.addEventListener("change", saveImportDraft); });
+  if (form.elements.readingFocus) form.elements.readingFocus.addEventListener("input", saveImportDraft);
+  // Removing the attached source: a repository falls back to the folder slot, a folder empties it.
+  form.addEventListener("click", function (event) {
+    var clear = event.target && event.target.closest && event.target.closest("[data-source-clear]");
+    if (!clear || busy || clear.disabled) return;
+    if (source === "github") { form.elements.repo.value = ""; setSource("local"); }
+    else { readingFiles++; preparedFiles = null; folderName = ""; form.elements.folder.value = ""; renderFolder(); showSummary(); setButton("生成项目书", false); }
+    if (form.elements.name.dataset.suggested !== "false") form.elements.name.value = folderName;
+    setStatus(""); saveImportDraft();
+    (form.elements.readingFocus || form.elements.repo).focus();
+  });
   form.querySelector("[data-new-import]").addEventListener("click", resetImport);
   form.addEventListener("submit", async function (event) {
     event.preventDefault(); if (busy) return;
@@ -427,19 +448,19 @@
       }
       var name = form.elements.name.value.trim();
       var repo = form.elements.repo.value.trim();
-      var readingIntent = form.elements.readingIntent ? form.elements.readingIntent.value : "overview";
-      if (!name) { form.elements.name.focus(); throw new Error("给项目起个名字，再开始阅读。"); }
-      if (source === "local" && (!preparedFiles || !preparedFiles.length)) throw new Error("请先选择一个包含文本源码的文件夹。");
+      var readingFocus = form.elements.readingFocus ? form.elements.readingFocus.value.trim() : "";
+      if (source === "local" && (!preparedFiles || !preparedFiles.length)) throw new Error("请先选择一个包含文本源码的文件夹，或改用 GitHub 仓库。");
       if (source === "github" && !repo) { form.elements.repo.focus(); throw new Error("请填入公开 GitHub 仓库地址。"); }
       if (source === "github" && !(/github\.com[/:][A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/.test(repo) || /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo))) {
         form.elements.repo.focus(); throw new Error("请使用 owner/repository，或完整的 GitHub 仓库地址。");
       }
-      if (!flow || flow.source !== source || flow.repo !== repo || flow.name !== name || (flow.readingIntent || "overview") !== readingIntent) flow = { projectId: makeProjectId(), name: name, source: source, repo: repo, readingIntent: readingIntent, status: "importing" };
+      if (!name) throw new Error("没能从这个来源读出项目名，请换一个文件夹或仓库地址。");
+      if (!flow || flow.source !== source || flow.repo !== repo || flow.name !== name || (flow.readingFocus || "") !== readingFocus) flow = { projectId: makeProjectId(), name: name, source: source, repo: repo, folderName: source === "local" ? folderName : "", readingFocus: readingFocus, status: "importing" };
       submittedFlow = flow;
       delete flow.requestError;
       saveFlow(); lockFields(true); setButton("正在导入项目…", true); setStatus(source === "github" ? "正在读取公开仓库…" : "正在保存项目源码…", "loading");
       attemptedRequest = true;
-      var result = await post(source === "github" ? "/api/projects/import-github" : "/api/projects/import", source === "github" ? { projectId: flow.projectId, repo: repo, name: name, readingIntent: readingIntent } : { projectId: flow.projectId, name: name, files: preparedFiles, readingIntent: readingIntent });
+      var result = await post(source === "github" ? "/api/projects/import-github" : "/api/projects/import", source === "github" ? { projectId: flow.projectId, repo: repo, name: name, readingFocus: readingFocus } : { projectId: flow.projectId, name: name, files: preparedFiles, readingFocus: readingFocus });
       if (!isCurrent()) { await loadProjects(); return; }
       flowReadSequence++;
       flow.projectId = result.project.id; saveFlow();
@@ -450,7 +471,7 @@
       if (!isCurrent()) return;
       if (error.kind === "import-conflict") {
         // 来源冲突不是丢响应：保留原项目，下一次点击才创建新项目。
-        flow = { projectId: makeProjectId(), name: form.elements.name.value.trim(), source: source, repo: form.elements.repo.value.trim(), readingIntent: form.elements.readingIntent ? form.elements.readingIntent.value : "overview", status: "importing" };
+        flow = { projectId: makeProjectId(), name: form.elements.name.value.trim(), source: source, repo: form.elements.repo.value.trim(), folderName: source === "local" ? folderName : "", readingFocus: form.elements.readingFocus ? form.elements.readingFocus.value.trim() : "", status: "importing" };
         saveFlow(); lockFields(false); setButton("作为新项目导入", false);
         setStatus("这份资料与上一次导入不同，原项目仍保留。请点击“作为新项目导入”继续。", "error");
         return;
@@ -472,7 +493,13 @@
     }
   });
   var stored = readStored(FLOW_KEY);
-  if (stored && /^[a-z0-9-]+$/.test(stored.projectId || "")) { flow = stored; if (form.elements.readingIntent) form.elements.readingIntent.value = stored.readingIntent || "overview"; form.elements.name.value = stored.name || ""; form.elements.repo.value = stored.repo || ""; setSource(stored.source); lockFields(stored.status !== "importing"); }
+  if (stored && /^[a-z0-9-]+$/.test(stored.projectId || "")) {
+    flow = stored;
+    if (form.elements.readingFocus) form.elements.readingFocus.value = typeof stored.readingFocus === "string" ? stored.readingFocus : "";
+    form.elements.name.value = stored.name || ""; form.elements.repo.value = stored.repo || "";
+    if (stored.source !== "github") { folderName = stored.folderName || stored.name || ""; renderFolder(); }
+    setSource(stored.source); lockFields(stored.status !== "importing");
+  }
   else restoreImportDraft();
   window.addEventListener('shelf-import-open', function () {
     if (!busy && flow && flow.status === 'ready') resetImport();

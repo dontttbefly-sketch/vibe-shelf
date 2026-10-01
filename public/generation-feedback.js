@@ -90,7 +90,7 @@
     taskButton.hidden = state === 'ready';
     taskButton.textContent = state === 'generating' ? '正在成书 · 查看进度' : state === 'failed' ? '生成未完成 · 重试' : '项目已保存 · 继续';
     var active = state === 'ready' ? 3 : ['reading', 'writing', 'compiling'].indexOf(generation.stage);
-    form.querySelectorAll('[data-generation-step]').forEach(function (step, index) {
+    workspace.querySelectorAll('[data-generation-step]').forEach(function (step, index) {
       step.classList.toggle('is-current', index === active);
       step.classList.toggle('is-complete', index < active || state === 'ready');
       if (index === active) step.setAttribute('aria-current', 'step'); else step.removeAttribute('aria-current');

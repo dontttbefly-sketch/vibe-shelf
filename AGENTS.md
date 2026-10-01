@@ -88,6 +88,17 @@
 - 放大按钮、铅笔（SVG，右上擦头左下笔尖）、关闭 ×：三个按钮同语言——透明底 + `--faint`，hover 才上色；标题与按钮 `user-select: none`（双击不选中）
 - 放大 = 宽度过渡到 `calc(50vw - 40px)`（右缘锚定）。**CSS 不能在 `auto` 与数值之间过渡**——定位属性参与动画时必须两侧都是数值
 
+## 官网入口契约（主按钮 → 翻开这本书 → 书桌上的对开书）
+
+- **主按钮** `.landing-primary`：空心粘土边框（1.5px `--clay`）、透明底、深粘土字。hover = 淡粘土底从左向右扫过（`::before` scaleX，像划词高亮）+ 箭头右上滑出、左下滑回 + 右侧英雄书微微抬起（`.landing-hero:has(.landing-primary:hover)`，入场序列完成后才联动）；按下缩到 `.975`；提交按钮"生成项目书"用同一套空心粘土样式（用户 10/1 要求改空心），在输入框下独占一行，hover 时箭头向右滑出再滑回
+- **转场「翻开这本书」**（public/upload-motion.js）：**一个物体从头到尾**——真实右页（`.upload-recto`）整段都垫在英雄书封面克隆底下，两者用同一组 `translate/rotate/scale` 关键帧从英雄书的位置飞到书桌中央；封面沿书脊 `rotateY(0→-180°)`，左页（书写页 `.upload-verso`）`rotateY(180°→0)`，两者同一时钟、`backface-visibility: hidden`，在侧立的那一刻交接（封面背面就是书写页）。动效只认 verso/recto 这两个角色类，不认页面内容；窄屏两页上下叠放时，上面的书写页单独飞、下面的页随书桌淡入。书桌 `.upload-desk-surface` 在旧页拷贝上淡入，旧页退后到 `.97`。页面与英雄书同比例（0.756），所以飞行是等比缩放，不拉伸文字。**红线：任何一帧都不许出现整屏白纸，新页面内容一露出来就是真的**（用户 9/29 两次否决过"先空白后浮现""第一帧整屏白纸"；9/30 否决过"窗口裁开全屏页面"那版——擦除感、衔接不丝滑）
+- **返回 = 倒放**：先完成视图切换与滚动恢复，**再**测量落点——扉页合回、封面落下，然后整本书飞回静止的英雄书（真书与旁注在落地前隐藏，结束时还原）；英雄书不可见就缩成小书收进原按钮并淡出；都不在就淡出
+- **书不完整可见时**（页尾 CTA、书架页"新建项目书"、窄屏）：一本小书从按钮处（顶栏按钮则在顶栏下沿）140ms 淡入，再飞向书页、翻开
+- **工作台**（用户 10/1：「填写放左侧吧，符合直觉；右侧是实时进度」）：书桌 + 一本摊开的书。**左页 = 书写页**：唯一 h1（文案随 access / idle / pending / generating / ready / failed 切换）+ **一个磨砂玻璃输入框**（项目是框顶的附件：本地文件夹标签 / GitHub 地址行；下面写侧重点；底栏"选文件夹 / GitHub"）+ 空心生成按钮；提交后输入框锁定成"这次要了什么"的记录。**右页 = 这本书的扉页 + 目录**：书名 + 侧重点实时排成副标题（空时"先看清全貌。"），下面一块玻璃目录 01 放进项目 / 02 写下侧重点 / 03 写成主书，每行只在真的发生后才打勾并写上真实内容；生成中第 03 行展开成四段细条进度（当前段脉动，不估百分比）。生成进度在表单之外，shelf.js 用 `part()`、generation-feedback 用 `workspace` 去找。≤860px 两页上下叠放，书写页在上
+- **毛玻璃**：只给输入框和目录卡（半透明白 + `backdrop-filter: blur(20px)` + 亮边），它们背后各有一团柔光（左页粘土色、右页雾绿），书桌本身是暖光渐变；翻页过程中 `body[data-workspace-motion]` 摘掉 blur（3D 翻转里的 backdrop-filter 不可靠，背后是平滑渐变所以切换看不出来）
+- **侧重点**（`readingFocus`，≤500 字）：导入接口规范化后写进 project.json / 书的 book.json / 项目摘要；主书 prompt 按行 `>` 引用原话，默认的"快速理解"目的让位；同一导入标识换了侧重点返回 409；不填就是原来的全貌读法
+- **逐帧验收**：派发 `detail: 1` 的 click，同步段内临时拦住兜底定时器，随后 `document.getAnimations()` 全部 pause 并设 `currentTime` 截图
+
 ## 源码联动契约（生成期）
 
 一句话：**行号的唯一可信来源是快照，不是模型的自述**。模型负责指认（写路径、摘代码），服务端负责锚定（内容确定性匹配），阅读器负责兜底（解析唯一才链）。
@@ -101,7 +112,7 @@
 
 - **本地完整版**：`node server.mjs`（.env 填 OpenAI 兼容接口）→ 项目导入（本地文件夹 / GitHub 公开仓库 `POST /api/projects/import-github`，lib/github-import.mjs 拉文本文件、共用 IMPORT_LIMITS）、主书生成、旁注、探索和小书生成；配 `GITHUB_TOKEN` 可提高 API 限额
 - **静态演示版**（GitHub Pages）：阅读、划词、本地批注（localStorage）全部可用；AI 接口自动降级——toast 提示"clone 本地运行"。降级标记 `STATIC_MODE`，入口：启动 fetch 失败、explain/followup 拦截、persist/delete 落 localStorage
-- **Pages 部署**：`.github/workflows/pages.yml`，push main 自动部署 `public/` 到 Pages
+- **Pages 部署**：`.github/workflows/pages.yml`，push main 先跑 `npm test`，通过后部署 `public/` 到 Pages（https://dontttbefly-sketch.github.io/vibe-shelf/）。首页按 `*.github.io` 识别静态演示：landing.js 不问账户接口、上传页照常可试但提交被拦下并提示本地运行，案例区读 `public/static-demo.json`（只收随站点发布的 PUPKIT；主书改了要从本地 `/api/examples/pupkit/preview` 重新生成），shelf.js 不轮询书架接口。站内链接必须相对或经 `safePath` 落在站点基路径 `/vibe-shelf/` 下
 - **单独编译一本书**：`node build.mjs <书.html> --book <名字> --out public/books/<名字>/index.html`
 
 ## Agent 开发流程（每次改动的标准动作）
@@ -139,6 +150,18 @@
 - **别让模型报行号**：dump 给模型的文件不带行号，它数不出来——实测一本 21 个代码块的书 0 个行号引用（索性全不写），旧 prompt 的"标注文件:行号"契约等于没写。行号必须由服务端按内容锚定
 - **编号近邻正则会漏 `s` 前缀**：`s09_cron_scheduler` 这类目录是"字母+数字+下划线"，`/^(\d+)_/` 永远匹配不上，编号纠偏整条失效——`numberedSegment` 用 `/^(.*?)(\d+)_(.+)$/` 取"同头同尾"
 - **引用正则要防截断**：没有尾部 lookahead `(?![A-Za-z0-9_])` 时 `app.tsx` 会被匹配成 `app.ts`，漏出的 `x` 被当成正文（扩展名交替顺序救不了，必须回溯 + 边界）
+- **同特异性下写在后面的 `:hover` 会盖住 `:active`**：媒体查询不加特异性，曾导致桌面端按下反馈完全看不到——按下态必须写在 hover 规则之后
+- **克隆节点里插 `<style>` 不会被作用域化**：往旧页拷贝里塞 `*{animation:none!important}` 会冻结全页动画 → 冻结规则写进 CSS、挂在拷贝根类上（`.upload-motion-copy *`）；WAAPI 不受 `animation:none` 影响
+- **隐藏元素的 `getBoundingClientRect()` 全是 0**：曾让返回动画缩向左上角 (0,0)——落点必须在视图切换 + 滚动恢复之后再量
+- **正立的 clip-path 窗口盖不住斜着的封面**：窗口起点要用斜封面的内接正立矩形，否则第一帧四角就漏出新页面；叠在书上的元素（旁注卡）要单独成层，否则会被窗口切掉
+- **Ego 里别全局替换 `window.setTimeout`**：Ego 注入页面的脚本也用它，替换后 evaluate 会永远挂起；只在派发点击的同步段里临时拦截，`finally` 立刻还原
+- **翻页的 perspective 要按页宽取远**：`perspective(3×页宽)` 时翻到 60° 的自由边放大 1.4 倍，整页冲出屏幕上下沿，像镜头扑过来；取 8×页宽，自由边最多放大约 1/7，仍有纵深
+- **两面同轴翻页**：封面 `rotateY(0→-180°)` 与扉页 `rotateY(180°→0)` 必须同一时钟、同一缓动、都 `backface-visibility: hidden`，才会在侧立那一刻无缝交接；飞行用同一组关键帧同时驱动真实书页与封面克隆，两者的 transform-origin 都落在右页中心
+- **`ego-browser nodejs -e` 的脚本里出现 `<` 会无输出挂住**：含比较运算的脚本一律走 heredoc（`ego-browser nodejs <<'EOF'`）；后台运行时 stdout 到进程结束才落盘，看不到中途进度
+- **Ego 在 `chrome://` 新标签页上发 `Emulation.*` 会挂住**：先 `goto` 到站点再设视口
+- **只改 hash 的 `goto` 不会重新加载**：`/` → `/#upload` 是同文档导航，刚改的 CSS 不生效——验收前先 `page.reload()`
+- **`@container` 里的规则同样要排在同特异性的基础规则之后**：容器查询不加特异性，写在前面就被盖掉（手机上生成按钮不换行的根因）
+- **vm 里造出来的数组过不了 `deepStrictEqual`**：原型来自另一个 realm，比较前先 `JSON.parse(JSON.stringify(...))`
 
 ## 设计原则三句话（写代码犹豫时看这里）
 
