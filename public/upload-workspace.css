@@ -141,8 +141,9 @@ body[data-workspace-motion] :is(.upload-composer, .upload-contents-body) { -webk
 .upload-form::before { top: -34px; right: -26px; width: 58%; height: 150px; background: radial-gradient(closest-side, var(--glow-clay), transparent); }
 .upload-form::after { top: 96px; left: -34px; width: 50%; height: 140px; background: radial-gradient(closest-side, var(--glow-mist), transparent); }
 
-/* One composer: the project rides on top as an attachment, the focus is
-   written below it, and the bar carries the two ways to bring a project. */
+/* One composer, read top to bottom in the order of the contents opposite:
+   first the project — a dashed slot that its tag replaces in place — then the
+   focus written below it. */
 .upload-composer { display: flex; flex-direction: column; container-type: inline-size; transition: border-color 160ms ease-out, box-shadow 200ms var(--ease); }
 .upload-composer:focus-within { border-color: color-mix(in srgb, var(--clay) 70%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay) 14%, transparent), 0 22px 44px -30px rgba(21, 27, 30, .34); }
 .upload-attachment {
@@ -183,7 +184,12 @@ body[data-workspace-motion] :is(.upload-composer, .upload-contents-body) { -webk
 .upload-focus::placeholder { color: var(--faint); }
 .upload-focus:disabled { opacity: 1; color: var(--ink-soft); -webkit-text-fill-color: var(--ink-soft); cursor: default; }
 .upload-focus:disabled:placeholder-shown { display: none; }
-.upload-composer-bar { display: flex; align-items: center; gap: 4px; padding: 8px 10px 10px; border-top: 1px solid color-mix(in srgb, var(--line-strong) 40%, transparent); }
+.upload-source-slot { display: flex; align-items: center; gap: 4px; min-width: 0; margin: 12px 12px 0; padding: 4px 6px; border: 1px dashed color-mix(in srgb, var(--line-strong) 85%, transparent); border-radius: 9px; }
+/* A folder only becomes the tag once its files are read; a draft restored after a
+   reload keeps just the name, so the slot stays to pick it again. Submitted, the
+   tag stays as the record. */
+.upload-form[data-launcher-state="idle"] [data-local-source]:has([data-import-summary]:empty) { display: none; }
+.upload-composer:has([data-local-source]:not([hidden]) [data-import-summary]:not(:empty), [data-github-source]:not([hidden])) .upload-source-slot { display: none; }
 .upload-tool {
   position: relative;
   display: inline-flex;
@@ -216,7 +222,7 @@ body[data-workspace-motion] :is(.upload-composer, .upload-contents-body) { -webk
 .upload-send:disabled::before { transform: scaleX(0); }
 /* Once submitted, the composer is the record of what was asked: sources and removal leave. */
 .upload-form:not([data-launcher-state="idle"]) :is(.upload-tool, .upload-drop-hint, .upload-attachment-clear) { display: none; }
-.upload-form:not([data-launcher-state="idle"]) .upload-composer-bar { display: none; }
+.upload-form:not([data-launcher-state="idle"]) .upload-source-slot { display: none; }
 .upload-attachment-clear:disabled { opacity: .45; cursor: default; }
 .upload-workspace[data-phase="generating"] .upload-send { display: none; }
 .upload-workspace .shelf-import-status { margin-top: 14px; font-size: 12px; }
