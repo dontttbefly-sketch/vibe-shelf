@@ -1,3 +1,5 @@
+<img src="public/favicon.svg" width="72" alt="知识书架 logo">
+
 # vibe-shelf · 知识书架
 
 把一个项目的源码变成一部可以继续生长的本地项目书。

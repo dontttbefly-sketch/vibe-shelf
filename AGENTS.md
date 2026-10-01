@@ -44,6 +44,8 @@
 | 删除 | 字级中间划线 `rgba(178,59,46,.55)`，整块色带 `rgba(178,59,46,.05)` + 行首 `−` | 追问删去内容、危险操作 |
 | 雾灰绿 | `--mist #e8f0ed` | 中性区隔（注意：低饱和下偏冷，慎当大面积底色） |
 
+**Logo**：`public/favicon.svg`——一本书的轮廓 + 书脊 + 「书」字（Noto Serif SC 字形转曲，SIL OFL，不依赖访客字体）；`favicon.ico`（16/32/48）和 `apple-touch-icon.png`（180，书桌色底）都由它渲染。顶栏 `.shelf-brand-mark` 内联同一图形，颜色走 `--paper / --ink / --line-strong`，随夜间模式翻转。首页、project.html、book-compiler 产出的书页、公开模式书页都挂三条图标链接；已编译的旧书靠站点根的 `favicon.ico` 兜底（Pages 上的 PUPKIT 书已手工补链接）
+
 **宿主样式隔离**：diff 卡/气泡内渲染 markdown 时，原书的样式（代码块紫蓝左条、行内 code 蓝紫底字）会**渗入**——必须在容器内显式覆盖（背景、边框、`color` 三个都要，只改背景会漏字色）。
 
 ## 核心交互链路（改动前先理解全链路）
