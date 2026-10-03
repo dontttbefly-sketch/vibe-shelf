@@ -1,0 +1,25 @@
+[Unit]
+Description=知识书架（vibe-shelf）
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=shelf
+Group=shelf
+WorkingDirectory=/opt/vibe-shelf/current
+EnvironmentFile=/etc/vibe-shelf/vibe-shelf.env
+ExecStart=/opt/node/bin/node --max-old-space-size=320 server.mjs
+Restart=always
+RestartSec=3
+# The box also carries other services; cap memory so one runaway request
+# cannot starve them.
+MemoryMax=450M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/vibe-shelf
+
+[Install]
+WantedBy=multi-user.target

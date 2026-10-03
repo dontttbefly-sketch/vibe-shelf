@@ -98,6 +98,25 @@ test("login rate does not trust forwarded headers unless a loopback proxy is exp
   assert.equal((await proxy.request("/auth/github", { headers: { "x-forwarded-for": "1.1.1.1, 198.51.100.1" } })).status, 429);
 });
 
+test("an invite list admits only listed numeric GitHub ids and closes sessions of everyone else", async t => {
+  const open = await start(t);
+  const outsider = await open.login(202);
+  await new Promise(resolve => open.server.close(resolve));
+  const invited = await start(t, { root: open.root, environment: { SHELF_ALLOWED_GITHUB_IDS: "101, user-303" } });
+  assert.equal((await (await invited.request("/api/account", { cookie: outsider.cookie })).json()).authenticated, false);
+  const begin = await invited.request("/auth/github");
+  const state = new URL(begin.headers.get("location")).searchParams.get("state");
+  const refused = await invited.request("/auth/github/callback?code=202&state=" + state, { cookie: cookies(begin).join("; ") });
+  assert.equal(refused.status, 403);
+  assert.ok(!cookies(refused).some(cookie => cookie.startsWith("__Host-shelf-session=") && cookie.length > "__Host-shelf-session=".length));
+  const member = await invited.login(101);
+  assert.equal((await (await invited.request("/api/account", { cookie: member.cookie })).json()).user.id, "github-101");
+  const nobody = await start(t, { environment: { SHELF_ALLOWED_GITHUB_IDS: "not-a-number" } });
+  const closedBegin = await nobody.request("/auth/github");
+  const closedState = new URL(closedBegin.headers.get("location")).searchParams.get("state");
+  assert.equal((await nobody.request("/auth/github/callback?code=101&state=" + closedState, { cookie: cookies(closedBegin).join("; ") })).status, 403);
+});
+
 test("two accounts can use the same project id without sharing source, notes, books or backups; mutation requires Origin", async t => {
   const app = await start(t), a = await app.login(101), b = await app.login(202);
   for (const [person, content] of [[a, "owner A"], [b, "owner B"]]) {

@@ -1,0 +1,21 @@
+[Unit]
+Description=Cloudflare Tunnel for 知识书架
+After=network-online.target vibe-shelf.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+# TUNNEL_TOKEN lives in a root-only file instead of the world-readable unit.
+EnvironmentFile=/etc/vibe-shelf/tunnel.env
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate tunnel run
+Restart=always
+RestartSec=5
+MemoryMax=150M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

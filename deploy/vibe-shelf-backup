@@ -1,0 +1,8 @@
+#!/bin/sh
+# Installed as /etc/cron.daily/vibe-shelf-backup: one archive per day, last 7 kept.
+set -e
+dir=/var/backups/vibe-shelf
+mkdir -p "$dir"
+chmod 700 "$dir"
+tar -czf "$dir/vibe-shelf-$(date +%F).tar.gz" -C /var/lib vibe-shelf
+find "$dir" -name 'vibe-shelf-*.tar.gz' -mtime +7 -delete
